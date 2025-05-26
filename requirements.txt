@@ -1,0 +1,25 @@
+# LangGraph & LangChain core
+langgraph
+langchain
+langchain-openai
+
+# Model APIs
+openai  # GPT-4o access
+anthropic  # Claude (optional)
+google-generativeai  # Gemini Pro (optional)
+
+# Image generation (optional)
+Pillow
+requests
+
+# Linting, Dev tools
+black
+flake8
+python-dotenv
+pyyaml
+
+# Local code execution
+ipython
+
+# Testing
+pytest
