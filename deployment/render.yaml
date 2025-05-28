@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: agentic-writer-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m langgraph_app
+    autoDeploy: true
+
+  - type: web
+    name: agentic-writer-frontend
+    runtime: static
+    buildCommand: npm install && npm run build
+    rootDir: frontend
+    autoDeploy: true

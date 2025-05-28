@@ -21,7 +21,7 @@ state = {
 
 result = publisher.invoke(state)
 
-print("✅ Article published:")
+print("Article published:")
 print(f"Substack Status: {result['substack_status']}")
 print(f"Medium Import Path: {result['medium_import_path']}")
 print(f"Import URL: {result['import_url']}")
