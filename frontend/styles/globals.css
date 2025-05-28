@@ -1,0 +1,167 @@
+/* frontend/app/globals.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* White background */
+    --foreground: 222.2 84% 4.9%; /* Dark text */
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* --- Primary Brand Colors (inspired by your nav gradient) --- */
+    --brand-purple: 270 70% 60%; /* A purple hue for branding */
+    --brand-pink: 320 80% 60%;  /* A pink hue for branding */
+
+    /* Shadcn Primary (adjusted to blend with brand colors) */
+    --primary: 270 70% 40%; /* A deeper purple, acts as primary button/focus color */
+    --primary-foreground: 210 20% 98%; /* White/Off-white for text on primary */
+
+    --secondary: 210 20% 98%; /* Light grey background */
+    --secondary-foreground: 222.2 47.4% 11.2%; /* Dark text on secondary */
+
+    --muted: 210 20% 98%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 20% 98%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%; /* Standard red for errors */
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 270 70% 50%; /* Ring color based on brand purple */
+
+    --radius: 0.5rem; /* Default border radius for Shadcn components */
+  }
+
+  /* --- Dark Mode Variables (consider adding a theme toggle later) --- */
+  .dark {
+    --background: 222.2 84% 4.9%; /* Dark background */
+    --foreground: 210 20% 98%; /* Light text */
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 20% 98%;
+
+    /* Brand colors for dark mode (can be adjusted for visibility) */
+    --brand-purple: 270 70% 70%;
+    --brand-pink: 320 80% 70%;
+
+    --primary: 270 70% 50%; /* Lighter purple for dark mode primary */
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.4% 65.2%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 20% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 270 70% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    /* Apply Inter font, background, and text colors from CSS variables */
+    @apply bg-background text-foreground;
+  }
+}
+
+/* --- Global Utilities/Custom Styles --- */
+/* This allows you to use `bg-gradient-brand` in your components */
+.bg-gradient-brand {
+  background-image: linear-gradient(to right, hsl(var(--brand-purple)) , hsl(var(--brand-pink)));
+}
+/* You can also define text gradients if needed */
+.text-gradient-brand {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to right, hsl(var(--brand-purple)), hsl(var(--brand-pink)));
+}
+
+
+/* --- Styles for the Tiptap Content Editor (Prose) --- */
+/* These styles make the generated HTML content look good and readable */
+.prose {
+  /* General prose styles, apply to all content within a .prose container */
+  @apply text-foreground max-w-none; /* Use foreground color, remove max-width if you control layout with container */
+
+  h1 { @apply text-4xl font-extrabold mb-4 text-primary; } /* Brand primary for headings */
+  h2 { @apply text-3xl font-bold mb-3 text-primary; }
+  h3 { @apply text-2xl font-semibold mb-2; }
+  h4 { @apply text-xl font-medium mb-1; }
+  h5 { @apply text-lg font-medium; }
+  h6 { @apply text-base font-medium; }
+
+  p { @apply leading-relaxed mb-4; }
+
+  ul, ol { @apply list-inside mb-4 pl-4; } /* Add some padding for better list appearance */
+  ul { @apply list-disc; }
+  ol { @apply list-decimal; }
+  li { @apply mb-1; }
+
+  a { @apply text-primary hover:underline; } /* Use primary color for links */
+
+  strong { @apply font-semibold; }
+  em { @apply italic; }
+
+  blockquote {
+    @apply border-l-4 border-gray-300 pl-4 py-2 my-4 text-gray-700 italic;
+    @apply dark:border-gray-600 dark:text-gray-300;
+  }
+
+  code {
+    @apply font-mono text-sm bg-gray-100 rounded-md px-1 py-0.5;
+    @apply dark:bg-gray-800 dark:text-gray-100;
+  }
+
+  pre {
+    @apply bg-gray-900 text-white p-4 rounded-lg text-sm overflow-x-auto my-6;
+    /* Use a darker background for code blocks for better contrast */
+  }
+
+  table {
+    @apply w-full border-collapse my-6;
+  }
+  th, td {
+    @apply border border-gray-300 p-2 text-left;
+    @apply dark:border-gray-700;
+  }
+  th {
+    @apply bg-gray-100 font-semibold;
+    @apply dark:bg-gray-700 dark:text-gray-100;
+  }
+
+  img {
+    @apply max-w-full h-auto rounded-md my-4;
+  }
+}
+
+/* Adjust prose sizing for different screen sizes as used in ContentEditor.tsx */
+.prose-sm { @apply text-sm; }
+.prose-base { @apply text-base; } /* Can use .prose instead of .prose-base too */
+.prose-lg { @apply text-lg; }
+.prose-xl { @apply text-xl; }
+.prose-2xl { @apply text-2xl; }
