@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ContentEditor from "@/components/content-editor";
 import { Loader2 } from "lucide-react"; // npm install lucide-react
 
@@ -64,9 +64,10 @@ export default function GenerateContentPage() {
   });
 
   // --- Update dynamic parameters when template changes ---
+  const watchedTemplateId = form.watch('templateId');
   useEffect(() => {
-    if (templates && form.watch('templateId')) {
-      const template = templates.find(t => t.id === form.watch('templateId'));
+    if (templates && watchedTemplateId) {
+      const template = templates.find(t => t.id === watchedTemplateId);
       setSelectedTemplate(template || null);
 
       // Reset dynamic parameters and set defaults for the new template
@@ -87,7 +88,7 @@ export default function GenerateContentPage() {
       });
       form.resetField('dynamic_parameters', { defaultValue: newDynamicParams });
     }
-  }, [form.watch('templateId'), templates, form]);
+  }, [watchedTemplateId, templates, form]);
 
 
   // --- Mutation Hook for Content Generation ---
@@ -215,13 +216,27 @@ export default function GenerateContentPage() {
                         <FormLabel>{param.label}</FormLabel>
                         <FormControl>
                           {param.type === 'text' && (
-                            <Input placeholder={param.placeholder} {...field} />
+                            <Input
+                              placeholder={param.placeholder}
+                              {...field}
+                              value={typeof field.value === "boolean" ? "" : field.value ?? ""}
+                            />
                           )}
                           {param.type === 'textarea' && (
-                            <Textarea placeholder={param.placeholder} {...field} />
+                            <Textarea
+                              placeholder={param.placeholder}
+                              {...field}
+                              value={typeof field.value === "boolean" ? "" : field.value ?? ""}
+                            />
                           )}
                           {param.type === 'number' && (
-                            <Input type="number" placeholder={param.placeholder} {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                            <Input
+                              type="number"
+                              placeholder={param.placeholder}
+                              {...field}
+                              value={typeof field.value === "boolean" ? "" : field.value ?? ""}
+                              onChange={e => field.onChange(Number(e.target.value))}
+                            />
                           )}
                           {param.type === 'select' && param.options && (
                             <Select onValueChange={field.onChange} defaultValue={field.value as string}>

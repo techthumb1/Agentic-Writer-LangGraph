@@ -1,8 +1,13 @@
-// types/index.d.ts
+export type TemplateMetadata = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  styleProfileDefault: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-/**
- * Basic response structure used by API endpoints.
- */
 export type APIResponse<T> = {
   success: boolean;
   data?: T;
@@ -13,9 +18,6 @@ export type APIResponse<T> = {
   };
 };
 
-/**
- * Pagination wrapper for API responses returning lists.
- */
 export type PaginatedResponse<T> = {
   items: T[];
   pagination: {
@@ -28,22 +30,6 @@ export type PaginatedResponse<T> = {
   };
 };
 
-/**
- * Metadata structure used by content generation templates.
- */
-export type TemplateMetadata = {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  styleProfileDefault: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-/**
- * Style profile definition used to guide tone and structure.
- */
 export type StyleProfile = {
   id: string;
   name: string;
@@ -54,7 +40,7 @@ export type StyleProfile = {
     complexity: string;
     length: string;
   };
-  category: string;
+  category: string; // ✅ Add this line
   isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
