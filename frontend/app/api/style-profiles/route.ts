@@ -1,3 +1,5 @@
+//frontend/app/api/style_profiles/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { StyleProfile, APIResponse, PaginatedResponse } from '@/types';
 import { readYamlFromDir } from '@/lib/file-loader';
