@@ -1,0 +1,16 @@
+title: 5 AI Use Cases Every Startup Should Explore
+category: startups
+audience: startup founders, VCs
+summary: >
+  Practical, high-ROI applications of AI for early-stage companies, from marketing to ops and customer success.
+sections:
+  - title: Personalized Outreach
+    prompt: Explain how AI can automate cold emails, inbound filters, and demos.
+  - title: Internal Search & Knowledge Bases
+    prompt: Show examples of RAG, embeddings, and chatbots for internal docs.
+  - title: AI for Customer Success
+    prompt: Explain churn prediction, support chat automation, and FAQs.
+  - title: Ops Automation
+    prompt: Cover invoice parsing, meeting summaries, scheduling, etc.
+  - title: Conclusion
+    prompt: Call to action—how to get started, build MVPs, and experiment fast.
