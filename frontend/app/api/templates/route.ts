@@ -4,11 +4,13 @@ import { readYamlFromDir } from '@/lib/file-loader';
 
 export async function GET() {
   try {
-    const templates = await readYamlFromDir<TemplateMetadata>('content_templates');
+    const templates = await readYamlFromDir<TemplateMetadata>('content-templates');
 
-    const response: APIResponse<TemplateMetadata[]> = {
+    const response: APIResponse<{ items: TemplateMetadata[] }> = {
       success: true,
-      data: templates,
+      data: {
+        items: templates,
+      },
     };
 
     return NextResponse.json(response);

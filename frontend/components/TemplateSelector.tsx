@@ -1,4 +1,3 @@
-// frontend/components/TemplateSelector.tsx
 "use client";
 
 import React from "react";
@@ -55,12 +54,23 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                   <div className="px-4 py-2 text-muted-foreground">
                     Loading templates...
                   </div>
+                ) : Array.isArray(templates) && templates.length > 0 ? (
+                  templates
+                    .filter(
+                      (template): template is ContentTemplate =>
+                        !!template?.id &&
+                        typeof template.id === "string" &&
+                        !!template.name
+                    )
+                    .map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))
                 ) : (
-                  templates.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name}
-                    </SelectItem>
-                  ))
+                  <div className="px-4 py-2 text-red-500">
+                    No templates available
+                  </div>
                 )}
               </SelectContent>
             </Select>
@@ -89,15 +99,23 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                   <div className="px-4 py-2 text-muted-foreground">
                     Loading styles...
                   </div>
-                ) : (
+                ) : Array.isArray(styleProfiles) && styleProfiles.length > 0 ? (
                   styleProfiles
-                    .filter(profile => typeof profile.id === "string" && profile.id.trim() !== "")
-
+                    .filter(
+                      (profile): profile is StyleProfile =>
+                        !!profile?.id &&
+                        typeof profile.id === "string" &&
+                        !!profile.name
+                    )
                     .map((profile) => (
                       <SelectItem key={profile.id} value={profile.id}>
                         {profile.name}
                       </SelectItem>
                     ))
+                ) : (
+                  <div className="px-4 py-2 text-red-500">
+                    No style profiles available
+                  </div>
                 )}
               </SelectContent>
             </Select>

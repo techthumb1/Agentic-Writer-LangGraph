@@ -1,3 +1,5 @@
+// frontend/app/generate/page.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -34,11 +36,11 @@ interface ContentTemplate {
   parameters: TemplateParameter[];
 }
 
-interface StyleProfile {
-  id: string;
-  name: string;
-  description?: string;
-}
+//interface StyleProfile {
+//  id: string;
+//  name: string;
+//  description?: string;
+//}
 
 interface GeneratedContent {
   id?: string;
@@ -47,11 +49,8 @@ interface GeneratedContent {
   metadata?: Record<string, unknown>;
 }
 
-interface GenerateContentPayload {
-  templateId: string;
-  styleProfileId: string;
-  parameters: Record<string, string | number | boolean>;
-}
+// REMOVE GenerateContentPayload entirely — not needed
+
 
 // Form Schema
 const formSchema = z.object({
@@ -68,25 +67,30 @@ export default function GenerateContentPage() {
   const [isGeneratingDialogOpen, setIsGeneratingDialogOpen] = useState(false);
 
   // Fetch templates
-  const { data: templates = [], isLoading: isLoadingTemplates } = useQuery<ContentTemplate[]>({
-    queryKey: ["templates"],
+  const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
+    queryKey: ['templates'],
     queryFn: async () => {
-      const res = await fetch("/api/templates");
+      const res = await fetch('/api/templates');
       const json = await res.json();
-      return json?.data?.items ?? [];
+      console.log("🔍 /api/templates →", json);
+      return json.data?.items || [];  
     },
   });
+
 
 
   // Fetch style profiles
-  const { data: styleProfiles = [], isLoading: isLoadingStyleProfiles } = useQuery<StyleProfile[]>({
-    queryKey: ["styleProfiles"],
+  const { data: styleProfiles = [], isLoading: isLoadingStyleProfiles } = useQuery({
+    queryKey: ['styleProfiles'],
     queryFn: async () => {
-      const res = await fetch("/api/style-profiles");
+      const res = await fetch('/api/style-profiles');
       const json = await res.json();
-      return json?.data?.items ?? [];
+      console.log("🔍 /api/style-profiles →", json);
+      return json.data?.items || [];  // defensive fallback
     },
   });
+
+
 
 
   // Setup form
@@ -103,12 +107,14 @@ export default function GenerateContentPage() {
   const watchedTemplateId = form.watch("templateId");
 
   useEffect(() => {
-    const template = templates.find(t => t.id === watchedTemplateId);
+    const template = templates.find((t: ContentTemplate) => t.id === watchedTemplateId);
     setSelectedTemplate(template || null);
 
-    if (template) {
-      const newDefaults: Record<string, string | number | boolean> = {};
-      template.parameters.forEach(param => {
+  if (template && Array.isArray(template.parameters)) {
+    const newDefaults: Record<string, string | number | boolean> = {};
+    template.parameters.forEach((param: TemplateParameter) => {
+
+
         if (param.default !== undefined) {
           newDefaults[param.name] = param.default;
         } else {
@@ -132,7 +138,7 @@ export default function GenerateContentPage() {
   }, [watchedTemplateId, templates, form]);
 
   // Content generation mutation
-  const generateContentMutation = useMutation<GeneratedContent, Error, GenerateContentPayload>({
+  const generateContentMutation = useMutation<GeneratedContent, Error, GenerateContentFormValues>({
     mutationFn: async (payload) => {
       setIsGeneratingDialogOpen(true);
       const res = await fetch("/api/generate", {
@@ -157,13 +163,10 @@ export default function GenerateContentPage() {
   });
 
   const onSubmit = (values: GenerateContentFormValues) => {
-    const payload: GenerateContentPayload = {
-      templateId: values.templateId,
-      styleProfileId: values.styleProfileId,
-      parameters: values.dynamic_parameters,
-    };
-    generateContentMutation.mutate(payload);
+    generateContentMutation.mutate(values);
   };
+  console.log("🧪 templates:", templates);
+  console.log("🧪 styleProfiles:", styleProfiles);
 
   return (
     <div className="space-y-8">
@@ -187,7 +190,7 @@ export default function GenerateContentPage() {
             </CardContent>
           </Card>
 
-          {selectedTemplate && selectedTemplate.parameters.length > 0 && (
+          {selectedTemplate?.parameters?.length && selectedTemplate.parameters.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Template Parameters</CardTitle>

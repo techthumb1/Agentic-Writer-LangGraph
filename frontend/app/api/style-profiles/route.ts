@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
 
-    let profiles = await readYamlFromDir<StyleProfile>('style_profiles');
+    let profiles = await readYamlFromDir<StyleProfile>('style-profiles');
 
     if (search) {
       profiles = profiles.filter(profile =>
