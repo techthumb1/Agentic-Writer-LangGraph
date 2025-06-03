@@ -1,3 +1,5 @@
+// frontend/app/generate/[template_id]/page.tsx
+
 interface PageProps {
   params: { templateId: string };
 }
