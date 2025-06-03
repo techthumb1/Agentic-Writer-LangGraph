@@ -1,5 +1,3 @@
-// frontend/app/generate/page.tsx
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,10 +5,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import * as z from "zod";
+//import { useRouter } from "next/navigation";
 
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
 import TemplateSelector from "@/components/TemplateSelector";
@@ -18,7 +23,10 @@ import DynamicParameters from "@/components/DynamicParameters";
 import GeneratedContentDisplay from "@/components/GeneratedContentDisplay";
 import GeneratingDialog from "@/components/GeneratingDialog";
 
-// Interfaces
+// ----------------------
+// Interfaces and Schema
+// ----------------------
+
 interface TemplateParameter {
   name: string;
   label: string;
@@ -36,12 +44,6 @@ interface ContentTemplate {
   parameters: TemplateParameter[];
 }
 
-//interface StyleProfile {
-//  id: string;
-//  name: string;
-//  description?: string;
-//}
-
 interface GeneratedContent {
   id?: string;
   title: string;
@@ -49,51 +51,55 @@ interface GeneratedContent {
   metadata?: Record<string, unknown>;
 }
 
-// REMOVE GenerateContentPayload entirely — not needed
-
-
-// Form Schema
 const formSchema = z.object({
   templateId: z.string().min(1, "Please select a content template."),
   styleProfileId: z.string().min(1, "Please select a style profile."),
-  dynamic_parameters: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+  dynamic_parameters: z.record(
+    z.string(),
+    z.union([z.string(), z.number(), z.boolean()])
+  ),
 });
 
 type GenerateContentFormValues = z.infer<typeof formSchema>;
+
+// ----------------------
+// Main Component
+// ----------------------
 
 export default function GenerateContentPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<ContentTemplate | null>(null);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGeneratingDialogOpen, setIsGeneratingDialogOpen] = useState(false);
+  //const router = useRouter();
 
-  // Fetch templates
+  // ----------------------
+  // Queries
+  // ----------------------
+
   const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
-    queryKey: ['templates'],
+    queryKey: ["templates"],
     queryFn: async () => {
-      const res = await fetch('/api/templates');
+      const res = await fetch("/api/templates");
       const json = await res.json();
       console.log("🔍 /api/templates →", json);
-      return json.data?.items || [];  
+      return json.data?.items || json || [];
     },
   });
 
-
-
-  // Fetch style profiles
   const { data: styleProfiles = [], isLoading: isLoadingStyleProfiles } = useQuery({
-    queryKey: ['styleProfiles'],
+    queryKey: ["styleProfiles"],
     queryFn: async () => {
-      const res = await fetch('/api/style-profiles');
+      const res = await fetch("/api/style-profiles");
       const json = await res.json();
       console.log("🔍 /api/style-profiles →", json);
-      return json.data?.items || [];  // defensive fallback
+      return json.data?.items || json || [];
     },
   });
 
+  // ----------------------
+  // Form Setup
+  // ----------------------
 
-
-
-  // Setup form
   const form = useForm<GenerateContentFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -103,18 +109,15 @@ export default function GenerateContentPage() {
     },
   });
 
-  // Watch and update template-specific parameters
   const watchedTemplateId = form.watch("templateId");
 
   useEffect(() => {
     const template = templates.find((t: ContentTemplate) => t.id === watchedTemplateId);
     setSelectedTemplate(template || null);
 
-  if (template && Array.isArray(template.parameters)) {
-    const newDefaults: Record<string, string | number | boolean> = {};
-    template.parameters.forEach((param: TemplateParameter) => {
-
-
+    if (template && Array.isArray(template.parameters)) {
+      const newDefaults: Record<string, string | number | boolean> = {};
+      template.parameters.forEach((param: TemplateParameter) => {
         if (param.default !== undefined) {
           newDefaults[param.name] = param.default;
         } else {
@@ -137,7 +140,10 @@ export default function GenerateContentPage() {
     }
   }, [watchedTemplateId, templates, form]);
 
-  // Content generation mutation
+  // ----------------------
+  // Mutation
+  // ----------------------
+
   const generateContentMutation = useMutation<GeneratedContent, Error, GenerateContentFormValues>({
     mutationFn: async (payload) => {
       setIsGeneratingDialogOpen(true);
@@ -146,27 +152,45 @@ export default function GenerateContentPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Generation failed");
-      }
+      if (!res.ok) throw new Error("Failed to generate content");
       return res.json();
     },
-    onSuccess: (data) => {
+
+    onSuccess: (data: GeneratedContent & { saved_path?: string }) => {
+      console.log("✅ Mutation Success:", data);
       setGeneratedContent(data);
       setIsGeneratingDialogOpen(false);
+
+      console.log("🧾 Holding at /generate with contentHtml:");
+      console.log(data?.contentHtml);
+          
+      // comment out redirection for now
+      // const savedPath = data?.saved_path;
+      // const contentID = savedPath?.split("/").pop()?.replace(".md", "");
+      // if (contentID) {
+      //   router.push(`/content/${contentID}`);
+      // }
+
     },
+
     onError: (error) => {
       setIsGeneratingDialogOpen(false);
-      alert(`Error: ${error.message}`);
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "message" in error
+          ? (error as { message: string }).message
+          : "An unknown error occurred during generation.";
+
+      console.error("❌ Mutation error:", error);
+      alert(`Error: ${message}`);
     },
-  });
+  });         
 
   const onSubmit = (values: GenerateContentFormValues) => {
+    console.log("🚀 Form Submitted →", values);
     generateContentMutation.mutate(values);
   };
-  console.log("🧪 templates:", templates);
-  console.log("🧪 styleProfiles:", styleProfiles);
 
   return (
     <div className="space-y-8">
@@ -177,7 +201,9 @@ export default function GenerateContentPage() {
           <Card>
             <CardHeader>
               <CardTitle>Content Configuration</CardTitle>
-              <CardDescription>Select a template and style profile for your content.</CardDescription>
+              <CardDescription>
+                Select a template and style profile for your content.
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TemplateSelector
@@ -190,14 +216,18 @@ export default function GenerateContentPage() {
             </CardContent>
           </Card>
 
-          {selectedTemplate?.parameters?.length && selectedTemplate.parameters.length > 0 && (
+          {selectedTemplate && Array.isArray(selectedTemplate.parameters) && selectedTemplate.parameters.length > 0 && (
+
             <Card>
               <CardHeader>
                 <CardTitle>Template Parameters</CardTitle>
-                <CardDescription>Provide specific inputs for your selected template.</CardDescription>
+                <CardDescription>
+                  Provide specific inputs for your selected template.
+                </CardDescription>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <DynamicParameters parameters={selectedTemplate.parameters} />
+                <DynamicParameters parameters={selectedTemplate?.parameters ?? []} />
+
               </CardContent>
             </Card>
           )}
@@ -224,12 +254,12 @@ export default function GenerateContentPage() {
         </form>
       </Form>
 
-      {generatedContent && (
-        <GeneratedContentDisplay
-          generatedContent={generatedContent.contentHtml}
-          isLoading={generateContentMutation.isPending}
-        />
-      )}
+      {/* Display Output */}
+<GeneratedContentDisplay
+  generatedContent={generatedContent?.contentHtml ?? "<h2>No content passed</h2>"}
+  isLoading={generateContentMutation.isPending}
+/>
+
 
       <GeneratingDialog open={isGeneratingDialogOpen} />
     </div>
