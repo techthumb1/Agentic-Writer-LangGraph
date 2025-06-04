@@ -23,7 +23,7 @@ def generate_mock_article(state: dict) -> dict:
     return {
         "title": f"[MOCK] {topic} - A {platform.capitalize()} Article",
         "draft": draft,
-        "contentHtml": content_html,  # ✅ Add this line
+        "contentHtml": content_html,
         "metadata": {
             "topic": topic,
             "platform": platform,
@@ -33,15 +33,27 @@ def generate_mock_article(state: dict) -> dict:
     }
 
 def save_generated_content(output: dict, topic: str, week: str = "week_mock") -> str:
-    filename = f"{topic.strip().lower().replace(' ', '_')}_mock.md"
+    slug = topic.strip().lower().replace(' ', '_')
     directory = os.path.join("generated_content", week)
     os.makedirs(directory, exist_ok=True)
 
-    filepath = os.path.join(directory, filename)
-    with open(filepath, "w") as f:
+    # Save markdown file
+    md_path = os.path.join(directory, f"{slug}_mock.md")
+    with open(md_path, "w") as f:
         f.write(output["draft"])
 
-    return filepath
+    # Save JSON file
+    json_path = os.path.join(directory, f"{slug}_mock.json")
+    with open(json_path, "w") as f:
+        json.dump({
+            "title": output["title"],
+            "contentHtml": output["contentHtml"],
+            "metadata": output["metadata"]
+        }, f, indent=2)
+
+    print(f"[MOCK] JSON saved to: {json_path}", file=sys.stderr)
+
+    return md_path
 
 if __name__ == "__main__":
     try:
@@ -57,17 +69,6 @@ if __name__ == "__main__":
         saved_path = save_generated_content(result, topic, week)
 
         result["saved_path"] = saved_path
-        # Save JSON version of the generated content
-        json_path = os.path.join("generated_content", week, f"{topic.strip().lower().replace(' ', '_')}_mock.json")
-        with open(json_path, "w") as f:
-            json.dump({
-                "title": result["title"],
-                "contentHtml": result["contentHtml"],
-                "metadata": result["metadata"]
-            }, f, indent=2)
-        
-        # Optionally log it
-        print(f"[MOCK] JSON saved to: {json_path}", file=sys.stderr)
 
         print(">> [MOCK] Function returned successfully", file=sys.stderr)
         print(json.dumps(result))
@@ -75,4 +76,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[MOCK_WRITER_AGENT_ERROR] {str(e)}", file=sys.stderr)
         sys.exit(1)
-

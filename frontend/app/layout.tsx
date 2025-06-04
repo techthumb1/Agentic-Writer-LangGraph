@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ReactQueryProvider> {/* 👈 Wrap everything in the provider */}
+        <ReactQueryProvider> {/*Wrap everything in the provider */}
           <nav className="bg-gray-800 text-white p-4 shadow-md">
             <div className="container mx-auto flex justify-between items-center">
               <Link
@@ -47,8 +47,8 @@ export default function RootLayout({
                 </Link>
                 <Link href="/settings" passHref>
                   <Button
-                    variant="outline"
-                    className="text-white border-white hover:bg-white hover:text-gray-800"
+                    variant="ghost"                         // ← keep it ghost
+                    className="bg-transparent text-white hover:bg-gray-700"
                   >
                     Settings
                   </Button>

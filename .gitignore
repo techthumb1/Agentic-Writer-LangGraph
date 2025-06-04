@@ -176,3 +176,26 @@ cython_debug/
 
 # .DS_Store files
 .DS_Store
+
+# Ignore node dependencies
+node_modules/
+package-lock.json
+
+# Build artifacts
+.next/
+dist/
+out/
+
+# Generated content
+generated_content/
+../generated_content/
+
+# Python artifacts
+__pycache__/
+*.pyc
+
+# LangGraph runtime output
+../langgraph_app/agents/__pycache__/
+
+# macOS
+.DS_Store

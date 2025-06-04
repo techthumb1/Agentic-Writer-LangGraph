@@ -19,6 +19,7 @@ import {
 import { ContentTemplate, StyleProfile } from "@/types/content";
 import { UseFormReturn } from "react-hook-form";
 import { GenerateContentFormValues } from "@/schemas/generateContentSchema";
+import { prettyName } from "@/lib/string";
 
 interface TemplateSelectorProps {
   form: UseFormReturn<GenerateContentFormValues>;
@@ -63,9 +64,9 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                         !!template.name
                     )
                     .map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.name}
-                      </SelectItem>
+                    <SelectItem key={template.id} value={template.id}>
+                      {prettyName(template.name ?? template.id)}
+                    </SelectItem>
                     ))
                 ) : (
                   <div className="px-4 py-2 text-red-500">

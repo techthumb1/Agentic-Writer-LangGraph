@@ -81,7 +81,7 @@ export default function GenerateContentPage() {
     queryFn: async () => {
       const res = await fetch("/api/templates");
       const json = await res.json();
-      console.log("🔍 /api/templates →", json);
+      console.log("/api/templates →", json);
       return json.data?.items || json || [];
     },
   });
@@ -91,7 +91,7 @@ export default function GenerateContentPage() {
     queryFn: async () => {
       const res = await fetch("/api/style-profiles");
       const json = await res.json();
-      console.log("🔍 /api/style-profiles →", json);
+      console.log("/api/style-profiles →", json);
       return json.data?.items || json || [];
     },
   });
@@ -139,10 +139,6 @@ export default function GenerateContentPage() {
       form.resetField("dynamic_parameters", { defaultValue: newDefaults });
     }
   }, [watchedTemplateId, templates, form]);
-
-  // ----------------------
-  // Mutation
-  // ----------------------
 
   const generateContentMutation = useMutation<GeneratedContent, Error, GenerateContentFormValues>({
     mutationFn: async (payload) => {
@@ -255,12 +251,14 @@ export default function GenerateContentPage() {
       </Form>
 
       {/* Display Output */}
-<GeneratedContentDisplay
-  generatedContent={generatedContent?.contentHtml ?? "<h2>No content passed</h2>"}
-  isLoading={generateContentMutation.isPending}
-/>
-
-
+      <GeneratedContentDisplay
+        generatedContent={
+          typeof generatedContent?.contentHtml === "string"
+            ? generatedContent.contentHtml
+            : "<h2>No content passed</h2>"
+        }
+        isLoading={generateContentMutation.isPending}
+      />
       <GeneratingDialog open={isGeneratingDialogOpen} />
     </div>
   );
