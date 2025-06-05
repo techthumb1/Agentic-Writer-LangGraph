@@ -14,7 +14,7 @@ def run_pipeline(template: str, style: str):
 
     slug = final_state["slug"]
     preview_path = f"generated_content/preview-{slug}.html"
-    os.makedirs("../storage", exist_ok=True)
+    os.makedirs("generated_content", exist_ok=True)
     with open(preview_path, "w") as f:
         f.write(final_state["formatted_article"])
 

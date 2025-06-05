@@ -5,7 +5,7 @@ import { prettyName } from "@/lib/string";
 export const metadata = { title: "Templates • AI Content Studio" };
 
 export default async function TemplatesPage() {
-  const tplDir = path.join(process.cwd(), "../data/content_templates");
+  const tplDir = path.join(process.cwd(), "content_templates");
   let names: string[] = [];
 
   try {

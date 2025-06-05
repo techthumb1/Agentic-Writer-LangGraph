@@ -1,70 +1,67 @@
-// frontend/app/content/[contentID]/page.tsx
-"use client";
+// frontend/app/content/page.tsx
+import Link from "next/link";
+import fs from "fs/promises";
+import path from "path";
+import { prettyName } from "@/lib/string";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-
-interface Article {
-  title: string;
-  contentHtml?: string;
-  metadata?: Record<string, unknown>;
+interface FileCard {
+  slug: string;          // ← store the filename w/o extension
+  week: string;
 }
 
-export default function ContentPage() {
-  const { contentID } = useParams<{ contentID: string }>();
-  const router = useRouter();
+export const metadata = { title: "My Content • AI Content Studio" };
 
-  const [data, setData]   = useState<Article | null>(null);
-  const [isLoading, setL] = useState(true);
-  const [error, setErr]   = useState<string | null>(null);
+export default async function MyContentPage() {
+  const baseDir = path.join(process.cwd(), "../storage");
+  const cards: FileCard[] = [];
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch(`/api/content/${contentID}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json: Article = await res.json();
-        setData(json);
-      } catch (err) {
-        setErr(err instanceof Error ? err.message : "Unknown error");
-        // optional redirect
-        // router.push("/generate");
-      } finally {
-        setL(false);
+  try {
+    for (const week of await fs.readdir(baseDir)) {
+      const weekDir = path.join(baseDir, week);
+      const files   = await fs.readdir(weekDir);
+      for (const file of files) {
+        if (file.endsWith(".json")) {
+          cards.push({
+            slug: file.replace(/\.json$/, ""), // e.g. artificial_intelligence_mock
+            week
+          });
+        }
       }
-    };
-    load();
-  }, [contentID, router]);
-
-  if (isLoading) {
+    }
+  } catch (err) {
+    console.error("[content list] read error:", err);   // 👈 use it
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin mr-2" />
-        Loading article…
-      </div>
+      <p className="p-8 text-red-500">
+        Failed to read storage — {err instanceof Error ? err.message : "unknown error"}.
+      </p>
     );
   }
 
-  if (error) {
-    return <p className="text-center text-red-500 py-20">Error: {error}</p>;
-  }
+  if (cards.length === 0)
+    return <p className="p-8 text-muted-foreground">No articles yet.</p>;
 
-  if (!data) {
-    return <p className="text-center text-muted-foreground py-20">Content not found.</p>;
-  }
-
-  const { title, contentHtml } = data;
-  const fallback = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-
+  /* ---------- render ---------- */
   return (
-    <main className="max-w-3xl mx-auto py-12">
-      <h1 className="text-3xl font-bold mb-6">{title ?? contentID}</h1>
+    <ul className="space-y-4 p-8">
+      {cards.map((c) => (
+        <li
+          key={`${c.week}-${c.slug}`}               // ✅ unique key
+          className="flex justify-between items-center border p-4 rounded-lg"
+        >
+          <div>
+            <p className="font-medium">{prettyName(c.slug)}</p>
+            <p className="text-xs text-muted-foreground">{c.week}</p>
+          </div>
 
-      <article
-        className="prose prose-neutral max-w-none"
-        dangerouslySetInnerHTML={{ __html: contentHtml || fallback }}
-      />
-    </main>
+          {/* ✅ Correct link and href */}
+          <Link
+            href={`/content/${c.slug}`}
+            className="text-blue-600 hover:underline"
+          >
+            View →
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }

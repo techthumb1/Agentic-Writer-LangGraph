@@ -34,7 +34,7 @@ def generate_mock_article(state: dict) -> dict:
 
 def save_generated_content(output: dict, topic: str, week: str = "week_mock") -> str:
     slug = topic.strip().lower().replace(' ', '_')
-    directory = os.path.join("../storage", week)
+    directory = os.path.join("generated_content", week)
     os.makedirs(directory, exist_ok=True)
 
     # Save markdown file

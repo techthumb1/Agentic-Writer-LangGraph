@@ -16,4 +16,4 @@ rm -rf content_templates content-templates style_profiles style-profiles
 rsync -a --ignore-existing generated_content/ storage/ 2>/dev/null || true
 rm -rf generated_content
 
-echo "✅ Project folders cleaned. Update import paths in code."
+echo "Project folders cleaned. Update import paths in code."

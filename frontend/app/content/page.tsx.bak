@@ -14,7 +14,7 @@ interface FileCard {
 export const metadata = { title: "My Content • AI Content Studio" };
 
 export default async function MyContentPage() {
-  const baseDir = path.join(process.cwd(), "../storage");
+  const baseDir = path.join(process.cwd(), "generated_content");
   const cards: FileCard[] = [];
 
   try {

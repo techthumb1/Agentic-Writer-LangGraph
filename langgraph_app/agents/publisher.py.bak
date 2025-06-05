@@ -33,7 +33,7 @@ def _publisher_fn(state: dict) -> dict:
     _send_brevo_email(subject=state["topic"], html=state["formatted_article"])
 
     export_path = f"generated_content/{state['slug']}.html"
-    os.makedirs("../storage", exist_ok=True)
+    os.makedirs("generated_content", exist_ok=True)
     with open(export_path, "w") as f:
         f.write(state["formatted_article"])
 
