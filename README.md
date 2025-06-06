@@ -42,9 +42,9 @@ npm run dev
 
 ## Roadmap
 
-- Stripe metered billing & credit counter- 
-- Team workspaces- 
-- Template marketplace launch- 
+- Stripe metered billing & credit counter
+- Team workspaces
+- Template marketplace launch
 - Self-host & on-prem offering
 
 </details>
