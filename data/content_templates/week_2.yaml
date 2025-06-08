@@ -1,10 +1,30 @@
+id: decision_trees_intro
+platform: medium
 title: Understanding Decision Trees
 audience: Data science beginners
+tone: educational
+length: long
+code: true
 tags:
   - decision trees
   - machine learning
   - sklearn
-tone: educational
-platform: medium
-length: long
-code: true
+system_prompt: >
+  Teach decision trees to data science beginners in a clear, step-by-step manner. Focus on intuitive understanding, use real-world analogies, and show how libraries like scikit-learn implement them. Include a code walkthrough that’s beginner-friendly and practical.
+parameters:
+  - name: audience
+    label: Target Audience
+    type: string
+  - name: tone
+    label: Tone
+    type: string
+  - name: code
+    label: Include Code Examples
+    type: boolean
+  - name: length
+    label: Content Length
+    type: string
+    options: [short, medium, long]
+  - name: tags
+    label: Tags
+    type: string[]

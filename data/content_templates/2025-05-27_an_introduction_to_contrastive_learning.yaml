@@ -1,12 +1,32 @@
-audience: data scientists
-code: false
-length: short
+id: contrastive_learning_intro
 platform: medium
-tags: 
+title: An Introduction to Contrastive Learning
+audience: data scientists
+tone: assertive
+length: short
+code: false
+tags:
   - contrastive learning
   - self-supervised learning
   - computer vision
   - SimCLR
   - representation learning
-title: An Introduction to Contrastive Learning
-tone: assertive
+system_prompt: >
+  Write a concise yet informative introduction to contrastive learning for experienced data scientists. Use assertive tone and practical explanations to convey core ideas like similarity-based learning, SimCLR, and representation spaces.
+parameters:
+  - name: audience
+    label: Target Audience
+    type: string
+  - name: tone
+    label: Tone
+    type: string
+  - name: code
+    label: Include Code Examples
+    type: boolean
+  - name: length
+    label: Content Length
+    type: string
+    options: [short, medium, long]
+  - name: tags
+    label: Tags
+    type: string[]

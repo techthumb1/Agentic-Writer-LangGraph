@@ -43,5 +43,9 @@
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.0",
     "typescript": "^5"
-  }
+  },
+  "prisma": {
+  "seed": "tsx prisma/seed.ts"
+}
+
 }

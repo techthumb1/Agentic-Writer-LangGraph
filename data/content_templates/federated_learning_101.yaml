@@ -1,8 +1,30 @@
+id: federated_learning_beginners
+platform: medium
 title: Federated Learning for Beginners
 audience: AI newcomers and software engineers
+tone: educational
+length: short
+code: false
 tags:
   - federated learning
   - privacy
   - edge computing
-length: short
-tone: educational
+system_prompt: >
+  Explain federated learning in accessible language for readers new to AI or software development. Focus on the “why” and “how,” covering privacy, data decentralization, and simple architecture analogies without requiring math or code.
+parameters:
+  - name: audience
+    label: Target Audience
+    type: string
+  - name: tone
+    label: Tone
+    type: string
+  - name: code
+    label: Include Code Examples
+    type: boolean
+  - name: length
+    label: Content Length
+    type: string
+    options: [short, medium, long]
+  - name: tags
+    label: Tags
+    type: string[]

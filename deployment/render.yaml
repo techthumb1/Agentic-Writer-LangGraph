@@ -1,14 +1,38 @@
+# deployment/render.yaml
+
 services:
+  # Backend – Python LangGraph App
   - type: web
     name: agentic-writer-backend
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m langgraph_app
+    startCommand: bash -c "npx prisma migrate deploy && python -m langgraph_app"
     autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: agentic-writer-postgres
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: PGSSLMODE
+        value: "require"
 
+  # Frontend – Next.js (static export)
   - type: web
     name: agentic-writer-frontend
     runtime: static
-    buildCommand: npm install && npm run build
     rootDir: frontend
+    buildCommand: npm install && npm run build && npm run export
+    staticPublishPath: frontend/out
     autoDeploy: true
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: "https://agentic-writer-backend.onrender.com" # update with real backend URL
+
+databases:
+  # PostgreSQL (Blueprints-style)
+  - name: agentic-writer-postgres
+    ipAllowList: [] # required field, leave empty or add CIDRs

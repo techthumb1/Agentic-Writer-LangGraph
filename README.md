@@ -72,11 +72,25 @@ Next JS 15 + Tailwind + Shadcn.
 * Tailwind config → `tailwind.config.ts`
 * Shadcn components live in `frontend/components/ui`
 
+
+┌────────────┐            JSON / HTML            ┌─────────────┐
+│  Next.js   │  ─ REST →  /api/generate  ───────▶│ LangGraph   │
+│  frontend  │◀─ SSE ─┐        ▲                │  Agents     │
+└────────────┘        │        │                └─────────────┘
+      │               │        │ markdown / md          │
+      │               └── /api/content/{id} ────────────┘
+      ▼
+ ─ storage/{week}/{slug}.json / .md
+
+
+
+
 ## Local API proxy
 
 During dev the frontend talks to the Python agents via **Next.js API routes** under `/app/api/*`.
 
-Production split:  
+Production split:
+
 * Vercel (frontend) ↔ Render (FastAPI) with `/api/*` rewrites.
 
 ## License
