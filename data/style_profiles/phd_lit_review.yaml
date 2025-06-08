@@ -1,11 +1,14 @@
-name: phd_lit_review
+id: phd_lit_review
+name: PhD Literature Review
 platform: medium
-tone: academic
-voice: neutral and critical
-structure: topic overview → key papers → synthesis → gaps → future work
+tone: analytical and authoritative
+voice: expert, research-oriented
+structure: thesis → argument → synthesis → conclusion
+complexity: PhD-level
+cadence: slower, evidence-backed, citation-friendly
 system_prompt: >
-  Summarize and synthesize recent papers in a given AI/ML subfield. Highlight contributions, limitations, and interrelations. Avoid personal opinion unless discussing research directions.
+  Write like an academic researcher conducting a literature review. Use scholarly tone, cite prior work, and build toward a synthesis of insights.
 length_limit:
-  words: 1800
+  words: 2000
   min: 1600
-  max: 2000
+  max: 2200

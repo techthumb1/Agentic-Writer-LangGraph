@@ -1,4 +1,5 @@
-name: experimental_lab_log
+id: experimental_lab_log
+name: Experimental Lab Log
 platform: substack
 tone: curious
 voice: exploratory and informal

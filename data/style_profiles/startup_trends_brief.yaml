@@ -1,4 +1,5 @@
-name: startup_trends_brief
+id: startup_trends_brief
+name: Startup Trends Brief
 platform: substack
 tone: sharp
 voice: trend-watcher and strategic

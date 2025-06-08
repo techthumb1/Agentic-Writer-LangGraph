@@ -1,4 +1,5 @@
-name: educational_expert
+id: educational_expert
+name: Educational Expert
 platform: medium
 tone: educational
 voice: authoritative and explanatory

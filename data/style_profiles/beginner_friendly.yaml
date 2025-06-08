@@ -1,4 +1,5 @@
-name: beginner_friendly
+id: beginner_friendly
+name: Beginner Friendly
 platform: substack
 tone: supportive
 voice: clear and accessible
