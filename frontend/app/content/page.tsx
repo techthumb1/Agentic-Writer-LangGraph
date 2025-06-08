@@ -20,7 +20,7 @@ export default async function MyContentPage() {
   try {
     const weeks = await fs.readdir(baseDir, { withFileTypes: true });
     for (const wk of weeks) {
-      if (!wk.isDirectory()) continue;
+      if (!wk.isDirectory() || wk.name.startsWith(".")) continue;
       const weekDir = path.join(baseDir, wk.name);
       const files = await fs.readdir(weekDir);
       for (const file of files) {

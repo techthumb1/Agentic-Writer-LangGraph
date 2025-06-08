@@ -18,16 +18,25 @@ export default async function MyContentPage() {
   try {
     for (const week of await fs.readdir(baseDir)) {
       const weekDir = path.join(baseDir, week);
-      const files   = await fs.readdir(weekDir);
-      for (const file of files) {
-        if (file.endsWith(".json")) {
-          cards.push({
-            slug: file.replace(/\.json$/, ""), // e.g. artificial_intelligence_mock
-            week
-          });
-        }
-      }
+    
+      try {
+        const stat = await fs.stat(weekDir);
+        if (!stat.isDirectory() || week.startsWith(".")) continue;
+      } catch {
+        continue;
+  }
+
+  const files = await fs.readdir(weekDir);
+  for (const file of files) {
+    if (file.endsWith(".json")) {
+      cards.push({
+        slug: file.replace(/\.json$/, ""),
+        week
+      });
     }
+  }
+}
+
   } catch (err) {
     console.error("[content list] read error:", err);   // 👈 use it
     return (
