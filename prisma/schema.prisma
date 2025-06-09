@@ -1,0 +1,77 @@
+// prisma/schema.prisma
+
+// 1. Configure the PostgreSQL datasource
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 2. Generate the Prisma Client
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+// 3. Define your initial data models
+//    – Users (for authentication/authorization)
+//    – Template (metadata for content templates)
+//    – StyleProfile (metadata for style profiles)
+//    – GeneratedContent (stores each AI‐generated record)
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  role          String    @default("USER") // e.g. ADMIN, USER
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // relations
+  contents      GeneratedContent[]
+}
+
+model Template {
+  id            String    @id @default(uuid())
+  slug          String    @unique          // e.g. "blog_post_standard"
+  name          String
+  description   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // JSON blob of parameter definitions (e.g. [{ name, label, type, options, … }])
+  parameters    Json
+
+  // relations
+  contents      GeneratedContent[]
+}
+
+model StyleProfile {
+  id            String    @id @default(uuid())
+  slug          String    @unique          // e.g. "beginner_friendly"
+  name          String
+  description   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // relations
+  contents      GeneratedContent[]
+}
+
+model GeneratedContent {
+  id               String     @id @default(uuid())
+  title            String
+  contentHtml      String     // store as HTML (from Tiptap)
+  status           String     @default("completed") // e.g. pending, generating, completed, failed
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  // foreign keys
+  userId           String?
+  templateId       String?
+  styleProfileId   String?
+
+  // relations
+  user             User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template         Template?     @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  styleProfile     StyleProfile? @relation(fields: [styleProfileId], references: [id], onDelete: SetNull)
+}
