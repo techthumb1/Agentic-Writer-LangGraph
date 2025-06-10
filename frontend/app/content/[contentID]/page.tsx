@@ -1,11 +1,10 @@
-// frontend/app/content/page.tsx
 import Link from "next/link";
 import fs from "fs/promises";
 import path from "path";
 import { prettyName } from "@/lib/string";
 
 interface FileCard {
-  slug: string;          // ← store the filename w/o extension
+  slug: string;  // filename without .json
   week: string;
 }
 
@@ -16,53 +15,54 @@ export default async function MyContentPage() {
   const cards: FileCard[] = [];
 
   try {
-    for (const week of await fs.readdir(baseDir)) {
+    const weeks = await fs.readdir(baseDir);
+
+    for (const week of weeks) {
+      if (week.startsWith(".")) continue;
+
       const weekDir = path.join(baseDir, week);
-    
       try {
         const stat = await fs.stat(weekDir);
-        if (!stat.isDirectory() || week.startsWith(".")) continue;
+        if (!stat.isDirectory()) continue;
+
+        const files = await fs.readdir(weekDir);
+        for (const file of files) {
+          if (file.endsWith(".json")) {
+            cards.push({
+              slug: file.replace(/\.json$/, ""),
+              week,
+            });
+          }
+        }
       } catch {
         continue;
-  }
-
-  const files = await fs.readdir(weekDir);
-  for (const file of files) {
-    if (file.endsWith(".json")) {
-      cards.push({
-        slug: file.replace(/\.json$/, ""),
-        week
-      });
+      }
     }
-  }
-}
-
   } catch (err) {
-    console.error("[content list] read error:", err);   // 👈 use it
+    console.error("[content list] read error:", err);
     return (
       <p className="p-8 text-red-500">
-        Failed to read storage — {err instanceof Error ? err.message : "unknown error"}.
+        Failed to read storage —{" "}
+        {err instanceof Error ? err.message : "unknown error"}.
       </p>
     );
   }
 
-  if (cards.length === 0)
+  if (cards.length === 0) {
     return <p className="p-8 text-muted-foreground">No articles yet.</p>;
+  }
 
-  /* ---------- render ---------- */
   return (
     <ul className="space-y-4 p-8">
       {cards.map((c) => (
         <li
-          key={`${c.week}-${c.slug}`}               // ✅ unique key
+          key={`${c.week}-${c.slug}`}
           className="flex justify-between items-center border p-4 rounded-lg"
         >
           <div>
             <p className="font-medium">{prettyName(c.slug)}</p>
             <p className="text-xs text-muted-foreground">{c.week}</p>
           </div>
-
-          {/* ✅ Correct link and href */}
           <Link
             href={`/content/${c.slug}`}
             className="text-blue-600 hover:underline"

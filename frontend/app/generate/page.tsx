@@ -20,7 +20,6 @@ import { Loader2 } from "lucide-react";
 
 import TemplateSelector from "@/components/TemplateSelector";
 import DynamicParameters from "@/components/DynamicParameters";
-import GeneratedContentDisplay from "@/components/GeneratedContentDisplay";
 import GeneratingDialog from "@/components/GeneratingDialog";
 
 // ----------------------
@@ -68,8 +67,8 @@ type GenerateContentFormValues = z.infer<typeof formSchema>;
 
 export default function GenerateContentPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<ContentTemplate | null>(null);
-  const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGeneratingDialogOpen, setIsGeneratingDialogOpen] = useState(false);
+  // const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   //const router = useRouter();
 
   // ----------------------
@@ -149,25 +148,24 @@ export default function GenerateContentPage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed to generate content");
-      return res.json();
+      
+      const result = await res.json();
+      return result.data;
     },
 
-    onSuccess: (data: GeneratedContent & { saved_path?: string }) => {
-      console.log("✅ Mutation Success:", data);
-      setGeneratedContent(data);
-      setIsGeneratingDialogOpen(false);
+onSuccess: (data: GeneratedContent & { saved_path?: string }) => {
+  setIsGeneratingDialogOpen(false);
+  console.log("✅ Mutation Success:", data);
 
-      console.log("🧾 Holding at /generate with contentHtml:");
-      console.log(data?.contentHtml);
-          
-      // comment out redirection for now
-      // const savedPath = data?.saved_path;
-      // const contentID = savedPath?.split("/").pop()?.replace(".md", "");
-      // if (contentID) {
-      //   router.push(`/content/${contentID}`);
-      // }
+  const savedPath = data?.saved_path;
+  const slug = savedPath?.split("/").pop()?.replace(".json", "");
 
-    },
+  if (slug) {
+    window.location.href = `/content/${slug.replace(".md", "").replace(".json", "")}`;
+  } else {
+    console.warn("⚠️ No valid slug found for redirection.");
+  }
+},
 
     onError: (error) => {
       setIsGeneratingDialogOpen(false);
@@ -189,8 +187,9 @@ export default function GenerateContentPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-4xl font-bold text-gray-900">Generate New Content</h1>
+    <div className="space-y-8 text-gray-900 dark:text-white">
+
+      <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Generate New Content</h1>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -250,15 +249,7 @@ export default function GenerateContentPage() {
         </form>
       </Form>
 
-      {/* Display Output */}
-      <GeneratedContentDisplay
-        generatedContent={
-          typeof generatedContent?.contentHtml === "string"
-            ? generatedContent.contentHtml
-            : "<h2>No content passed</h2>"
-        }
-        isLoading={generateContentMutation.isPending}
-      />
+
       <GeneratingDialog open={isGeneratingDialogOpen} />
     </div>
   );
