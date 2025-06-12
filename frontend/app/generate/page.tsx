@@ -5,10 +5,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import * as z from "zod";
-//import { useRouter } from "next/navigation";
-
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+// import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -16,16 +16,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
-
+import { Loader2, Sparkles, Settings, Zap } from "lucide-react";
 import TemplateSelector from "@/components/TemplateSelector";
+import StyleProfilesSelector from "@/components/StyleProfilesSelector";
 import DynamicParameters from "@/components/DynamicParameters";
 import GeneratingDialog from "@/components/GeneratingDialog";
+import { GenerationPreview } from "@/components/GenerationPreview";
 
 // ----------------------
-// Interfaces and Schema
+// Enhanced Interfaces and Schema
 // ----------------------
-
 interface TemplateParameter {
   name: string;
   label: string;
@@ -43,11 +43,26 @@ interface ContentTemplate {
   parameters: TemplateParameter[];
 }
 
+interface StyleProfile {
+  id: string;
+  name: string;
+  description?: string;
+  settings?: Record<string, unknown>;
+}
+
 interface GeneratedContent {
   id?: string;
   title: string;
   contentHtml: string;
+  content?: string;
   metadata?: Record<string, unknown>;
+  saved_path?: string;
+}
+
+interface GenerationResult {
+  content: string;
+  metadata?: Record<string, unknown>;
+  saved_path?: string;
 }
 
 const formSchema = z.object({
@@ -62,19 +77,93 @@ const formSchema = z.object({
 type GenerateContentFormValues = z.infer<typeof formSchema>;
 
 // ----------------------
-// Main Component
+// Enhanced Generation Hook
 // ----------------------
+function useEnhancedGeneration() {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [result, setResult] = useState<GenerationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
+  const generateContentMutation = useMutation<GeneratedContent, Error, GenerateContentFormValues>({
+    mutationFn: async (payload) => {
+      setIsGenerating(true);
+      setError(null);
+      
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to generate content");
+      }
+      
+      const result = await res.json();
+      return result.data;
+    },
+    onSuccess: (data: GeneratedContent) => {
+      setIsGenerating(false);
+      setResult({
+        content: data.contentHtml || data.content || "",
+        metadata: data.metadata,
+        saved_path: data.saved_path,
+      });
+      console.log("✅ Generation Success:", data);
+    },
+    onError: (error) => {
+      setIsGenerating(false);
+      const message = error instanceof Error ? error.message : "An unknown error occurred during generation.";
+      setError(message);
+      console.error("❌ Generation error:", error);
+    },
+  });
+
+  const startGeneration = (params: GenerateContentFormValues) => {
+    generateContentMutation.mutate(params);
+  };
+
+  const cancelGeneration = () => {
+    setIsGenerating(false);
+    generateContentMutation.reset();
+  };
+
+  const resetGeneration = () => {
+    setResult(null);
+    setError(null);
+    generateContentMutation.reset();
+  };
+
+  return {
+    isGenerating,
+    result,
+    error,
+    startGeneration,
+    cancelGeneration,
+    resetGeneration,
+  };
+}
+
+// ----------------------
+// Main Integrated Component
+// ----------------------
 export default function GenerateContentPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<ContentTemplate | null>(null);
   const [isGeneratingDialogOpen, setIsGeneratingDialogOpen] = useState(false);
-  // const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
-  //const router = useRouter();
+
+  const {
+    isGenerating,
+    result,
+    error,
+    startGeneration,
+    cancelGeneration,
+    resetGeneration,
+  } = useEnhancedGeneration();
 
   // ----------------------
-  // Queries
+  // Data Queries
   // ----------------------
-
   const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
     queryKey: ["templates"],
     queryFn: async () => {
@@ -98,7 +187,6 @@ export default function GenerateContentPage() {
   // ----------------------
   // Form Setup
   // ----------------------
-
   const form = useForm<GenerateContentFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -109,11 +197,13 @@ export default function GenerateContentPage() {
   });
 
   const watchedTemplateId = form.watch("templateId");
+  const watchedStyleProfileId = form.watch("styleProfileId");
 
+  // Update selected template when form changes
   useEffect(() => {
     const template = templates.find((t: ContentTemplate) => t.id === watchedTemplateId);
     setSelectedTemplate(template || null);
-
+    
     if (template && Array.isArray(template.parameters)) {
       const newDefaults: Record<string, string | number | boolean> = {};
       template.parameters.forEach((param: TemplateParameter) => {
@@ -139,80 +229,119 @@ export default function GenerateContentPage() {
     }
   }, [watchedTemplateId, templates, form]);
 
-  const generateContentMutation = useMutation<GeneratedContent, Error, GenerateContentFormValues>({
-    mutationFn: async (payload) => {
-      setIsGeneratingDialogOpen(true);
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to generate content");
-      
-      const result = await res.json();
-      return result.data;
-    },
+  // Sync generating dialog with generation state
+  useEffect(() => {
+    setIsGeneratingDialogOpen(isGenerating);
+  }, [isGenerating]);
 
-onSuccess: (data: GeneratedContent & { saved_path?: string }) => {
-  setIsGeneratingDialogOpen(false);
-  console.log("✅ Mutation Success:", data);
-
-  const savedPath = data?.saved_path;
-  const slug = savedPath?.split("/").pop()?.replace(".json", "");
-
-  if (slug) {
-    window.location.href = `/content/${slug.replace(".md", "").replace(".json", "")}`;
-  } else {
-    console.warn("⚠️ No valid slug found for redirection.");
-  }
-},
-
-    onError: (error) => {
-      setIsGeneratingDialogOpen(false);
-      const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === "object" && error !== null && "message" in error
-          ? (error as { message: string }).message
-          : "An unknown error occurred during generation.";
-
-      console.error("❌ Mutation error:", error);
-      alert(`Error: ${message}`);
-    },
-  });         
-
+  // ----------------------
+  // Event Handlers
+  // ----------------------
   const onSubmit = (values: GenerateContentFormValues) => {
     console.log("🚀 Form Submitted →", values);
-    generateContentMutation.mutate(values);
+    startGeneration(values);
   };
 
-  return (
-    <div className="space-y-8 text-gray-900 dark:text-white">
+  const handleSaveContent = () => {
+    if (result?.saved_path) {
+      const slug = result.saved_path.split("/").pop()?.replace(/\.(json|md)$/, "");
+      if (slug) {
+        window.location.href = `/content/${slug}`;
+      } else {
+        console.warn("⚠️ No valid slug found for redirection.");
+      }
+    }
+  };
 
-      <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Generate New Content</h1>
+  const canGenerate = 
+    watchedTemplateId && 
+    watchedStyleProfileId && 
+    !isGenerating && 
+    !isLoadingTemplates && 
+    !isLoadingStyleProfiles;
+
+  const selectedStyleProfile = styleProfiles.find((sp: StyleProfile) => sp.id === watchedStyleProfileId);
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-8 text-gray-900 dark:text-white">
+      {/* Enhanced Header */}
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          Generate AI Content
+        </h1>
+        <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          Create high-quality content using our advanced AI models. Select a template and style profile to get started.
+        </p>
+      </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Content Configuration</CardTitle>
-              <CardDescription>
-                Select a template and style profile for your content.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <TemplateSelector
-                form={form}
-                templates={templates}
-                styleProfiles={styleProfiles}
-                isLoadingTemplates={isLoadingTemplates}
-                isLoadingStyleProfiles={isLoadingStyleProfiles}
-              />
-            </CardContent>
-          </Card>
+          {/* Configuration Section */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Template Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-purple-600" />
+                  Content Template
+                </CardTitle>
+                <CardDescription>
+                  Choose the type of content you want to generate.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TemplateSelector
+                  form={form}
+                  templates={templates}
+                  styleProfiles={styleProfiles}
+                  isLoadingTemplates={isLoadingTemplates}
+                  isLoadingStyleProfiles={isLoadingStyleProfiles}
+                />
+                {selectedTemplate && (
+                  <div className="mt-4">
+                    <Badge variant="secondary" className="mb-2">
+                      Selected Template
+                    </Badge>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {selectedTemplate.description || selectedTemplate.name}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
+            {/* Style Profile Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-purple-600" />
+                  Style Profile
+                </CardTitle>
+                <CardDescription>
+                  Define the tone and style of your content.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StyleProfilesSelector
+                  value={watchedStyleProfileId}
+                  onChange={(value: string) => form.setValue("styleProfileId", value)}
+                />
+                {selectedStyleProfile && (
+                  <div className="mt-4">
+                    <Badge variant="secondary" className="mb-2">
+                      Selected Style
+                    </Badge>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {selectedStyleProfile.description || selectedStyleProfile.name}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Dynamic Parameters */}
           {selectedTemplate && Array.isArray(selectedTemplate.parameters) && selectedTemplate.parameters.length > 0 && (
-
             <Card>
               <CardHeader>
                 <CardTitle>Template Parameters</CardTitle>
@@ -221,35 +350,84 @@ onSuccess: (data: GeneratedContent & { saved_path?: string }) => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <DynamicParameters parameters={selectedTemplate?.parameters ?? []} />
-
+                <DynamicParameters parameters={selectedTemplate.parameters} />
               </CardContent>
             </Card>
           )}
 
-          <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white text-lg py-3"
-            disabled={
-              generateContentMutation.isPending ||
-              isLoadingTemplates ||
-              isLoadingStyleProfiles ||
-              !form.formState.isValid
-            }
-          >
-            {generateContentMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Generating Content...
-              </>
-            ) : (
-              "Generate Content"
-            )}
-          </Button>
+          {/* Generation Controls */}
+          <Card className="border-2 border-dashed border-purple-200 dark:border-purple-800">
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <Zap className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Ready to Generate</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {canGenerate 
+                        ? "Click generate to create your content"
+                        : "Please select both template and style profile"
+                      }
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  {(result || isGenerating) && (
+                    <Button variant="outline" onClick={resetGeneration}>
+                      New Generation
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={!canGenerate}
+                    size="lg"
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Generate Content
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </form>
       </Form>
 
+      {/* Error Display */}
+      {error && (
+        <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+              <span className="font-medium">Generation Failed:</span>
+              <span>{error}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
+      {/* Generation Preview */}
+      <GenerationPreview
+        isGenerating={isGenerating}
+        generatedContent={result?.content}
+        onCancel={cancelGeneration}
+        onSave={handleSaveContent}
+        templateName={selectedTemplate?.name}
+        styleProfile={selectedStyleProfile?.name}
+      />
+
+      {/* Enhanced Generating Dialog */}
       <GeneratingDialog open={isGeneratingDialogOpen} />
     </div>
   );
