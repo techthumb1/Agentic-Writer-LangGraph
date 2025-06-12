@@ -40,7 +40,7 @@ A multi-agent content generation platform that leverages LangGraph and modern we
 - PostgreSQL database
 - OpenAI API key (or compatible LLM API)
 
-## 🛠️ Installation
+## Installation
 
 ### 1. Clone the Repository
 
