@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import "./globals.css";
 import { Button } from "@/components/ui/button";
-import { ReactQueryProvider } from "@/lib/react-query-provider";
+import { Providers } from "./providers";
 import { ThemeProvider } from "./theme-provider"; // 👈 Wrap in NextThemes for future dark mode support
 
 const inter = Inter({ subsets: ["latin"] });
@@ -29,7 +29,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ReactQueryProvider>
+          <Providers>
             <nav className="bg-gray-800 text-white p-4 shadow-md">
               <div className="container mx-auto flex justify-between items-center">
                 <Link
@@ -59,7 +59,7 @@ export default function RootLayout({
             </nav>
 
             <main className="container mx-auto p-8">{children}</main>
-          </ReactQueryProvider>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>

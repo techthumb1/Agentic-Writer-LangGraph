@@ -1,9 +1,19 @@
 // frontend/hooks/useStyleProfiles.ts
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
+
+async function fetcher(url: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch style profiles");
+  return res.json();
+}
 
 export function useStyleProfiles({ page = 1, search = "", category = "" } = {}) {
   const params = new URLSearchParams({ page: page.toString(), search, category });
-  const { data, error, isLoading } = useSWR(`/api/style-profiles?${params}`, fetcher);
+  const { data, error, isLoading } = useQuery({
+    queryKey: ['styleProfiles', page, search, category],
+    queryFn: () => fetcher(`/api/style-profiles?${params}`),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   return {
     profiles: data?.data?.items || [],
@@ -11,10 +21,4 @@ export function useStyleProfiles({ page = 1, search = "", category = "" } = {}) 
     isLoading,
     isError: !!error,
   };
-}
-
-async function fetcher(url: string) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to fetch style profiles");
-  return res.json();
 }
