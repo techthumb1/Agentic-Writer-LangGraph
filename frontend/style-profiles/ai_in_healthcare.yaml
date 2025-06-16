@@ -1,0 +1,18 @@
+id: ai_in_healthcare
+name: AI In Healthcare
+title: AI in Healthcare - Diagnosis, Prognosis, and Beyond
+category: healthcare
+audience: medical professionals, ML engineers
+summary: >
+  Explore how AI is transforming healthcare diagnostics, improving outcomes, and reducing costs across imaging, genomics, and EHR systems.
+sections:
+  - title: Introduction
+    prompt: Set the stage by showing how AI is being adopted in healthcare and why it matters.
+  - title: Diagnostic Applications
+    prompt: Describe how models assist in radiology, pathology, and symptom triage.
+  - title: Prognostics & Outcome Prediction
+    prompt: Cover time-series models, EHR data prediction, and patient risk scores.
+  - title: Challenges & Ethical Concerns
+    prompt: Address privacy, bias, and explainability in medical AI.
+  - title: Conclusion
+    prompt: Reflect on what's ahead for AI in healthcare and clinical decision support.
