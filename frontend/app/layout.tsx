@@ -1,15 +1,18 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { ReactQueryProvider } from '@/lib/react-query-provider'; // 👈 Add this line
+// frontend/app/layout.tsx
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import Link from "next/link";
 
-const inter = Inter({ subsets: ['latin'] });
+import "./globals.css";
+import { Button } from "@/components/ui/button";
+import { Providers } from "./providers";
+import { ThemeProvider } from "./theme-provider"; // 👈 Wrap in NextThemes for future dark mode support
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Content Generation Platform',
-  description: 'Monetizable AI-powered content creation platform.',
+  title: "Content Generation Platform",
+  description: "Monetizable AI-powered content creation platform.",
 };
 
 export default function RootLayout({
@@ -18,47 +21,46 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ReactQueryProvider> {/* 👈 Wrap everything in the provider */}
-          <nav className="bg-gray-800 text-white p-4 shadow-md">
-            <div className="container mx-auto flex justify-between items-center">
-              <Link
-                href="/"
-                className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600"
-              >
-                AI Content Studio
-              </Link>
-              <div className="space-x-4">
-                <Link href="/generate" passHref>
-                  <Button variant="ghost" className="text-white hover:bg-gray-700">
-                    Generate Content
-                  </Button>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Providers>
+            <nav className="bg-gray-800 text-white p-4 shadow-md">
+              <div className="container mx-auto flex justify-between items-center">
+                <Link
+                  href="/"
+                  className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600"
+                >
+                  AI Content Studio
                 </Link>
-                <Link href="/content" passHref>
-                  <Button variant="ghost" className="text-white hover:bg-gray-700">
-                    My Content
-                  </Button>
-                </Link>
-                <Link href="/templates" passHref>
-                  <Button variant="ghost" className="text-white hover:bg-gray-700">
-                    Templates
-                  </Button>
-                </Link>
-                <Link href="/settings" passHref>
-                  <Button
-                    variant="outline"
-                    className="text-white border-white hover:bg-white hover:text-gray-800"
-                  >
-                    Settings
-                  </Button>
-                </Link>
+                <div className="space-x-4">
+                  {[
+                    { href: "/generate", label: "Generate Content" },
+                    { href: "/content", label: "My Content" },
+                    { href: "/templates", label: "Templates" },
+                    { href: "/settings", label: "Settings" },
+                  ].map(({ href, label }) => (
+                    <Link key={href} href={href} passHref>
+                      <Button
+                        variant="ghost"
+                        className="text-white hover:bg-gray-700"
+                      >
+                        {label}
+                      </Button>
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
-          </nav>
+            </nav>
 
-          <main className="container mx-auto p-8">{children}</main>
-        </ReactQueryProvider>
+            <main className="container mx-auto p-8">{children}</main>
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

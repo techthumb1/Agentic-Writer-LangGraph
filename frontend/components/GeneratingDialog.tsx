@@ -1,22 +1,30 @@
-// components/GeneratingDialog.tsx
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 
-type Props = {
+interface Props {
   open: boolean;
-};
+}
 
 export default function GeneratingDialog({ open }: Props) {
   return (
     <Dialog open={open}>
-      <DialogContent className="flex flex-col items-center justify-center text-center gap-4">
+      <DialogContent aria-describedby="generation-description">
         <DialogHeader>
-          <DialogTitle>Generating your article...</DialogTitle>
+          <DialogTitle>Generating Content...</DialogTitle>
+          <DialogDescription id="generation-description">
+            Please wait while we craft your content.
+          </DialogDescription>
         </DialogHeader>
-        <Loader2 className="animate-spin w-6 h-6 text-primary" />
-        <p className="text-muted-foreground text-sm">
-          Please wait while our AI writes your content.
-        </p>
+
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+        </div>
       </DialogContent>
     </Dialog>
   );

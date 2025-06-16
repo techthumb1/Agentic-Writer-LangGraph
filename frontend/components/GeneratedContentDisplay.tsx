@@ -1,26 +1,43 @@
-// components/GeneratedContentDisplay.tsx
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 
-type Props = {
+interface GeneratedContentDisplayProps {
   generatedContent: string;
   isLoading: boolean;
-};
+}
 
-export default function GeneratedContentDisplay({ generatedContent, isLoading }: Props) {
+export default function GeneratedContentDisplay({
+  generatedContent,
+  isLoading,
+}: GeneratedContentDisplayProps) {
+  useEffect(() => {
+    console.log("🧾 GeneratedContentDisplay received:", {
+      isLoading,
+      typeofContent: typeof generatedContent,
+      contentLength: generatedContent?.length,
+      trimmed: generatedContent?.trim(),
+    });
+  }, [generatedContent, isLoading]);
+
+  const safeTrimmed = typeof generatedContent === "string" ? generatedContent.trim() : "";
+
   return (
-    <div className="mt-6">
-      <h2 className="text-xl font-semibold mb-2">Generated Content</h2>
-      <div className="border rounded-xl p-4 bg-muted text-sm whitespace-pre-wrap font-mono">
+    <section className="mt-8">
+      <h2 className="text-2xl font-semibold text-gray-900 mb-4">Generated Content</h2>
+
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm min-h-[150px] text-sm leading-relaxed">
         {isLoading ? (
-          <span className="italic text-muted-foreground">Generating...</span>
-        ) : generatedContent ? (
-          <div dangerouslySetInnerHTML={{ __html: generatedContent }} />
+          <p className="text-muted-foreground italic">Generating...</p>
+        ) : safeTrimmed.length > 0 ? (
+          <div
+            className="prose prose-neutral max-w-none"
+            dangerouslySetInnerHTML={{ __html: safeTrimmed }}
+          />
         ) : (
-          <span className="italic text-muted-foreground">No content yet.</span>
+          <p className="text-muted-foreground italic">No content yet.</p>
         )}
       </div>
-    </div>
+    </section>
   );
 }

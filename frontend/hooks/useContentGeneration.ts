@@ -44,7 +44,9 @@ export function useGenerateContent(onSuccess: (data: GeneratedContent) => void, 
         const errorData = await res.json();
         throw new Error(errorData.error || 'Failed to generate content');
       }
-      return res.json();
+      const json = await res.json();
+      return json.data; // only return the `data` field to match `GeneratedContent`
+
     },
     onSuccess,
     onError,

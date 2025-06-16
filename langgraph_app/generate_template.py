@@ -4,7 +4,7 @@ import random
 from datetime import datetime
 
 # Configuration
-output_dir = "content_templates"
+output_dir = "../data/content_templates"
 tones = ["educational", "conversational", "assertive", "friendly"]
 audiences = ["AI beginners", "technical leaders", "data scientists", "ML researchers"]
 platforms = ["medium", "substack"]

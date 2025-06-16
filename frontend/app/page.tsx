@@ -5,12 +5,12 @@ import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <section className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-6 text-center">
+    <section className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-6 pt-12 pb-8 text-center text-white"> {/* ✅ text-white + padding adjusted */}
       <header className="max-w-4xl">
-        <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight mb-6 text-gray-900">
+        <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight mb-6">
           Unleash Your Content Superpower with AI
         </h1>
-        <p className="text-xl text-gray-600 mb-10 leading-relaxed">
+        <p className="text-xl mb-10 leading-relaxed text-gray-300"> {/* ✅ softer gray for contrast */}
           Generate high-quality, customized content across various formats and styles — tailored to your needs.
           From blog posts to research summaries, let our AI agents do the heavy lifting.
         </p>
@@ -29,16 +29,15 @@ export default function HomePage() {
           <Button
             size="lg"
             variant="outline"
-            className="border-purple-500 text-purple-600 hover:bg-purple-50 border-2 font-semibold px-8 py-3 rounded-full shadow-md transition-all duration-300"
+            className="border-purple-400 text-purple-300 hover:bg-purple-900/20 border-2 font-semibold px-8 py-3 rounded-full shadow-md transition-all duration-300"
           >
             Explore Templates
           </Button>
         </Link>
       </div>
 
-      <footer className="mt-12 text-gray-500 text-sm">
+      <footer className="mt-12 text-gray-400 text-sm">
         <p>Your ultimate platform for AI-driven content creation.</p>
-        {/* Future: Add testimonials, logos, or feature highlights */}
       </footer>
     </section>
   );
