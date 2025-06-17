@@ -1,11 +1,11 @@
-// frontend/components/NavigationClient.tsx
+// frontend/components/NavigationClient.tsx (Debug Version)
 "use client";
 
-import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 const navigationItems = [
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/generate", label: "Generate Content" },
   { href: "/content", label: "My Content" },
   { href: "/templates", label: "Templates" },
@@ -14,27 +14,55 @@ const navigationItems = [
 
 export function NavigationClient() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [clickedButton, setClickedButton] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const handleClick = (href: string) => {
+    console.log('Button clicked:', href); // Debug log
+    setClickedButton(href);
+    
+    // Navigate after showing feedback
+    setTimeout(() => {
+      router.push(href);
+      setClickedButton(null);
+    }, 150);
+  };
+
+  if (!isClient) {
+    return null;
+  }
 
   return (
-    <div className="space-x-4">
+    <div className="flex space-x-2">
       {navigationItems.map(({ href, label }) => {
         const isActive = pathname === href;
+        const isClicked = clickedButton === href;
         
         return (
-          <Link key={href} href={href} passHref>
-            <Button
-              variant={isActive ? "default" : "ghost"}
-              className={`
-                transition-all duration-200 ease-in-out
-                ${isActive 
-                  ? "bg-purple-600 text-white hover:bg-purple-700 shadow-lg transform scale-105" 
-                  : "text-white hover:bg-gray-700 hover:text-purple-300"
-                }
-              `}
-            >
-              {label}
-            </Button>
-          </Link>
+          <button
+            key={href}
+            onClick={() => handleClick(href)}
+            className={`
+              px-4 py-2 text-sm font-medium rounded-md transition-all duration-150 ease-in-out transform
+              ${isActive 
+                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105" 
+                : isClicked
+                  ? "bg-purple-700 text-white scale-95 shadow-inner"
+                  : "text-white hover:bg-gray-700 hover:text-purple-300 hover:scale-105"
+              }
+              ${isClicked ? 'ring-2 ring-purple-400 ring-opacity-50' : ''}
+            `}
+          >
+            {isClicked && (
+              <span className="inline-block w-2 h-2 bg-white rounded-full animate-pulse mr-2" />
+            )}
+            {label}
+          </button>
         );
       })}
     </div>
