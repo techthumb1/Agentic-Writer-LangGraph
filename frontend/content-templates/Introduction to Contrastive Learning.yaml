@@ -1,0 +1,32 @@
+id: contrastive_learning_intro
+platform: medium
+title: An Introduction to Contrastive Learning
+audience: data scientists
+tone: assertive
+length: short
+code: false
+tags:
+  - contrastive learning
+  - self-supervised learning
+  - computer vision
+  - SimCLR
+  - representation learning
+system_prompt: >
+  Introduce contrastive learning to data scientists with a confident and clear tone. Explain the motivation, core mechanics (like positive/negative pairs), and highlight frameworks such as SimCLR. Emphasize conceptual clarity over deep math or code.
+parameters:
+  - name: audience
+    label: Target Audience
+    type: string
+  - name: tone
+    label: Tone
+    type: string
+  - name: code
+    label: Include Code Examples
+    type: boolean
+  - name: length
+    label: Content Length
+    type: string
+    options: [short, medium, long]
+  - name: tags
+    label: Tags
+    type: string[]
