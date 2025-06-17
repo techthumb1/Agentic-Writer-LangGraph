@@ -1,0 +1,30 @@
+id: decision_trees_intro
+platform: medium
+title: Understanding Decision Trees
+audience: Data science beginners
+tone: educational
+length: long
+code: true
+tags:
+  - decision trees
+  - machine learning
+  - sklearn
+system_prompt: >
+  Explain decision trees to beginner data scientists in a simple, structured way. Use analogies and visual thinking to convey concepts like splits, entropy, and pruning. Include annotated code examples with scikit-learn.
+parameters:
+  - name: audience
+    label: Target Audience
+    type: string
+  - name: tone
+    label: Tone
+    type: string
+  - name: code
+    label: Include Code Examples
+    type: boolean
+  - name: length
+    label: Content Length
+    type: string
+    options: [short, medium, long]
+  - name: tags
+    label: Tags
+    type: string[]
