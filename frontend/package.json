@@ -39,7 +39,10 @@
     "zod": "^3.25.32"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.53.1",
     "@tailwindcss/postcss": "^4",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20",
