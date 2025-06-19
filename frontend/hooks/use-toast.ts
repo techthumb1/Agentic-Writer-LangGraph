@@ -1,9 +1,8 @@
-// File: /Users/jasonrobinson/Agentic-Writer-LangGraph/frontend/hooks/use-toast.ts
-
+// frontend/hooks/use-toast.ts (Clean version - replace your current file)
 import * as React from "react"
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_LIMIT = 5
+const TOAST_REMOVE_DELAY = 5000
 
 type ToasterToast = {
   id: string
@@ -15,13 +14,27 @@ type ToasterToast = {
   onOpenChange?: (open: boolean) => void
 }
 
-// hooks/use-toast.ts
+// Use string literal types directly instead of actionTypes object
+type Action =
+  | {
+      type: "ADD_TOAST"
+      toast: ToasterToast
+    }
+  | {
+      type: "UPDATE_TOAST"
+      toast: Partial<ToasterToast> & { id: string }
+    }
+  | {
+      type: "DISMISS_TOAST"
+      toastId?: ToasterToast["id"]
+    }
+  | {
+      type: "REMOVE_TOAST"
+      toastId?: ToasterToast["id"]
+    }
 
-type ActionType = {
-  ADD_TOAST: "ADD_TOAST"
-  UPDATE_TOAST: "UPDATE_TOAST" 
-  DISMISS_TOAST: "DISMISS_TOAST"
-  REMOVE_TOAST: "REMOVE_TOAST"
+interface State {
+  toasts: ToasterToast[]
 }
 
 let count = 0
@@ -29,28 +42,6 @@ let count = 0
 function genId() {
   count = (count + 1) % Number.MAX_SAFE_INTEGER
   return count.toString()
-}
-
-type Action =
-  | {
-      type: ActionType["ADD_TOAST"]
-      toast: ToasterToast
-    }
-  | {
-      type: ActionType["UPDATE_TOAST"]
-      toast: Partial<ToasterToast>
-    }
-  | {
-      type: ActionType["DISMISS_TOAST"]
-      toastId?: ToasterToast["id"]
-    }
-  | {
-      type: ActionType["REMOVE_TOAST"]
-      toastId?: ToasterToast["id"]
-    }
-
-interface State {
-  toasts: ToasterToast[]
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
@@ -140,7 +131,7 @@ type Toast = Omit<ToasterToast, "id">
 function toast({ ...props }: Toast) {
   const id = genId()
 
-  const update = (props: ToasterToast) =>
+  const update = (props: Partial<ToasterToast>) =>
     dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props, id },
