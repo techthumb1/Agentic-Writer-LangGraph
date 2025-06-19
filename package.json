@@ -1,11 +1,16 @@
 {
-  "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
-    "@types/next-auth": "^3.13.0",
-    "@types/webpack": "^5.28.5",
-    "prisma": "6.9.0",
-    "tsx": "^4.19.4",
-    "webpack": "^5.99.9"
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start", 
+    "lint": "next lint",
+    "lint:check": "next lint --max-warnings 0",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
+    "test:coverage": "echo 'No tests configured yet' && exit 0"
   },
   "dependencies": {
     "@prisma/client": "6.9.0",
@@ -23,6 +28,14 @@
     "swr": "^2.3.3",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.10"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/next-auth": "^3.13.0",
+    "@types/webpack": "^5.28.5",
+    "prisma": "6.9.0",
+    "tsx": "^4.19.4",
+    "webpack": "^5.99.9"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

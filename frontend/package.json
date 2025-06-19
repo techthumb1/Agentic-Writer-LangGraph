@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "lint:check": "next lint --max-warnings 0",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
+    "test:coverage": "echo 'No tests configured yet' && exit 0"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
