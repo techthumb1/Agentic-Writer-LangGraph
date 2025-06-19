@@ -1,0 +1,10 @@
+{
+  "title": "[MOCK] Artificial Intelligence - A Substack Article",
+  "contentHtml": "<h1>Artificial Intelligence</h1>\n<p>This is a mock article generated for the topic <strong>Artificial Intelligence</strong> using the <strong>default</strong> style profile.</p>\n<p>This content is purely for testing purposes and simulates what a real AI-written article would look like.</p>",
+  "metadata": {
+    "topic": "Artificial Intelligence",
+    "platform": "Substack",
+    "style": "default",
+    "generated_at": "2025-06-19T05:24:42.427865+00:00"
+  }
+}
