@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import * as z from "zod";
+// Removed unused z import
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 // import { Badge } from "@/components/ui/badge";
@@ -22,9 +22,10 @@ import StyleProfilesSelector from "@/components/StyleProfilesSelector";
 import DynamicParameters from "@/components/DynamicParameters";
 import GeneratingDialog from "@/components/GeneratingDialog";
 import { GenerationPreview } from "@/components/GenerationPreview";
+import { GenerateContentFormValues, generateContentSchema } from "@/schemas/generateContentSchema";
 
 // ----------------------
-// Enhanced Interfaces and Schema
+// Enhanced Interfaces
 // ----------------------
 interface TemplateParameter {
   name: string;
@@ -64,17 +65,6 @@ interface GenerationResult {
   metadata?: Record<string, unknown>;
   saved_path?: string;
 }
-
-const formSchema = z.object({
-  templateId: z.string().min(1, "Please select a content template."),
-  styleProfileId: z.string().min(1, "Please select a style profile."),
-  dynamic_parameters: z.record(
-    z.string(),
-    z.union([z.string(), z.number(), z.boolean()])
-  ),
-});
-
-type GenerateContentFormValues = z.infer<typeof formSchema>;
 
 // ----------------------
 // Enhanced Generation Hook
@@ -185,15 +175,18 @@ export default function GenerateContentPage() {
   });
 
   // ----------------------
-  // Form Setup
+  // Form Setup - Using backend-compatible schema
   // ----------------------
   const form = useForm<GenerateContentFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(generateContentSchema),
     defaultValues: {
       templateId: "",
       styleProfileId: "",
       dynamic_parameters: {},
+      platform: "web",
+      use_mock: false,
     },
+    mode: "onChange",
   });
 
   const watchedTemplateId = form.watch("templateId");

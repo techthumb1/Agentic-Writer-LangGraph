@@ -1,10 +1,61 @@
-title: Understanding Decision Trees
-audience: Data science beginners
-tags:
-  - decision trees
-  - machine learning
-  - sklearn
-tone: educational
-platform: medium
-length: long
-code: true
+# data/content_templates/week_2.yaml
+id: week_2
+name: Week 2 Content
+description: Second week content for educational series
+category: educational_series
+slug: week-2
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  difficulty: "beginner"
+  estimated_time: "15-20 minutes"
+
+defaults:
+  platform: substack
+  title: "Week 2: Building on the Basics"
+  audience: "course participants, learners"
+  tone: educational_progressive
+  length: medium
+  code: false
+  tags: ["education", "series", "progressive learning"]
+
+system_prompt: >
+  Create content that builds on previous week's learning. Reference what was
+  covered before and introduce new concepts progressively. Include practice
+  exercises or questions to reinforce learning. Maintain continuity with
+  the educational series format.
+
+structure:
+  sections:
+    - name: "recap"
+      description: "Quick review of previous content"
+      word_target: 100
+    - name: "new_concepts"
+      description: "Introduction of new material"
+      word_target: 400
+    - name: "practice_application"
+      description: "Exercises or examples"
+      word_target: 250
+    - name: "next_steps"
+      description: "Preview of what's coming"
+      word_target: 100
+
+parameters:
+  - name: subject_area
+    label: Subject Area
+    type: string
+    placeholder: "e.g., Machine Learning Fundamentals"
+    required: true
+  - name: difficulty_progression
+    label: Difficulty Progression
+    type: select
+    options: ["gentle", "moderate", "accelerated"]
+    default: "moderate"
+    required: false
+
+research:
+  topics: ["educational best practices", "progressive learning", "subject matter"]
+  depth: "basic"
+  sources: ["educational resources", "course materials", "pedagogical guides"]
