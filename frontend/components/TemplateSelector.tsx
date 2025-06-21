@@ -40,7 +40,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
     <>
       <FormField
         control={form.control}
-        name="templateId"
+        name="template"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Content Template</FormLabel>
@@ -85,7 +85,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
 
       <FormField
         control={form.control}
-        name="styleProfileId"
+        name="style_profile"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Style Profile</FormLabel>

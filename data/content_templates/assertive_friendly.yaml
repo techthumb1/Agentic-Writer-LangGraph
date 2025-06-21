@@ -1,0 +1,87 @@
+# data/content_templates/assertive_friendly.yaml
+id: assertive_friendly
+name: Assertive Friendly
+description: Confident, opinionated content delivered with warmth and accessibility
+category: opinion
+slug: assertive-friendly
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  difficulty: "intermediate"
+  estimated_time: "15-20 minutes"
+
+defaults:
+  platform: medium
+  title: "A Friendly Take on Complex Topics"
+  audience: "engaged readers, professionals"
+  tone: assertive_friendly
+  length: medium
+  code: false
+  tags: ["opinion", "insights", "perspective"]
+
+system_prompt: >
+  Write with confidence and clear opinions while maintaining a friendly, 
+  approachable tone. Take strong positions but explain your reasoning clearly. 
+  Challenge conventional wisdom when appropriate, but do so respectfully. 
+  Use "I" statements and personal conviction while remaining inclusive.
+
+structure:
+  sections:
+    - name: "position_statement"
+      description: "Clear statement of your main argument"
+      word_target: 100
+    - name: "supporting_evidence"
+      description: "Evidence and reasoning for your position"
+      word_target: 400
+    - name: "counterarguments"
+      description: "Acknowledge and address opposing views"
+      word_target: 200
+    - name: "call_for_action"
+      description: "What readers should think or do"
+      word_target: 100
+
+parameters:
+  - name: main_argument
+    label: Main Argument
+    type: string
+    description: "The central position or opinion to advance"
+    placeholder: "e.g., Why everyone should learn basic AI concepts"
+    required: true
+    
+  - name: controversy_level
+    label: Controversy Level
+    type: select
+    description: "How provocative should the position be"
+    options: ["mild", "moderate", "strong"]
+    default: "moderate"
+    required: false
+    
+  - name: evidence_type
+    label: Evidence Type
+    type: select
+    description: "Primary type of evidence to use"
+    options: ["personal_experience", "research_data", "industry_examples", "logical_reasoning"]
+    default: "industry_examples"
+    required: false
+    
+  - name: tone_balance
+    label: Tone Balance
+    type: select
+    description: "Balance between assertiveness and friendliness"
+    options: ["more_assertive", "balanced", "more_friendly"]
+    default: "balanced"
+    required: false
+    
+  - name: include_solutions
+    label: Include Solutions
+    type: boolean
+    description: "Provide actionable solutions or next steps"
+    default: true
+    required: false
+
+research:
+  topics: ["industry trends", "expert opinions", "case studies", "best practices"]
+  depth: "moderate"
+  sources: ["industry reports", "expert interviews", "case studies", "personal experience"]

@@ -1,0 +1,87 @@
+# data/content_templates/federated_learning_101.yaml
+id: federated_learning_101
+name: Federated Learning 101
+description: Introduction to federated learning concepts and applications
+category: educational
+slug: federated-learning-101
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  difficulty: "beginner"
+  estimated_time: "20-25 minutes"
+
+defaults:
+  platform: substack
+  title: "Federated Learning 101: Privacy-Preserving AI"
+  audience: "AI enthusiasts, privacy advocates, tech professionals"
+  tone: educational_friendly
+  length: medium
+  code: false
+  tags: ["federated learning", "privacy", "AI", "machine learning"]
+
+system_prompt: >
+  Explain federated learning in an accessible way that emphasizes its importance
+  for privacy and distributed AI. Use analogies to help readers understand
+  complex concepts. Focus on why it matters and real-world applications
+  rather than deep technical implementation details.
+
+structure:
+  sections:
+    - name: "privacy_problem"
+      description: "Why traditional ML poses privacy challenges"
+      word_target: 200
+    - name: "federated_solution"
+      description: "How federated learning solves these problems"
+      word_target: 300
+    - name: "real_world_examples"
+      description: "Practical applications and case studies"
+      word_target: 400
+    - name: "challenges_future"
+      description: "Current limitations and future potential"
+      word_target: 200
+
+parameters:
+  - name: focus_application
+    label: Focus Application
+    type: select
+    description: "Primary application area to emphasize"
+    options: ["healthcare", "mobile_devices", "finance", "general"]
+    default: "mobile_devices"
+    required: false
+    
+  - name: technical_depth
+    label: Technical Depth
+    type: select
+    description: "How deep into technical details"
+    options: ["conceptual_only", "light_technical", "moderate_technical"]
+    default: "light_technical"
+    required: false
+    
+  - name: privacy_emphasis
+    label: Privacy Emphasis
+    type: select
+    description: "How much to emphasize privacy aspects"
+    options: ["high", "moderate", "low"]
+    default: "high"
+    required: false
+    
+  - name: include_comparisons
+    label: Include Comparisons
+    type: boolean
+    description: "Compare with traditional centralized learning"
+    default: true
+    required: false
+    
+  - name: future_outlook
+    label: Future Outlook
+    type: boolean
+    description: "Include predictions about future developments"
+    default: true
+    required: false
+
+research:
+  topics: ["federated learning principles", "privacy preservation", "real-world deployments", "challenges and limitations"]
+  depth: "moderate"
+  sources: ["research papers", "industry case studies", "privacy reports", "tech company blogs"]
