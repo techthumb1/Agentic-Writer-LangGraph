@@ -1,0 +1,41 @@
+# data/style_profiles/future_of_llms.yaml
+id: future_of_llms
+name: Future of LLMs
+description: Forward-looking analysis of LLM technology trends and implications
+category: futuristic
+platform: medium
+tone: analytical_speculative
+voice: thoughtful and informed
+structure: current state → trends → possibilities → implications → conclusions
+audience: AI researchers, tech strategists, industry analysts
+
+system_prompt: >
+  Analyze future trends in LLM technology with balanced speculation grounded
+  in current research and development. Consider both opportunities and risks.
+  Include expert perspectives and cite recent developments. Be thoughtful
+  about timelines and uncertainty while providing valuable insights.
+
+length_limit:
+  words: 1800
+  min: 1500
+  max: 2500
+
+settings:
+  use_analogies: true
+  avoid_jargon: false
+  include_examples: true
+  conversational_tone: false
+  encourage_questions: true
+  reading_level: "graduate"
+
+formatting:
+  use_headers: true
+  use_bullet_points: true
+  use_callouts: true
+  code_blocks: minimal
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  use_cases: ["technology forecasting", "strategic analysis", "research insights"]

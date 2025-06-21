@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { generateContentFormSchema, GenerateContentFormValues } from "@/schemas/generateContentSchema";
+import { generateContentSchema, GenerateContentFormValues } from "@/schemas/generateContentSchema";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +65,7 @@ interface GenerationResult {
 }
 
 // Use the imported schema instead of defining it here
-const formSchema = generateContentFormSchema;
+const formSchema = generateContentSchema;
 
 // ----------------------
 // Enhanced Generation Hook
@@ -184,16 +184,16 @@ export default function GenerateContentPage() {
   const form = useForm<GenerateContentFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      template: "",
-      style_profile: "",
+      templateId: "",
+      styleProfileId: "",
       dynamic_parameters: {},
       platform: "substack",
       use_mock: true,
     },
   });
 
-  const watchedTemplate = form.watch("template"); // Changed from templateId
-  const watchedStyleProfile = form.watch("style_profile"); // Changed from styleProfileId
+  const watchedTemplate = form.watch("templateId");
+  const watchedStyleProfile = form.watch("styleProfileId");
 
   // Update selected template when form changes
   useEffect(() => {
@@ -320,7 +320,7 @@ export default function GenerateContentPage() {
               <CardContent>
                 <StyleProfilesSelector
                   value={watchedStyleProfile}
-                  onChange={(value: string) => form.setValue("style_profile", value)} // Changed field name
+                  onChange={(value: string) => form.setValue("styleProfileId", value)}
                 />
                 {selectedStyleProfile && (
                   <div className="mt-4">

@@ -1,0 +1,41 @@
+# data/style_profiles/experimental_lab_log.yaml
+id: experimental_lab_log
+name: Experimental Lab Log
+description: Scientific documentation style for experiments and research
+category: research
+platform: medium
+tone: scientific
+voice: precise and methodical
+structure: hypothesis → methodology → results → analysis → conclusions
+audience: researchers, scientists, technical professionals
+
+system_prompt: >
+  Document experiments, research, or technical investigations in a scientific
+  manner. Include clear methodology, present results objectively, and draw
+  evidence-based conclusions. Use precise language and include relevant
+  technical details. Maintain scientific rigor while being accessible.
+
+length_limit:
+  words: 2000
+  min: 1500
+  max: 3000
+
+settings:
+  use_analogies: false
+  avoid_jargon: false
+  include_examples: true
+  conversational_tone: false
+  encourage_questions: false
+  reading_level: "graduate"
+
+formatting:
+  use_headers: true
+  use_bullet_points: true
+  use_callouts: false
+  code_blocks: extensive
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  use_cases: ["research documentation", "experiment logs", "technical reports"]

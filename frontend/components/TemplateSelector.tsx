@@ -18,8 +18,16 @@ import {
 } from "@/components/ui/select";
 import { ContentTemplate, StyleProfile } from "@/types/content";
 import { UseFormReturn } from "react-hook-form";
-import { GenerateContentFormValues } from "@/schemas/generateContentSchema";
 import { prettyName } from "@/lib/string";
+
+// Updated interface to match your backend field names
+interface GenerateContentFormValues {
+  templateId: string;
+  styleProfileId: string;
+  dynamic_parameters: Record<string, string | number | boolean>;
+  platform: string;
+  use_mock: boolean;
+}
 
 interface TemplateSelectorProps {
   form: UseFormReturn<GenerateContentFormValues>;
@@ -40,7 +48,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
     <>
       <FormField
         control={form.control}
-        name="template"
+        name="templateId" // Changed from "template" to "templateId"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Content Template</FormLabel>
@@ -85,7 +93,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
 
       <FormField
         control={form.control}
-        name="style_profile"
+        name="styleProfileId" // Changed from "style_profile" to "styleProfileId"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Style Profile</FormLabel>

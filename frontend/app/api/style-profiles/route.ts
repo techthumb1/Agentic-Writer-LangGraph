@@ -1,70 +1,162 @@
+// frontend/app/api/style-profiles/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { StyleProfile, APIResponse, PaginatedResponse } from '@/types';
-import { readYamlFromDir } from '@/lib/file-loader';
-import { PAGINATION } from '@/lib/constants';
+import type { APIResponse, BackendStyleProfile, PaginatedResponse } from '@/types/api';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get('page') || '1', 10);
-    const limit = parseInt(url.searchParams.get('limit') || PAGINATION.DEFAULT_LIMIT.toString(), 10);
-    const search = url.searchParams.get('search')?.toLowerCase() || '';
-    const category = url.searchParams.get('category')?.toLowerCase() || '';
+    const page = url.searchParams.get('page') || '1';
+    const limit = url.searchParams.get('limit') || '100';
+    const search = url.searchParams.get('search') || '';
+    const category = url.searchParams.get('category') || '';
 
-    // Load all style profiles from the 'style-profiles/' YAML directory
-    let profiles = await readYamlFromDir<StyleProfile>('style-profiles');
+    console.log('📤 Fetching style profiles from FastAPI backend:', {
+      page, limit, search, category
+    });
 
-    // Apply search filter (name or description match)
-    if (search) {
-      profiles = profiles.filter(
-        (profile) =>
-          profile.name.toLowerCase().includes(search) ||
-          profile.description.toLowerCase().includes(search)
-      );
-    }
+    // Build query parameters for backend
+    const backendParams = new URLSearchParams({
+      page,
+      limit,
+      search,
+      category
+    });
 
-    // Apply category filter if specified
-    if (category) {
-      profiles = profiles.filter(
-        (profile) => profile.category?.toLowerCase() === category
-      );
-    }
-
-    // Pagination
-    const total = profiles.length;
-    const totalPages = Math.ceil(total / limit);
-    const startIndex = (page - 1) * limit;
-    const paginated = profiles.slice(startIndex, startIndex + limit);
-
-    const response: APIResponse<PaginatedResponse<StyleProfile>> = {
-      success: true,
-      data: {
-        items: paginated,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNext: page < totalPages,
-          hasPrev: page > 1,
-        },
+    const response = await fetch(`${BACKEND_URL}/api/style-profiles?${backendParams}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
       },
+      // Add cache control
+      next: { revalidate: 300 } // Cache for 5 minutes
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ FastAPI backend error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      
+      // Fallback to local file loading
+      try {
+        console.log('🔄 Falling back to local style profile loading');
+        const { readYamlFromDir } = await import('@/lib/file-loader');
+
+        interface LocalStyleProfile {
+          name: string;
+          description: string;
+          category?: string;
+          [key: string]: unknown;
+        }
+
+        const pageNum = parseInt(page, 10);
+        const limitNum = parseInt(limit, 10);
+        const searchLower = search.toLowerCase();
+        const categoryLower = category.toLowerCase();
+
+        // Load all style profiles from local files
+        let profiles = await readYamlFromDir<LocalStyleProfile>('style-profiles');
+
+        // Apply search filter
+        if (search) {
+          profiles = profiles.filter(
+            (profile) =>
+              profile.name.toLowerCase().includes(searchLower) ||
+              profile.description.toLowerCase().includes(searchLower)
+          );
+        }
+
+        // Apply category filter
+        if (category) {
+          profiles = profiles.filter(
+            (profile) => profile.category?.toLowerCase() === categoryLower
+          );
+        }
+
+        // Pagination
+        const total = profiles.length;
+        const totalPages = Math.ceil(total / limitNum);
+        const startIndex = (pageNum - 1) * limitNum;
+        const paginated = profiles.slice(startIndex, startIndex + limitNum);
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            items: paginated,
+            pagination: {
+              page: pageNum,
+              limit: limitNum,
+              total,
+              totalPages,
+              hasNext: pageNum < totalPages,
+              hasPrev: pageNum > 1,
+            },
+          },
+          fallback: true
+        });
+      } catch (fallbackError) {
+        console.error('❌ Fallback also failed:', fallbackError);
+        return NextResponse.json({
+          success: false,
+          error: {
+            code: 'STYLE_PROFILE_LOAD_FAILED',
+            message: 'Could not load style profiles from backend or local files',
+            details: errorText,
+          },
+        }, { status: 500 });
+      }
+    }
+
+    const data = await response.json();
+    console.log('✅ Style profiles loaded from FastAPI:', {
+      count: data.data?.items?.length || 0,
+      total: data.data?.pagination?.total || 0,
+      success: data.success
+    });
+
+    // Transform backend response to match your frontend's expected format
+    const transformedResponse: APIResponse<PaginatedResponse<BackendStyleProfile>> = {
+      success: data.success,
+      data: {
+        items: data.data?.items?.map((profile: BackendStyleProfile) => ({
+          id: profile.id,
+          name: profile.name,
+          description: profile.description,
+          category: profile.category,
+          tone: profile.tone,
+          voice: profile.voice,
+          structure: profile.structure,
+          system_prompt: profile.system_prompt,
+          settings: profile.settings,
+          filename: profile.filename
+        })) || [],
+        pagination: data.data?.pagination || {
+          page: 1,
+          limit: 100,
+          total: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false
+        }
+      }
     };
 
-    return NextResponse.json(response);
-  } catch (error) {
-    console.error('❌ STYLE_PROFILE_LOAD_FAILED:', error);
+    return NextResponse.json(transformedResponse);
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'STYLE_PROFILE_LOAD_FAILED',
-          message: 'Could not load style profiles',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
+  } catch (error) {
+    console.error('🚨 Style profiles API error:', error);
+    
+    return NextResponse.json({
+      success: false,
+      error: {
+        code: 'STYLE_PROFILE_PROXY_FAILED',
+        message: 'Failed to fetch style profiles',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
-    );
+    }, { status: 500 });
   }
 }

@@ -1,0 +1,42 @@
+# data/style_profiles/founder_storytelling.yaml
+id: founder_storytelling
+name: Founder Storytelling
+description: Personal narrative style for startup founders and entrepreneurs
+category: entrepreneurship
+platform: substack
+tone: personal_inspiring
+voice: authentic and motivational
+structure: challenge → journey → lessons → inspiration
+audience: entrepreneurs, startup community, aspiring founders
+
+system_prompt: >
+  Share entrepreneurial experiences and insights through personal storytelling.
+  Be authentic about both successes and failures. Include practical lessons
+  learned and actionable advice. Inspire others while being realistic about
+  the challenges of building a company. Use first-person narrative.
+
+length_limit:
+  words: 1200
+  min: 1000
+  max: 1600
+
+settings:
+  use_analogies: true
+  avoid_jargon: true
+  include_examples: true
+  conversational_tone: true
+  encourage_questions: true
+  reading_level: "college"
+
+formatting:
+  use_headers: true
+  use_bullet_points: true
+  use_callouts: true
+  code_blocks: none
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  use_cases: ["founder stories", "startup lessons", "entrepreneurial insights"]
+

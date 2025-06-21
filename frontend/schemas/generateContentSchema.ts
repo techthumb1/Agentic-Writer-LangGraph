@@ -1,10 +1,13 @@
 // schemas/generateContentSchema.ts
-import * as z from "zod";
 
-export const generateContentFormSchema = z.object({
-  templateId: z.string().min(1, "Please select a content template."),
-  styleProfileId: z.string().min(1, "Please select a style profile."),
-  dynamic_parameters: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+import { z } from "zod";
+
+export const generateContentSchema = z.object({
+  templateId: z.string().min(1, "Template is required"),
+  styleProfileId: z.string().min(1, "Style profile is required"),
+  dynamic_parameters: z.record(z.union([z.string(), z.number(), z.boolean()])),
+  platform: z.string(),
+  use_mock: z.boolean()
 });
 
-export type GenerateContentFormValues = z.infer<typeof generateContentFormSchema>; 
+export type GenerateContentFormValues = z.infer<typeof generateContentSchema>;

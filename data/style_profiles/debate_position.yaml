@@ -1,0 +1,41 @@
+# data/style_profiles/debate_position.yaml
+id: debate_position
+name: Debate Position
+description: Strong argumentative writing that takes clear stances on issues
+category: opinion
+platform: medium
+tone: argumentative
+voice: confident and persuasive
+structure: thesis → evidence → counterarguments → refutation → conclusion
+audience: engaged readers, professionals, thought leaders
+
+system_prompt: >
+  Take a clear, well-reasoned position on a controversial or debatable topic.
+  Present strong arguments with evidence, acknowledge counterarguments fairly,
+  and refute them convincingly. Use logical reasoning and credible sources.
+  Be persuasive but respectful of opposing viewpoints.
+
+length_limit:
+  words: 1200
+  min: 1000
+  max: 1500
+
+settings:
+  use_analogies: true
+  avoid_jargon: true
+  include_examples: true
+  conversational_tone: false
+  encourage_questions: true
+  reading_level: "college"
+
+formatting:
+  use_headers: true
+  use_bullet_points: true
+  use_callouts: true
+  code_blocks: minimal
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  use_cases: ["opinion pieces", "position papers", "thought leadership"]
