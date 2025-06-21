@@ -67,31 +67,120 @@ interface GenerationResult {
 }
 
 // ----------------------
-// Enhanced Generation Hook
+// Enhanced Generation Hook with Async Polling
 // ----------------------
 function useEnhancedGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
+
+  // Polling function to check generation status
+  const pollGenerationStatus = async (requestId: string): Promise<GeneratedContent> => {
+    const maxAttempts = 60; // Poll for up to 5 minutes (60 * 5s intervals)
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      try {
+        console.log(`🔄 Polling attempt ${attempts + 1} for request ${requestId}`);
+        
+        const statusRes = await fetch(`/api/generate/status/${requestId}`);
+        
+        if (!statusRes.ok) {
+          throw new Error(`Status check failed: ${statusRes.status}`);
+        }
+
+        const statusData = await statusRes.json();
+        console.log(`📊 Status response:`, statusData);
+
+        if (statusData.status === 'completed') {
+          console.log("✅ Generation completed!");
+          return statusData.data;
+        } else if (statusData.status === 'failed') {
+          throw new Error(statusData.error || 'Generation failed');
+        } else if (statusData.status === 'pending' || statusData.status === 'processing') {
+          // Still processing, wait and try again
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+          attempts++;
+        } else {
+          throw new Error(`Unknown status: ${statusData.status}`);
+        }
+      } catch (error) {
+        console.error(`❌ Polling error on attempt ${attempts + 1}:`, error);
+        if (attempts >= maxAttempts - 1) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        attempts++;
+      }
+    }
+
+    throw new Error('Generation timed out after 5 minutes');
+  };
 
   const generateContentMutation = useMutation<GeneratedContent, Error, GenerateContentFormValues>({
     mutationFn: async (payload) => {
       setIsGenerating(true);
       setError(null);
+      setRequestId(null);
       
+      // DEBUG: Log the exact payload being sent
+      console.log("🔍 DEBUGGING - Original form payload:");
+      console.log("Raw payload:", JSON.stringify(payload, null, 2));
+
+      const payloadForBackend = {
+        template: payload.templateId,
+        style_profile: payload.styleProfileId,
+        dynamic_parameters: payload.dynamic_parameters || {},
+        priority: 1,
+        timeout_seconds: 300,
+        platform: payload.platform || "web",
+        use_mock: payload.use_mock || false,
+      };
+      
+      console.log("🔍 Backend payload:", JSON.stringify(payloadForBackend, null, 2));
+      
+      // Step 1: Start the generation
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(payloadForBackend),
       });
       
+      console.log("🔍 Initial response status:", res.status);
+      
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to generate content");
+        const errorText = await res.text();
+        console.error("🔍 Error response body:", errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.detail || errorData.message || "Failed to start generation");
+        } catch {
+          throw new Error(`HTTP ${res.status}: ${errorText}`);
+        }
       }
       
-      const result = await res.json();
-      return result.data;
+      const initialResponse = await res.json();
+      console.log("✅ Initial API Response:", initialResponse);
+
+      // Check if we got the content immediately (synchronous response)
+      if (initialResponse.data && initialResponse.status !== 'pending') {
+        return initialResponse.data;
+      }
+
+      // If we have a request_id, poll for completion (asynchronous response)
+      if (initialResponse.request_id) {
+        setRequestId(initialResponse.request_id);
+        console.log("🔄 Starting polling for request:", initialResponse.request_id);
+        return await pollGenerationStatus(initialResponse.request_id);
+      }
+
+      // If neither, something's wrong
+      throw new Error("No content or request ID returned from API");
     },
     onSuccess: (data: GeneratedContent) => {
       setIsGenerating(false);
@@ -116,12 +205,14 @@ function useEnhancedGeneration() {
 
   const cancelGeneration = () => {
     setIsGenerating(false);
+    setRequestId(null);
     generateContentMutation.reset();
   };
 
   const resetGeneration = () => {
     setResult(null);
     setError(null);
+    setRequestId(null);
     generateContentMutation.reset();
   };
 
@@ -129,12 +220,12 @@ function useEnhancedGeneration() {
     isGenerating,
     result,
     error,
+    requestId,
     startGeneration,
     cancelGeneration,
     resetGeneration,
   };
 }
-
 // ----------------------
 // Main Integrated Component
 // ----------------------
