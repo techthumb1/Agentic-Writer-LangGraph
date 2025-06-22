@@ -18,14 +18,14 @@ export default function HomePage() {
             </div>
           </div>
           
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight mb-6">
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
             Transform Your Ideas Into{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
               Outstanding Content
             </span>
           </h1>
           
-          <p className="text-xl mb-10 leading-relaxed text-gray-300 max-w-3xl">
+          <p className="text-xl md:text-2xl mb-12 leading-relaxed text-gray-300 max-w-3xl mx-auto">
             Generate high-quality, customized content across various formats and styles — tailored to your specific needs.
             From technical articles to research summaries, let our advanced AI agents handle the heavy lifting while you focus on what matters most.
           </p>
@@ -54,7 +54,7 @@ export default function HomePage() {
         </div>
 
         {/* Feature Cards */}
-        <div id="features" className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full mb-16">
+        <div id="features" className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full mb-10">
           <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6 text-center hover:bg-white/15 transition-all duration-300">
             <div className="bg-purple-600 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4">
               <Zap className="h-6 w-6 text-white" />
@@ -81,21 +81,20 @@ export default function HomePage() {
         </div>
 
         {/* Additional Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full mb-16">
-          <div className="flex items-center space-x-3 text-gray-300">
-            <Users className="h-5 w-5 text-purple-400" />
-            <span>Multi-agent collaboration</span>
-          </div>
-          <div className="flex items-center space-x-3 text-gray-300">
-            <Shield className="h-5 w-5 text-purple-400" />
-            <span>Secure & private</span>
-          </div>
-          <div className="flex items-center space-x-3 text-gray-300">
-            <Rocket className="h-5 w-5 text-purple-400" />
-            <span>Enterprise ready</span>
-          </div>
-        </div>
-
+<div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full mb-16">
+  <div className="flex flex-col items-center text-center space-y-2 text-gray-300">
+    <Users className="h-5 w-5 text-purple-400" />
+    <span>Multi-agent collaboration</span>
+  </div>
+  <div className="flex flex-col items-center text-center space-y-2 text-gray-300">
+    <Shield className="h-5 w-5 text-purple-400" />
+    <span>Secure & private</span>
+  </div>
+  <div className="flex flex-col items-center text-center space-y-2 text-gray-300">
+    <Rocket className="h-5 w-5 text-purple-400" />
+    <span>Enterprise ready</span>
+  </div>
+</div>
         {/* Footer */}
         <footer className="mt-8 text-gray-400 text-sm max-w-2xl">
           <p>

@@ -117,7 +117,7 @@ export default async function RootLayout({
 
             {/* Professional Footer */}
             <footer className="bg-gray-900 text-gray-300 border-t border-gray-800">
-              <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+              <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                   {/* Company Info */}
                   <div className="space-y-4">
@@ -155,8 +155,8 @@ export default async function RootLayout({
                       <li><Link href="/generate" className="text-sm hover:text-purple-400 transition-colors">Content Generator</Link></li>
                       <li><Link href="/templates" className="text-sm hover:text-purple-400 transition-colors">Templates</Link></li>
                       <li><Link href="/dashboard" className="text-sm hover:text-purple-400 transition-colors">Analytics</Link></li>
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">API Access</a></li>
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">Integrations</a></li>
+                      <li><Link href="/api-access" className="text-sm hover:text-purple-400 transition-colors">API Access</Link></li>
+                      <li><Link href="/integrations" className="text-sm hover:text-purple-400 transition-colors">Integrations</Link></li>
                     </ul>
                   </div>
 
@@ -164,11 +164,11 @@ export default async function RootLayout({
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Support</h3>
                     <ul className="space-y-2">
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">Help Center</a></li>
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">Documentation</a></li>
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">Contact Support</a></li>
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">Community</a></li>
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">System Status</a></li>
+                      <li><Link href="/help" className="text-sm hover:text-purple-400 transition-colors">Help Center</Link></li>
+                      <li><Link href="/docs" className="text-sm hover:text-purple-400 transition-colors">Documentation</Link></li>
+                      <li><Link href="/contact" className="text-sm hover:text-purple-400 transition-colors">Contact Support</Link></li>
+                      <li><Link href="/community" className="text-sm hover:text-purple-400 transition-colors">Community</Link></li>
+                      <li><Link href="/status" className="text-sm hover:text-purple-400 transition-colors">System Status</Link></li>
                     </ul>
                   </div>
 
@@ -176,23 +176,23 @@ export default async function RootLayout({
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Company</h3>
                     <ul className="space-y-2">
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">About Us</a></li>
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">Careers</a></li>
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">Press Kit</a></li>
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">Privacy Policy</a></li>
-                      <li><a href="#" className="text-sm hover:text-purple-400 transition-colors">Terms of Service</a></li>
+                      <li><Link href="/about" className="text-sm hover:text-purple-400 transition-colors">About Us</Link></li>
+                      <li><Link href="/careers" className="text-sm hover:text-purple-400 transition-colors">Careers</Link></li>
+                      <li><Link href="/press" className="text-sm hover:text-purple-400 transition-colors">Press Kit</Link></li>
+                      <li><Link href="/privacy" className="text-sm hover:text-purple-400 transition-colors">Privacy Policy</Link></li>
+                      <li><Link href="/terms" className="text-sm hover:text-purple-400 transition-colors">Terms of Service</Link></li>
                     </ul>
                   </div>
                 </div>
 
                 {/* Bottom Section */}
-                <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
+                <div className="mt-6 pt-4 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
                   <div className="text-sm text-gray-400">
                     © 2025 AI Content Studio. All rights reserved.
                   </div>
                   <div className="mt-4 md:mt-0 flex space-x-6">
-                    <a href="#" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Privacy</a>
-                    <a href="#" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Terms</a>
+                    <Link href="/privacy" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Privacy</Link>
+                    <Link href="/terms" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Terms</Link>
                     <a href="#" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Cookies</a>
                   </div>
                 </div>
