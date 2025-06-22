@@ -74,3 +74,543 @@ jobs:
         run: |
           cd frontend
           npm audit --audit-level moderate
+
+#######################################
+## .github/workflows/ci-cd.yml
+## Comprehensive CI/CD Pipeline for AI Content Generation Platform
+#
+#name: CI/CD Pipeline
+#
+#on:
+#  push:
+#    branches: [main, develop, 'feature/**', 'hotfix/**']
+#  pull_request:
+#    branches: [main, develop]
+#  release:
+#    types: [published]
+#
+#env:
+#  REGISTRY: ghcr.io
+#  IMAGE_NAME: ${{ github.repository }}
+#  NODE_VERSION: '18'
+#  PYTHON_VERSION: '3.11'
+#
+#jobs:
+#  # Job 1: Code Quality and Security Checks
+#  code-quality:
+#    name: Code Quality & Security
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 15
+#    
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 0
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@v4
+#        with:
+#          python-version: ${{ env.PYTHON_VERSION }}
+#          cache: 'pip'
+#
+#      - name: Set up Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: ${{ env.NODE_VERSION }}
+#          cache: 'npm'
+#          cache-dependency-path: frontend/package-lock.json
+#
+#      - name: Install Python dependencies
+#        run: |
+#          python -m pip install --upgrade pip
+#          pip install -r requirements.txt
+#          pip install pylint black isort bandit safety mypy
+#
+#      - name: Install Frontend dependencies
+#        working-directory: ./frontend
+#        run: npm ci
+#
+#      - name: Python code formatting check
+#        run: |
+#          black --check --diff .
+#          isort --check-only --diff .
+#
+#      - name: Python linting
+#        run: |
+#          pylint langgraph_app/ api/ --exit-zero --output-format=github
+#          mypy langgraph_app/ api/ --ignore-missing-imports
+#
+#      - name: Frontend linting
+#        working-directory: ./frontend
+#        run: |
+#          npm run lint
+#          npm run type-check
+#
+#      - name: Security scan - Python
+#        run: |
+#          bandit -r langgraph_app/ api/ -f json -o bandit-report.json || true
+#          safety check --json --output safety-report.json || true
+#
+#      - name: Security scan - Node.js
+#        working-directory: ./frontend
+#        run: npm audit --audit-level=moderate
+#
+#      - name: Upload security reports
+#        uses: actions/upload-artifact@v3
+#        if: always()
+#        with:
+#          name: security-reports
+#          path: |
+#            bandit-report.json
+#            safety-report.json
+#
+#  # Job 2: Backend Tests
+#  backend-tests:
+#    name: Backend Tests
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 20
+#    
+#    services:
+#      postgres:
+#        image: postgres:15
+#        env:
+#          POSTGRES_PASSWORD: test_password
+#          POSTGRES_USER: test_user
+#          POSTGRES_DB: test_db
+#        options: >-
+#          --health-cmd pg_isready
+#          --health-interval 10s
+#          --health-timeout 5s
+#          --health-retries 5
+#        ports:
+#          - 5432:5432
+#
+#      redis:
+#        image: redis:7
+#        options: >-
+#          --health-cmd "redis-cli ping"
+#          --health-interval 10s
+#          --health-timeout 5s
+#          --health-retries 5
+#        ports:
+#          - 6379:6379
+#
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@v4
+#        with:
+#          python-version: ${{ env.PYTHON_VERSION }}
+#          cache: 'pip'
+#
+#      - name: Install dependencies
+#        run: |
+#          python -m pip install --upgrade pip
+#          pip install -r requirements.txt
+#          pip install pytest pytest-cov pytest-asyncio httpx
+#
+#      - name: Run backend tests
+#        env:
+#          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+#          REDIS_URL: redis://localhost:6379
+#          TESTING: true
+#          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY_TEST }}
+#        run: |
+#          pytest tests/ \
+#            --cov=langgraph_app \
+#            --cov=api \
+#            --cov-report=xml \
+#            --cov-report=html \
+#            --junitxml=test-results.xml \
+#            --verbose
+#
+#      - name: Upload test results
+#        uses: actions/upload-artifact@v3
+#        if: always()
+#        with:
+#          name: backend-test-results
+#          path: |
+#            test-results.xml
+#            htmlcov/
+#            .coverage
+#
+#      - name: Upload coverage to Codecov
+#        uses: codecov/codecov-action@v3
+#        with:
+#          file: ./coverage.xml
+#          flags: backend
+#          name: backend-coverage
+#
+#  # Job 3: Frontend Tests
+#  frontend-tests:
+#    name: Frontend Tests
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 15
+#    
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Set up Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: ${{ env.NODE_VERSION }}
+#          cache: 'npm'
+#          cache-dependency-path: frontend/package-lock.json
+#
+#      - name: Install dependencies
+#        working-directory: ./frontend
+#        run: npm ci
+#
+#      - name: Run frontend tests
+#        working-directory: ./frontend
+#        run: |
+#          npm run test:ci
+#          npm run build
+#
+#      - name: Upload test results
+#        uses: actions/upload-artifact@v3
+#        if: always()
+#        with:
+#          name: frontend-test-results
+#          path: |
+#            frontend/coverage/
+#            frontend/test-results/
+#
+#  # Job 4: Integration Tests
+#  integration-tests:
+#    name: Integration Tests
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 25
+#    needs: [backend-tests, frontend-tests]
+#    
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Set up Docker Buildx
+#        uses: docker/setup-buildx-action@v3
+#
+#      - name: Build test environment
+#        run: |
+#          docker-compose -f docker-compose.test.yml build
+#          docker-compose -f docker-compose.test.yml up -d
+#
+#      - name: Wait for services
+#        run: |
+#          timeout 60s bash -c 'until docker-compose -f docker-compose.test.yml exec -T postgres-test pg_isready; do sleep 2; done'
+#          timeout 60s bash -c 'until docker-compose -f docker-compose.test.yml exec -T redis-test redis-cli ping; do sleep 2; done'
+#
+#      - name: Run integration tests
+#        run: |
+#          docker-compose -f docker-compose.test.yml exec -T test-runner python -m pytest tests/integration/ -v
+#
+#      - name: Cleanup
+#        if: always()
+#        run: docker-compose -f docker-compose.test.yml down -v
+#
+#  # Job 5: Performance Tests
+#  performance-tests:
+#    name: Performance Tests
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 20
+#    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#    
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@v4
+#        with:
+#          python-version: ${{ env.PYTHON_VERSION }}
+#
+#      - name: Install load testing tools
+#        run: |
+#          pip install locust pytest-benchmark
+#
+#      - name: Build and start services
+#        run: |
+#          docker-compose -f docker-compose.test.yml up -d
+#          sleep 30
+#
+#      - name: Run performance tests
+#        run: |
+#          python tests/performance/load_test.py
+#          python -m pytest tests/performance/benchmark_tests.py --benchmark-json=benchmark-results.json
+#
+#      - name: Upload performance results
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: performance-results
+#          path: |
+#            benchmark-results.json
+#            load-test-results/
+#
+#      - name: Cleanup
+#        if: always()
+#        run: docker-compose -f docker-compose.test.yml down -v
+#
+#  # Job 6: Build and Push Images
+#  build-images:
+#    name: Build & Push Images
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 30
+#    needs: [code-quality, backend-tests, frontend-tests]
+#    if: github.event_name == 'push' || github.event_name == 'release'
+#    
+#    outputs:
+#      backend-image: ${{ steps.backend-meta.outputs.tags }}
+#      frontend-image: ${{ steps.frontend-meta.outputs.tags }}
+#    
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Set up Docker Buildx
+#        uses: docker/setup-buildx-action@v3
+#
+#      - name: Log in to Container Registry
+#        uses: docker/login-action@v3
+#        with:
+#          registry: ${{ env.REGISTRY }}
+#          username: ${{ github.actor }}
+#          password: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - name: Extract backend metadata
+#        id: backend-meta
+#        uses: docker/metadata-action@v5
+#        with:
+#          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
+#          tags: |
+#            type=ref,event=branch
+#            type=ref,event=pr
+#            type=sha,prefix={{branch}}-
+#            type=semver,pattern={{version}}
+#            type=raw,value=latest,enable={{is_default_branch}}
+#
+#      - name: Extract frontend metadata
+#        id: frontend-meta
+#        uses: docker/metadata-action@v5
+#        with:
+#          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
+#          tags: |
+#            type=ref,event=branch
+#            type=ref,event=pr
+#            type=sha,prefix={{branch}}-
+#            type=semver,pattern={{version}}
+#            type=raw,value=latest,enable={{is_default_branch}}
+#
+#      - name: Build and push backend image
+#        uses: docker/build-push-action@v5
+#        with:
+#          context: .
+#          file: ./api/Dockerfile
+#          push: true
+#          tags: ${{ steps.backend-meta.outputs.tags }}
+#          labels: ${{ steps.backend-meta.outputs.labels }}
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
+#          platforms: linux/amd64,linux/arm64
+#
+#      - name: Build and push frontend image
+#        uses: docker/build-push-action@v5
+#        with:
+#          context: ./frontend
+#          file: ./frontend/Dockerfile
+#          push: true
+#          tags: ${{ steps.frontend-meta.outputs.tags }}
+#          labels: ${{ steps.frontend-meta.outputs.labels }}
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
+#          platforms: linux/amd64,linux/arm64
+#
+#  # Job 7: Deploy to Staging
+#  deploy-staging:
+#    name: Deploy to Staging
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 15
+#    needs: [build-images, integration-tests]
+#    if: github.ref == 'refs/heads/develop'
+#    environment:
+#      name: staging
+#      url: https://staging.content-ai.example.com
+#    
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Configure AWS credentials
+#        uses: aws-actions/configure-aws-credentials@v4
+#        with:
+#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          aws-region: ${{ secrets.AWS_REGION }}
+#
+#      - name: Deploy to ECS
+#        run: |
+#          # Update ECS service with new image
+#          aws ecs update-service \
+#            --cluster content-ai-staging \
+#            --service backend \
+#            --force-new-deployment
+#          
+#          aws ecs update-service \
+#            --cluster content-ai-staging \
+#            --service frontend \
+#            --force-new-deployment
+#
+#      - name: Wait for deployment
+#        run: |
+#          aws ecs wait services-stable \
+#            --cluster content-ai-staging \
+#            --services backend frontend
+#
+#      - name: Run smoke tests
+#        run: |
+#          curl -f https://staging.content-ai.example.com/health
+#          curl -f https://staging.content-ai.example.com/api/health
+#
+#  # Job 8: Deploy to Production
+#  deploy-production:
+#    name: Deploy to Production
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 20
+#    needs: [build-images, integration-tests]
+#    if: github.event_name == 'release' && github.event.action == 'published'
+#    environment:
+#      name: production
+#      url: https://content-ai.example.com
+#    
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Configure AWS credentials
+#        uses: aws-actions/configure-aws-credentials@v4
+#        with:
+#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+#          aws-region: ${{ secrets.AWS_REGION }}
+#
+#      - name: Create database backup
+#        run: |
+#          aws rds create-db-snapshot \
+#            --db-instance-identifier content-ai-prod \
+#            --db-snapshot-identifier "pre-deploy-$(date +%Y%m%d-%H%M%S)"
+#
+#      - name: Deploy with blue-green strategy
+#        run: |
+#          # Deploy to green environment
+#          aws ecs update-service \
+#            --cluster content-ai-production \
+#            --service backend-green \
+#            --force-new-deployment
+#          
+#          aws ecs update-service \
+#            --cluster content-ai-production \
+#            --service frontend-green \
+#            --force-new-deployment
+#
+#      - name: Wait for green deployment
+#        run: |
+#          aws ecs wait services-stable \
+#            --cluster content-ai-production \
+#            --services backend-green frontend-green
+#
+#      - name: Run production health checks
+#        run: |
+#          ./scripts/health-check.sh https://green.content-ai.example.com
+#
+#      - name: Switch traffic to green
+#        run: |
+#          # Update load balancer to point to green environment
+#          ./scripts/switch-traffic.sh green
+#
+#      - name: Final health check
+#        run: |
+#          sleep 30
+#          ./scripts/health-check.sh https://content-ai.example.com
+#
+#      - name: Cleanup old deployment
+#        run: |
+#          # Scale down blue environment
+#          aws ecs update-service \
+#            --cluster content-ai-production \
+#            --service backend-blue \
+#            --desired-count 0
+#          
+#          aws ecs update-service \
+#            --cluster content-ai-production \
+#            --service frontend-blue \
+#            --desired-count 0
+#
+#  # Job 9: Security Scanning
+#  security-scan:
+#    name: Security Scanning
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 15
+#    needs: [build-images]
+#    if: github.event_name == 'push' || github.event_name == 'release'
+#    
+#    steps:
+#      - name: Run Trivy vulnerability scanner
+#        uses: aquasecurity/trivy-action@master
+#        with:
+#          image-ref: ${{ needs.build-images.outputs.backend-image }}
+#          format: 'sarif'
+#          output: 'trivy-results.sarif'
+#
+#      - name: Upload Trivy scan results to GitHub Security tab
+#        uses: github/codeql-action/upload-sarif@v2
+#        with:
+#          sarif_file: 'trivy-results.sarif'
+#
+#  # Job 10: Notify
+#  notify:
+#    name: Notify Teams
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 5
+#    needs: [deploy-production]
+#    if: always() && (github.event_name == 'release' || failure())
+#    
+#    steps:
+#      - name: Notify Slack on success
+#        if: needs.deploy-production.result == 'success'
+#        uses: 8398a7/action-slack@v3
+#        with:
+#          status: success
+#          text: '🚀 Production deployment successful!'
+#          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+#
+#      - name: Notify Slack on failure
+#        if: failure()
+#        uses: 8398a7/action-slack@v3
+#        with:
+#          status: failure
+#          text: '❌ CI/CD Pipeline failed!'
+#          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+#
+#      - name: Create GitHub issue on failure
+#        if: failure() && github.ref == 'refs/heads/main'
+#        uses: actions/github-script@v7
+#        with:
+#          script: |
+#            github.rest.issues.create({
+#              owner: context.repo.owner,
+#              repo: context.repo.repo,
+#              title: 'CI/CD Pipeline Failure',
+#              body: `
+#                The CI/CD pipeline failed for commit ${context.sha}.
+#                
+#                **Run ID:** ${context.runId}
+#                **Workflow:** ${context.workflow}
+#                **Event:** ${context.eventName}
+#                
+#                Please investigate and resolve the issue.
+#              `,
+#              labels: ['bug', 'ci/cd', 'high-priority']
+#            })          

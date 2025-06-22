@@ -1,12 +1,10 @@
 // frontend/app/api/generate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('📤 Proxying generation request to FastAPI backend:', {
+    console.log('Proxying generation request to FastAPI backend:', {
       template: body.template,
       style_profile: body.style_profile,
       parameters: Object.keys(body.dynamic_parameters || {})
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
       timeout_seconds: body.timeout_seconds || 300
     };
 
-    const response = await fetch(`${BACKEND_URL}/api/generate`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -39,7 +37,7 @@ export async function POST(request: NextRequest) {
         errorData = { detail: errorText };
       }
       
-      console.error('❌ FastAPI backend error:', {
+      console.error('FastAPI backend error:', {
         status: response.status,
         statusText: response.statusText,
         error: errorData
@@ -56,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('✅ FastAPI backend response:', {
+    console.log('FastAPI backend response:', {
       success: data.success,
       request_id: data.data?.request_id,
       status: data.data?.status
@@ -68,7 +66,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('🚨 Proxy error:', error);
+    console.error('Proxy error:', error);
     return NextResponse.json(
       {
         success: false,
@@ -98,9 +96,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('📤 Checking generation status:', requestId);
+    console.log('Checking generation status:', requestId);
 
-    const response = await fetch(`${BACKEND_URL}/api/generate/${requestId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/generate?request_id=${requestId}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -161,7 +159,7 @@ export async function DELETE(request: NextRequest) {
 
     console.log('📤 Cancelling generation:', requestId);
 
-    const response = await fetch(`${BACKEND_URL}/api/generate/${requestId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/generate?request_id=${requestId}`, {
       method: 'DELETE',
       headers: {
         'Accept': 'application/json',

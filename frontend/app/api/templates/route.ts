@@ -2,8 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { APIResponse, BackendTemplate } from '@/types/api';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +11,7 @@ export async function GET() {
   try {
     console.log('📤 Fetching templates from FastAPI backend');
 
-    const response = await fetch(`${BACKEND_URL}/api/templates`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/templates`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -122,7 +120,7 @@ export async function POST(request: NextRequest) {
     // First try to create in backend
     const body = await request.json();
     
-    const backendResponse = await fetch(`${BACKEND_URL}/api/templates`, {
+    const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/templates`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

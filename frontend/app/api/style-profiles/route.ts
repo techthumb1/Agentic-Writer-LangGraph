@@ -2,8 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { APIResponse, BackendStyleProfile, PaginatedResponse } from '@/types/api';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
@@ -24,7 +22,7 @@ export async function GET(request: NextRequest) {
       category
     });
 
-    const response = await fetch(`${BACKEND_URL}/api/style-profiles?${backendParams}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/style-profiles?${backendParams}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -60,6 +58,14 @@ export async function GET(request: NextRequest) {
 
         // Load all style profiles from local files
         let profiles = await readYamlFromDir<LocalStyleProfile>('style-profiles');
+
+        // DEDUPLICATE BY NAME - this fixes the duplicate key error
+        const uniqueProfiles = profiles.filter((profile, index, arr) => 
+          arr.findIndex(p => p.name === profile.name) === index
+        );
+
+        console.log(`🔍 Loaded ${profiles.length} profiles, deduplicated to ${uniqueProfiles.length}`);
+        profiles = uniqueProfiles;
 
         // Apply search filter
         if (search) {
@@ -118,11 +124,19 @@ export async function GET(request: NextRequest) {
       success: data.success
     });
 
+    // Transform and deduplicate backend response too
+    const items = data.data?.items || [];
+    const uniqueItems = items.filter((profile: BackendStyleProfile, index: number, arr: BackendStyleProfile[]) => 
+      arr.findIndex(p => p.name === profile.name) === index
+    );
+
+    console.log(`🔍 Backend returned ${items.length} profiles, deduplicated to ${uniqueItems.length}`);
+
     // Transform backend response to match your frontend's expected format
     const transformedResponse: APIResponse<PaginatedResponse<BackendStyleProfile>> = {
       success: data.success,
       data: {
-        items: data.data?.items?.map((profile: BackendStyleProfile) => ({
+        items: uniqueItems.map((profile: BackendStyleProfile) => ({
           id: profile.id,
           name: profile.name,
           description: profile.description,
@@ -133,15 +147,17 @@ export async function GET(request: NextRequest) {
           system_prompt: profile.system_prompt,
           settings: profile.settings,
           filename: profile.filename
-        })) || [],
-        pagination: data.data?.pagination || {
-          page: 1,
-          limit: 100,
-          total: 0,
-          totalPages: 0,
-          hasNext: false,
-          hasPrev: false
-        }
+        })),
+        pagination: data.data?.pagination
+          ? { ...data.data.pagination, total: uniqueItems.length }
+          : {
+              page: 1,
+              limit: 100,
+              total: uniqueItems.length,
+              totalPages: Math.ceil(uniqueItems.length / parseInt(limit, 10)),
+              hasNext: false,
+              hasPrev: false
+            }
       }
     };
 

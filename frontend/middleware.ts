@@ -1,9 +1,7 @@
-// frontend/middleware.ts (Fixed ESLint error)
+// frontend/middleware.ts
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
-// Define public routes that don't require authentication
 
 // Define routes that should redirect to dashboard if authenticated
 const authRoutes = [
@@ -61,13 +59,9 @@ export default async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder files
+     * CRITICAL: Exclude /api/auth/* from middleware to prevent circular dependency
+     * NextAuth needs to handle its own routes without middleware interference
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.svg$).*)',
+    '/((?!api/auth|api|_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.svg$).*)',
   ],
 };

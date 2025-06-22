@@ -1,4 +1,3 @@
-// frontend/app/layout.tsx (Responsive version with professional header & footer)
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { auth } from "@/auth";
@@ -10,9 +9,31 @@ import { ThemeProvider } from "./theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
+export const APP_CONFIG = {
+  name: "Agentic Writer",
+  description: "AI-powered content generation platform.",
+  url: "https://your-app-url.com",
+};
+
 export const metadata: Metadata = {
-  title: "Content Generation Platform",
-  description: "AI-powered content creation platform.",
+  title: {
+    default: APP_CONFIG.name,
+    template: `%s | ${APP_CONFIG.name}`,
+  },
+  description: APP_CONFIG.description,
+  metadataBase: new URL(APP_CONFIG.url),
+  openGraph: {
+    title: APP_CONFIG.name,
+    description: APP_CONFIG.description,
+    url: APP_CONFIG.url,
+    siteName: APP_CONFIG.name,
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: APP_CONFIG.name,
+    description: APP_CONFIG.description,
+  },
 };
 
 export default async function RootLayout({
@@ -42,31 +63,35 @@ export default async function RootLayout({
                       href="/"
                       className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 hover:from-purple-300 hover:to-pink-500 transition-all duration-200"
                     >
-                      AI Content Studio
+                      {APP_CONFIG.name}
                     </Link>
                   </div>
 
                   {/* Desktop Navigation */}
                   <div className="hidden lg:block">
-                    {session?.user && (
-                      <div className="flex items-center space-x-1">
-                        {[
+                    <div className="flex items-center space-x-1">
+                      {[
+                        { href: "/", label: "Home" },
+                        { href: "/solutions", label: "Solutions" },
+                        { href: "/pricing", label: "Pricing" },
+                        { href: "/customers", label: "Customers" },
+                        ...(session?.user ? [
                           { href: "/dashboard", label: "Dashboard" },
                           { href: "/generate", label: "Generate" },
                           { href: "/content", label: "My Content" },
                           { href: "/templates", label: "Templates" },
                           { href: "/settings", label: "Settings" },
-                        ].map(({ href, label }) => (
-                          <Link
-                            key={href}
-                            href={href}
-                            className="px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ease-in-out transform hover:bg-gray-700 hover:text-purple-300 hover:scale-105 active:scale-95 active:bg-purple-700"
-                          >
-                            {label}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
+                        ] : []),
+                      ].map(({ href, label }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          className="px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ease-in-out transform hover:bg-gray-700 hover:text-purple-300 hover:scale-105 active:scale-95 active:bg-purple-700"
+                        >
+                          {label}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
 
                   {/* User Actions */}
@@ -121,10 +146,9 @@ export default async function RootLayout({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                   {/* Company Info */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white">AI Content Studio</h3>
+                    <h3 className="text-lg font-semibold text-white">{APP_CONFIG.name}</h3>
                     <p className="text-sm text-gray-400 leading-relaxed">
-                      Empowering creators with cutting-edge AI technology to generate high-quality, 
-                      customized content across various formats and styles.
+                      {APP_CONFIG.description}
                     </p>
                     <div className="flex space-x-4">
                       <a href="#" className="text-gray-400 hover:text-purple-400 transition-colors">
@@ -152,11 +176,11 @@ export default async function RootLayout({
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Product</h3>
                     <ul className="space-y-2">
+                      <li><Link href="/solutions" className="text-sm hover:text-purple-400 transition-colors">Solutions</Link></li>
+                      <li><Link href="/pricing" className="text-sm hover:text-purple-400 transition-colors">Pricing</Link></li>
+                      <li><Link href="/customers" className="text-sm hover:text-purple-400 transition-colors">Customers</Link></li>
                       <li><Link href="/generate" className="text-sm hover:text-purple-400 transition-colors">Content Generator</Link></li>
                       <li><Link href="/templates" className="text-sm hover:text-purple-400 transition-colors">Templates</Link></li>
-                      <li><Link href="/dashboard" className="text-sm hover:text-purple-400 transition-colors">Analytics</Link></li>
-                      <li><Link href="/api-access" className="text-sm hover:text-purple-400 transition-colors">API Access</Link></li>
-                      <li><Link href="/integrations" className="text-sm hover:text-purple-400 transition-colors">Integrations</Link></li>
                     </ul>
                   </div>
 
@@ -188,19 +212,18 @@ export default async function RootLayout({
                 {/* Bottom Section */}
                 <div className="mt-6 pt-4 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
                   <div className="text-sm text-gray-400">
-                    © 2025 AI Content Studio. All rights reserved.
+                    © {new Date().getFullYear()} {APP_CONFIG.name}. All rights reserved.
                   </div>
-                  <div className="mt-4 md:mt-0 flex space-x-6">
-                    <Link href="/privacy" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Privacy</Link>
-                    <Link href="/terms" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Terms</Link>
-                    <a href="#" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Cookies</a>
-                  </div>
-                </div>
-              </div>
-            </footer>
-          </Providers>
-        </ThemeProvider>
-      </body>
-    </html>
-  );
-}
+                                    <div className="mt-4 md:mt-0 flex space-x-6">
+                                      <Link href="/privacy" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Privacy</Link>
+                                      <Link href="/terms" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Terms</Link>
+                                    </div>
+                                  </div>
+                                </div>
+                              </footer>
+                            </Providers>
+                          </ThemeProvider>
+                        </body>
+                      </html>
+                    );
+                  }
