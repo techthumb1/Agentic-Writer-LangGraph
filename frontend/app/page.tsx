@@ -26,7 +26,7 @@ export default function HomePage() {
           </h1>
           
           <p className="text-xl md:text-2xl mb-12 leading-relaxed text-gray-300 max-w-3xl mx-auto">
-            Generate high-quality, customized content across various formats and styles — tailored to your specific needs.
+            Generate high-quality, customized content across various formats and styles, tailored to your specific needs.
             From technical articles to research summaries, let our advanced AI agents handle the heavy lifting while you focus on what matters most.
           </p>
         </header>
