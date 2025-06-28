@@ -35,9 +35,6 @@ export async function PUT(request: NextRequest) {
     //   }
     // });
 
-    console.log('Notification settings update:', { 
-      userId: session.user.id, 
-      settings: validSettings 
     });
 
     return NextResponse.json({ 

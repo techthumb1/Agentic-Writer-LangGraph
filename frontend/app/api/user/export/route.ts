@@ -69,10 +69,6 @@ export async function POST() {
     const timestamp = new Date().toISOString().split('T')[0];
     const filename = `user-data-export-${timestamp}.json`;
 
-    console.log('Data export requested:', { 
-      userId: session.user.id, 
-      email: session.user.email,
-      timestamp: new Date().toISOString()
     });
 
     return new NextResponse(jsonData, {
