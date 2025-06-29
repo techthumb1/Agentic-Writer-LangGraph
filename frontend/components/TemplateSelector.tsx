@@ -44,15 +44,48 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
   isLoadingTemplates,
   isLoadingStyleProfiles,
 }) => {
+  // Safely filter and validate templates
+  const validTemplates = React.useMemo(() => {
+    if (!Array.isArray(templates)) return [];
+    
+    return templates.filter((template): template is ContentTemplate => {
+      return (
+        template &&
+        typeof template === 'object' &&
+        typeof template.id === 'string' &&
+        template.id.length > 0
+      );
+    });
+  }, [templates]);
+
+  // Safely filter and validate style profiles
+  const validStyleProfiles = React.useMemo(() => {
+    if (!Array.isArray(styleProfiles)) return [];
+    
+    return styleProfiles.filter((profile): profile is StyleProfile => {
+      return (
+        profile &&
+        typeof profile === 'object' &&
+        typeof profile.id === 'string' &&
+        profile.id.length > 0 &&
+        !!(profile.name || profile.id)
+      );
+    });
+  }, [styleProfiles]);
+
   return (
     <>
       <FormField
         control={form.control}
-        name="templateId" // Changed from "template" to "templateId"
+        name="templateId"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Content Template</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
+            <Select 
+              onValueChange={field.onChange} 
+              value={field.value || ""}
+              disabled={isLoadingTemplates}
+            >
               <FormControl>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a content template" />
@@ -60,24 +93,20 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
               </FormControl>
               <SelectContent>
                 {isLoadingTemplates ? (
-                  <div className="px-4 py-2 text-muted-foreground">
+                  <div key="loading-templates" className="px-4 py-2 text-muted-foreground">
                     Loading templates...
                   </div>
-                ) : Array.isArray(templates) && templates.length > 0 ? (
-                  templates
-                    .filter(
-                      (template): template is ContentTemplate =>
-                        !!template?.id &&
-                        typeof template.id === "string" &&
-                        !!template.name
-                    )
-                    .map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {prettyName(template.name ?? template.id)}
+                ) : validTemplates.length > 0 ? (
+                  validTemplates.map((template) => (
+                    <SelectItem 
+                      key={`template-${template.id}`} 
+                      value={template.id}
+                    >
+                      {prettyName(template.title || template.id)}
                     </SelectItem>
-                    ))
+                  ))
                 ) : (
-                  <div className="px-4 py-2 text-red-500">
+                  <div key="no-templates" className="px-4 py-2 text-red-500">
                     No templates available
                   </div>
                 )}
@@ -93,11 +122,15 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
 
       <FormField
         control={form.control}
-        name="styleProfileId" // Changed from "style_profile" to "styleProfileId"
+        name="styleProfileId"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Style Profile</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
+            <Select 
+              onValueChange={field.onChange} 
+              value={field.value || ""}
+              disabled={isLoadingStyleProfiles}
+            >
               <FormControl>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a style profile" />
@@ -105,24 +138,20 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
               </FormControl>
               <SelectContent>
                 {isLoadingStyleProfiles ? (
-                  <div className="px-4 py-2 text-muted-foreground">
+                  <div key="loading-profiles" className="px-4 py-2 text-muted-foreground">
                     Loading styles...
                   </div>
-                ) : Array.isArray(styleProfiles) && styleProfiles.length > 0 ? (
-                  styleProfiles
-                    .filter(
-                      (profile): profile is StyleProfile =>
-                        !!profile?.id &&
-                        typeof profile.id === "string" &&
-                        !!profile.name
-                    )
-                    .map((profile) => (
-                      <SelectItem key={profile.id} value={profile.id}>
-                        {profile.name}
-                      </SelectItem>
-                    ))
+                ) : validStyleProfiles.length > 0 ? (
+                  validStyleProfiles.map((profile) => (
+                    <SelectItem 
+                      key={`profile-${profile.id}`} 
+                      value={profile.id}
+                    >
+                      {profile.name || profile.id}
+                    </SelectItem>
+                  ))
                 ) : (
-                  <div className="px-4 py-2 text-red-500">
+                  <div key="no-profiles" className="px-4 py-2 text-red-500">
                     No style profiles available
                   </div>
                 )}

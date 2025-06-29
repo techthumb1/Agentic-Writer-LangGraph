@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from 'next/link';
 import { 
   Menu, 
@@ -41,12 +41,10 @@ interface MainNavigationItem {
 const NavigationClient = () => {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProductsOpen, setIsProductsOpen] = useState(false);
   const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
-  const [clickedButton, setClickedButton] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   // Your existing navigation items with icons
@@ -90,22 +88,9 @@ const NavigationClient = () => {
     setIsClient(true);
   }, []);
 
-  const toggleDarkMode = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
 
   // Your existing click handler logic
-  const handleMainNavClick = (href: string) => {
-    console.log('Button clicked:', href); // Debug log
-    setClickedButton(href);
-    
-    // Navigate after showing feedback
-    setTimeout(() => {
-      router.push(href);
-      setClickedButton(null);
-    }, 150);
-  };
-
+  // (removed unused handleMainNavClick)
   // Check if user is on app pages (dashboard, generate, etc.)
   const isAppPage = mainNavigationItems.some(item => pathname === item.href);
 
@@ -137,36 +122,29 @@ const NavigationClient = () => {
           {/* Navigation - Show different nav based on page type */}
           <div className="hidden md:flex items-center space-x-4">
             {isAppPage ? (
-              /* Your existing app navigation */
-              <div className="flex space-x-2">
-                {mainNavigationItems.map(({ href, label, icon: Icon }) => {
-                  const isActive = pathname === href;
-                  const isClicked = clickedButton === href;
-                  
-                  return (
-                    <button
-                      key={href}
-                      onClick={() => handleMainNavClick(href)}
-                      className={`
-                        flex items-center px-4 py-2 text-sm font-medium rounded-md transition-all duration-150 ease-in-out transform
-                        ${isActive 
-                          ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105" 
-                          : isClicked
-                            ? "bg-purple-700 text-white scale-95 shadow-inner"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-purple-600 dark:hover:text-purple-400 hover:scale-105"
-                        }
-                        ${isClicked ? 'ring-2 ring-purple-400 ring-opacity-50' : ''}
-                      `}
-                    >
-                      {isClicked && (
-                        <span className="inline-block w-2 h-2 bg-white rounded-full animate-pulse mr-2" />
-                      )}
-                      {Icon && <Icon className="w-4 h-4 mr-2" />}
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
+            /* Fixed app navigation with Link components */
+            <div className="flex space-x-2">
+              {mainNavigationItems.map(({ href, label, icon: Icon }) => {
+                const isActive = pathname === href;
+
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`
+                      flex items-center px-4 py-2 text-sm font-medium rounded-md transition-all duration-200
+                      ${isActive 
+                        ? "bg-primary text-primary-foreground shadow-lg" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                      }
+                    `}
+                  >
+                    {Icon && <Icon className="w-4 h-4 mr-2" />}
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
             ) : (
               /* Public navigation with dropdowns */
               <div className="flex items-center space-x-8">
@@ -230,16 +208,12 @@ const NavigationClient = () => {
           <div className="flex items-center space-x-4">
             {/* Dark mode toggle */}
             <button
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
-              aria-label="Toggle dark mode"
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </button>
+            onClick={() => setTheme(theme === 'light' ? 'agentwrite-pro' : 'light')}
+            className="p-2 rounded-lg bg-accent text-accent-foreground hover:bg-accent/80 transition-all duration-200"
+            aria-label="Toggle theme"
+          >
+            {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          </button>
 
             {/* Auth buttons - only show on public pages */}
             {!isAppPage && (
@@ -286,23 +260,21 @@ const NavigationClient = () => {
                     const isActive = pathname === href;
                     
                     return (
-                      <button
+                      <Link
                         key={href}
-                        onClick={() => {
-                          handleMainNavClick(href);
-                          setIsMobileMenuOpen(false);
-                        }}
+                        href={href}
                         className={`
                           flex items-center w-full px-3 py-2 text-base font-medium rounded-lg transition-colors duration-200
                           ${isActive 
-                            ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white" 
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            ? "bg-primary text-primary-foreground" 
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent"
                           }
                         `}
+                        onClick={() => setIsMobileMenuOpen(false)}
                       >
                         {Icon && <Icon className="mr-3 h-5 w-5" />}
                         {label}
-                      </button>
+                      </Link>
                     );
                   })}
                 </>
