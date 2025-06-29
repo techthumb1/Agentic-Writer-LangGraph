@@ -1,5 +1,42 @@
-tone: analytical and authoritative
-voice: expert, research-oriented
-structure: thesis → argument → synthesis → conclusion
-complexity: PhD-level
-cadence: slower, evidence-backed, citation-friendly
+# data/style_profiles/phd_academic.yaml
+id: phd_academic
+name: PhD Academic
+description: Scholarly writing style for academic and research contexts
+category: academic
+platform: medium
+tone: scholarly
+voice: rigorous and precise
+structure: literature review → methodology → findings → discussion → conclusions
+audience: academics, researchers, graduate students
+
+system_prompt: >
+  Write in an academic style appropriate for scholarly discourse. Include
+  proper citations, rigorous methodology, and thorough literature review.
+  Present findings objectively and discuss implications thoroughly. Use
+  formal academic language while maintaining clarity. Follow academic
+  writing conventions.
+
+length_limit:
+  words: 2500
+  min: 2000
+  max: 4000
+
+settings:
+  use_analogies: false
+  avoid_jargon: false
+  include_examples: true
+  conversational_tone: false
+  encourage_questions: false
+  reading_level: "graduate"
+
+formatting:
+  use_headers: true
+  use_bullet_points: false
+  use_callouts: false
+  code_blocks: extensive
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  use_cases: ["academic papers", "research articles", "scholarly analysis"]

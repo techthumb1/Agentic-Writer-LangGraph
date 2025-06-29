@@ -1,11 +1,41 @@
-name: startup_trends_brief
+# data/style_profiles/startup_trends_brief.yaml
+id: startup_trends_brief
+name: Startup Trends Brief
+description: Concise analysis of startup ecosystem trends
+category: business
 platform: substack
-tone: sharp
-voice: trend-watcher and strategic
-structure: trend → data point → implication → startup example → your take
+tone: business_insightful
+voice: informed and practical
+structure: trend identification → data analysis → implications → opportunities
+audience: entrepreneurs, investors, startup ecosystem participants
+
 system_prompt: >
-  Write like a startup analyst identifying emerging trends in AI and tech. Blend sharp commentary with concrete data and startup examples. End with an insight or prediction.
+  Provide concise, data-driven analysis of startup trends with focus on
+  actionable insights. Include relevant metrics, funding data, and market
+  signals. Highlight opportunities and implications for entrepreneurs and
+  investors. Keep analysis practical and forward-looking.
+
 length_limit:
-  words: 800
-  min: 600
-  max: 1000
+  words: 1000
+  min: 800
+  max: 1200
+
+settings:
+  use_analogies: false
+  avoid_jargon: false
+  include_examples: true
+  conversational_tone: false
+  encourage_questions: false
+  reading_level: "professional"
+
+formatting:
+  use_headers: true
+  use_bullet_points: true
+  use_callouts: true
+  code_blocks: none
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  use_cases: ["trend analysis", "market intelligence", "startup insights"]
