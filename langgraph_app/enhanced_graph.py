@@ -11,7 +11,7 @@ import json
 from datetime import datetime, timedelta
 
 from langgraph import StateGraph, END
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint import SqliteSaver
 from langgraph.prebuilt import ToolExecutor, ToolInvocation
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
@@ -189,77 +189,139 @@ class EnhancedResearchAgent:
                 await asyncio.sleep(2 ** attempt)  # Exponential backoff
 
 class EnhancedWriterAgent:
-    """Writer agent with quality checks and content validation"""
+    """Enhanced writer agent integrating InnovativeWriterAgent"""
     
-    def __init__(self, llm, quality_threshold=0.8):
-        self.llm = llm
-        self.quality_threshold = quality_threshold
+    def __init__(self, llm=None):
+        # Import and initialize the innovative writer
+        from langgraph_app.agents.writer import InnovativeWriterAgent
+        self.innovative_writer = InnovativeWriterAgent()
         self.metrics = MetricsCollector()
     
     async def execute(self, state: AgentState) -> AgentState:
-        """Execute writing with quality validation"""
-        logger.info("Starting writer agent", request_id=state.request_id)
+        """Execute writing using InnovativeWriterAgent"""
+        logger.info("Starting enhanced writer agent", request_id=state.request_id)
         self.metrics.start_timer("writing_duration")
         
         try:
             state.status = ProcessingStatus.PROCESSING
             state.progress = 0.4
             
-            # Generate outline first
-            outline = await self._generate_outline(state)
-            state.outline = outline
-            state.progress = 0.5
+            # Convert AgentState to dictionary for InnovativeWriterAgent
+            writer_state = {
+                "topic": state.template_config.get("topic", "Content Generation"),
+                "audience": state.style_config.get("audience", "general"),
+                "platform": state.template_config.get("platform", "blog"),
+                "style_profile": state.style_config.get("profile_name", "jason"),
+                "dynamic_parameters": {
+                    **state.template_config,
+                    **state.style_config
+                },
+                "research": state.research_data,
+                "use_mock": False
+            }
             
-            # Generate content sections
-            content_sections = []
-            sections = outline.get("sections", [])
+            # Generate content using innovative writer
+            result = self.innovative_writer.generate_adaptive_content(writer_state)
             
-            for i, section in enumerate(sections):
-                try:
-                    section_content = await self._generate_section(section, state)
-                    content_sections.append(section_content)
-                    
-                    # Update progress
-                    progress = 0.5 + (0.2 * (i + 1) / len(sections))
-                    state.progress = progress
-                    
-                except Exception as e:
-                    logger.error("Section generation failed", section=section, error=str(e))
-                    state.warnings.append(f"Failed to generate section: {section}")
-                    continue
+            # Extract results
+            state.draft_content = result.get("draft", "")
+            state.outline = result.get("metadata", {})
+            state.progress = 0.7
             
-            # Combine sections
-            full_content = self._combine_sections(content_sections, state)
-            
-            # Quality check
-            quality_score = await self._assess_quality(full_content)
-            
-            if quality_score >= self.quality_threshold:
-                state.draft_content = full_content
-                state.progress = 0.7
-            else:
-                # Attempt to improve content
-                improved_content = await self._improve_content(full_content, state)
-                state.draft_content = improved_content
-                state.warnings.append(f"Content quality was {quality_score:.2f}, improved automatically")
-                state.progress = 0.7
+            # Add innovation metadata
+            innovation_report = result.get("innovation_report", {})
+            state.metadata.update({
+                "innovation_report": innovation_report,
+                "content_metadata": result.get("metadata", {}),
+                "experimental_techniques": innovation_report.get("techniques_used", []),
+                "creative_risk_score": innovation_report.get("creative_risk_score", 0.0)
+            })
             
             # Add metrics
             duration = self.metrics.end_timer("writing_duration")
             state.metrics["writing_duration"] = duration
-            state.metrics["content_quality"] = quality_score
             state.metrics["word_count"] = len(state.draft_content.split())
+            state.metrics["innovation_score"] = innovation_report.get("creative_risk_score", 0.0)
             
-            logger.info("Writing completed", 
+            logger.info("Enhanced writing completed", 
                        request_id=state.request_id,
                        duration=duration,
-                       quality_score=quality_score,
-                       word_count=len(state.draft_content.split()))
+                       word_count=state.metrics["word_count"],
+                       innovation_score=state.metrics["innovation_score"])
             
             return state
             
         except Exception as e:
-            logger.error("Writer agent failed", error=str(e), request_id=state.request_id)
+            logger.error("Enhanced writer agent failed", error=str(e), request_id=state.request_id)
+            state.errors.append(f"Writing failed: {str(e)}")
+            state.status = ProcessingStatus.FAILED
+            return state
+
+class EnterpriseWriterAgent:
+    """Enterprise writer agent integrating InnovativeWriterAgent"""
+    
+    def __init__(self, llm=None):
+        # Import and initialize the innovative writer
+        from langgraph_app.agents.writer import InnovativeWriterAgent
+        self.innovative_writer = InnovativeWriterAgent()
+        self.metrics = MetricsCollector()
+    
+    async def execute(self, state: AgentState) -> AgentState:
+        """Execute writing using InnovativeWriterAgent"""
+        logger.info("Starting enterprise writer agent", request_id=state.request_id)
+        self.metrics.start_timer("writing_duration")
+        
+        try:
+            state.status = ProcessingStatus.PROCESSING
+            state.progress = 0.4
+            
+            # Convert AgentState to dictionary for InnovativeWriterAgent
+            writer_state = {
+                "topic": state.template_config.get("topic", "Content Generation"),
+                "audience": state.style_config.get("audience", "general"),
+                "platform": state.template_config.get("platform", "blog"),
+                "style_profile": state.style_config.get("profile_name", "jason"),
+                "dynamic_parameters": {
+                    **state.template_config,
+                    **state.style_config
+                },
+                "research": state.research_data,
+                "use_mock": False
+            }
+            
+            # Generate content using innovative writer
+            result = self.innovative_writer.generate_adaptive_content(writer_state)
+            
+            # Extract results
+            state.draft_content = result.get("draft", "")
+            state.outline = result.get("metadata", {})
+            state.progress = 0.7
+            
+            # Add innovation metadata
+            innovation_report = result.get("innovation_report", {})
+            state.metadata.update({
+                "innovation_report": innovation_report,
+                "content_metadata": result.get("metadata", {}),
+                "experimental_techniques": innovation_report.get("techniques_used", []),
+                "creative_risk_score": innovation_report.get("creative_risk_score", 0.0)
+            })
+            
+            # Add metrics
+            duration = self.metrics.end_timer("writing_duration")
+            state.metrics["writing_duration"] = duration
+            state.metrics["word_count"] = len(state.draft_content.split())
+            state.metrics["innovation_score"] = innovation_report.get("creative_risk_score", 0.0)
+            
+            logger.info("Enterprise writing completed", 
+                       request_id=state.request_id,
+                       duration=duration,
+                       word_count=state.metrics["word_count"],
+                       innovation_score=state.metrics["innovation_score"])
+            
+            return state
+            
+        except Exception as e:
+            logger.error("Enterprise writer agent failed", error=str(e), request_id=state.request_id)
             state.errors.append(f"Writing failed: {str(e)}")
             state.status = ProcessingStatus.FAILED
             return state

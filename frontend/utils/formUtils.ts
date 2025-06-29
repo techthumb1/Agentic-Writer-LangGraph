@@ -1,18 +1,20 @@
-// utils/formUtils.ts
-import { TemplateParameter } from '@/types/content';
-
-export function getDefaultParameterValues(params: TemplateParameter[]): Record<string, string | number | boolean> {
+// utils/formUtils.ts - Fixed version
+export function getDefaultValues(parameters: Array<{
+  name: string;
+  default?: string | number | boolean | string[];
+}>): Record<string, string | number | boolean> {
   const result: Record<string, string | number | boolean> = {};
-  params.forEach(param => {
+  
+  parameters.forEach((param) => {
     if (param.default !== undefined) {
-      result[param.name] = param.default;
-    } else if (param.type === 'number') {
-      result[param.name] = 0;
-    } else if (param.type === 'checkbox') {
-      result[param.name] = false;
-    } else {
-      result[param.name] = '';
+      // Handle string array defaults by converting to comma-separated string
+      if (Array.isArray(param.default)) {
+        result[param.name] = param.default.join(', ');
+      } else {
+        result[param.name] = param.default;
+      }
     }
   });
+  
   return result;
 }

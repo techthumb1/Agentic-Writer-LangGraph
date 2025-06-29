@@ -656,3 +656,116 @@ async def example_usage():
 
 if __name__ == "__main__":
     asyncio.run(example_usage())
+# Add this to the END of your existing langgraph_app/cache_system.py file
+
+import redis
+import json
+import logging
+from typing import Any, Optional, Dict
+from datetime import datetime, timedelta
+from enum import Enum
+import os
+
+logger = logging.getLogger(__name__)
+
+class CacheLevel(Enum):
+    """Cache level priorities"""
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    TEMPORARY = "temporary"
+
+class CacheSystem:
+    """Basic cache system for compatibility"""
+    
+    def __init__(self, redis_url: str = None):
+        self.redis_url = redis_url or os.getenv('REDIS_URL', 'redis://localhost:6379')
+        self.redis_client = None
+        self.is_connected = False
+        self._initialize_connection()
+    
+    def _initialize_connection(self):
+        """Initialize Redis connection"""
+        try:
+            self.redis_client = redis.from_url(self.redis_url, decode_responses=True)
+            self.redis_client.ping()
+            self.is_connected = True
+            logger.info("✅ Redis cache system connected")
+        except Exception as e:
+            logger.warning(f"⚠️ Redis connection failed: {e}")
+            self.is_connected = False
+    
+    def get(self, namespace: str, key: str, **kwargs) -> Any:
+        """Get cached value"""
+        if not self.is_connected:
+            return None
+        
+        try:
+            cache_key = f"{namespace}:{key}"
+            data = self.redis_client.get(cache_key)
+            if data:
+                return json.loads(data)
+            return None
+        except Exception as e:
+            logger.error(f"Cache get failed: {e}")
+            return None
+    
+    def set(self, namespace: str, key: str, value: Any, 
+            cache_level: CacheLevel = CacheLevel.MEDIUM, **kwargs) -> bool:
+        """Set cached value"""
+        if not self.is_connected:
+            return False
+        
+        try:
+            cache_key = f"{namespace}:{key}"
+            data = json.dumps(value, default=str)
+            
+            # Simple TTL mapping
+            ttl_map = {
+                CacheLevel.CRITICAL: None,
+                CacheLevel.HIGH: 86400,  # 24 hours
+                CacheLevel.MEDIUM: 21600,  # 6 hours
+                CacheLevel.LOW: 3600,  # 1 hour
+                CacheLevel.TEMPORARY: 300  # 5 minutes
+            }
+            
+            ttl = ttl_map.get(cache_level)
+            if ttl:
+                self.redis_client.setex(cache_key, ttl, data)
+            else:
+                self.redis_client.set(cache_key, data)
+            
+            return True
+        except Exception as e:
+            logger.error(f"Cache set failed: {e}")
+            return False
+    
+    def delete(self, namespace: str, key: str, **kwargs) -> bool:
+        """Delete cached value"""
+        if not self.is_connected:
+            return False
+        
+        try:
+            cache_key = f"{namespace}:{key}"
+            return bool(self.redis_client.delete(cache_key))
+        except Exception as e:
+            logger.error(f"Cache delete failed: {e}")
+            return False
+    
+    def health_check(self) -> Dict[str, Any]:
+        """Health check"""
+        try:
+            if self.is_connected:
+                self.redis_client.ping()
+                return {"status": "healthy", "connected": True}
+            else:
+                return {"status": "unhealthy", "connected": False}
+        except Exception as e:
+            return {"status": "unhealthy", "connected": False, "error": str(e)}
+
+# Create global instance
+cache_system = CacheSystem()
+
+# Create the __all__ list to export the classes
+__all__ = ['CacheSystem', 'CacheLevel', 'cache_system']

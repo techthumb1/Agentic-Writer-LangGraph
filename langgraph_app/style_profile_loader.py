@@ -70,29 +70,42 @@ class StyleProfileLoader:
     
     def _load_profiles_from_directory(self, directory: Path):
         """Load all YAML profiles from the specified directory"""
-        
+
         yaml_files = list(directory.glob("*.yaml")) + list(directory.glob("*.yml"))
         loaded_count = 0
-        
+
         for yaml_file in yaml_files:
             try:
                 with open(yaml_file, 'r', encoding='utf-8') as f:
-                    profile_data = yaml.safe_load(f)
-                
-                if profile_data is None:
-                    logger.warning(f"Empty YAML file: {yaml_file.name}")
-                    continue
-                
+                    # Handle multiple documents in YAML files
+                    documents = list(yaml.safe_load_all(f))
+
+                    if not documents:
+                        logger.warning(f"Empty YAML file: {yaml_file.name}")
+                        continue
+                    
+                    # Use the first document if multiple exist
+                    profile_data = documents[0]
+
+                    if profile_data is None:
+                        logger.warning(f"Empty YAML document in file: {yaml_file.name}")
+                        continue
+                    
+                    # If there are multiple documents, log a warning
+                    if len(documents) > 1:
+                        logger.warning(f"Multiple documents found in {yaml_file.name}, using first document only")
+
                 # Use filename without extension as profile key
                 profile_name = yaml_file.stem
                 self.profiles_cache[profile_name] = profile_data
                 loaded_count += 1
-                
+
                 logger.debug(f"✅ Loaded profile: {profile_name}")
-                
+
+            except yaml.YAMLError as e:
+                logger.error(f"❌ YAML parsing error in {yaml_file.name}: {e}")
             except Exception as e:
-                logger.error(f"❌ Error loading {yaml_file.name}: {e}")
-        
+                logger.error(f"❌ Error loading profile {yaml_file.name}: {e}")
         logger.info(f"Successfully loaded {loaded_count} style profiles")
         logger.info(f"Available profiles: {sorted(self.profiles_cache.keys())}")
     
@@ -125,6 +138,21 @@ class StyleProfileLoader:
         self.profiles_cache.clear()
         self.profiles_path = None
         self._find_and_load_profiles()
+
+    # Add this method to the StyleProfileLoader class
+    def load_template(self, template_id: str) -> Optional[Dict[str, Any]]:
+        """Load a content template (for backward compatibility)"""
+        # For now, treat templates the same as profiles
+        # In the future, you might want separate template loading
+        return self.get_profile(template_id)
+    
+    async def load_template_async(self, template_id: str) -> Optional[Dict[str, Any]]:
+        """Async version of load_template"""
+        return self.load_template(template_id)
+    
+    async def load_style_profile_async(self, profile_name: str) -> Optional[Dict[str, Any]]:
+        """Async version of get_profile"""
+        return self.get_profile(profile_name)
 
 # Create global instance
 style_profile_loader = StyleProfileLoader()

@@ -14,7 +14,7 @@ import json
 import uuid
 
 # Import our enhanced systems
-from .model_registry import EnhancedModelRegistry, ModelProvider, ModelTier
+from .enhanced_model_registry import EnhancedModelRegistry, ModelProvider, ModelTier
 from .cache_system import ContentCacheManager, create_cache_manager
 from .job_queue import JobManager, create_job_manager, JobPriority, task_registry
 from .enhanced_orchestration import WorkflowOrchestrator, create_enhanced_orchestrator

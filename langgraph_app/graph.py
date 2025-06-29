@@ -10,8 +10,8 @@ from langgraph_app.agents.editor import editor
 from langgraph_app.agents.code_agent import code_agent
 from langgraph_app.agents.formatter import formatter
 from langgraph_app.agents.image_agent import image_agent
-from langgraph_app.agents.seo_agent import seo_agent
-from langgraph_app.agents.publisher import publisher
+from langgraph_app.agents.enhanced_seo_agent import seo_agent
+from langgraph_app.agents.enhanced_publisher import publisher
 
 class GraphState(TypedDict):
     topic: str

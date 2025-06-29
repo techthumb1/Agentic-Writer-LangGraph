@@ -1,468 +1,798 @@
-# Location: langgraph_app/enhanced_orchestration.py
-"""
-Enhanced Multi-Agent Orchestration System
-Builds on existing LangGraph agents with improved coordination, state management, and reasoning
-"""
-
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any, Callable, Union, TypedDict
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any, Callable, TypedDict
 from datetime import datetime
-from enum import Enum
-import json
 import uuid
+from pathlib import Path
+import time
 
-from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.prebuilt import ToolNode
+from .enhanced_model_registry import EnhancedModelRegistry
+from .style_profile_loader import StyleProfileLoader
+from .cache_system import ContentCacheManager
+from .job_queue import JobQueue, Job
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Import enhanced agents
+from .agents.enhanced_planner import IntelligentPlannerAgent
+from .agents.enhanced_researcher import IntelligentResearcherAgent  
+from .agents.enhanced_editor import IntelligentEditorAgent
+from .agents.enhanced_seo_agent import IntelligentSEOAgent
+from .agents.enhanced_publisher import IntelligentPublisherAgent
+from .agents.writer import InnovativeWriterAgent
+#from .agents.enhanced_image_agent import IntelligentImageAgent
+
+
+
 logger = logging.getLogger(__name__)
 
-class AgentRole(Enum):
-    """Define specialized agent roles"""
-    PLANNER = "planner"
-    RESEARCHER = "researcher"
-    WRITER = "writer"
-    EDITOR = "editor"
-    FACT_CHECKER = "fact_checker"
-    SEO_OPTIMIZER = "seo_optimizer"
-    FORMATTER = "formatter"
-    PUBLISHER = "publisher"
-    QUALITY_ASSESSOR = "quality_assessor"
-    COORDINATOR = "coordinator"
-
-class TaskPriority(Enum):
-    """Task execution priority"""
-    LOW = 1
-    NORMAL = 2
-    HIGH = 3
-    CRITICAL = 4
-
-class AgentStatus(Enum):
-    """Agent execution status"""
-    IDLE = "idle"
-    WORKING = "working"
-    WAITING = "waiting"
-    COMPLETED = "completed"
-    ERROR = "error"
-
-@dataclass
-class AgentCapability:
-    """Define agent capabilities and constraints"""
-    role: AgentRole
-    max_concurrent_tasks: int = 1
-    required_inputs: List[str] = field(default_factory=list)
-    output_format: str = "text"
-    dependencies: List[AgentRole] = field(default_factory=list)
-    timeout_seconds: int = 300
-    retry_count: int = 3
-
-@dataclass
-class TaskContext:
-    """Context passed between agents"""
-    task_id: str
-    content_type: str
-    template_id: str
-    style_profile: str
-    parameters: Dict[str, Any]
-    current_step: str
-    progress: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.now)
-
 class AgentState(TypedDict):
-    """Enhanced state for agent workflow"""
-    # Core content data
+    """Complete state for enterprise workflow"""
+    # Input data
     template_id: str
     style_profile: str
     parameters: Dict[str, Any]
+    generation_id: str
+    
+    # Content progression
     content: str
-    
-    # Workflow management
-    task_context: TaskContext
-    current_agent: str
-    next_agents: List[str]
-    completed_agents: List[str]
-    failed_agents: List[str]
-    
-    # Agent outputs
-    research_data: Dict[str, Any]
     outline: Dict[str, Any]
+    research_data: Dict[str, Any]
     draft_content: str
     edited_content: str
     seo_metadata: Dict[str, Any]
-    quality_score: Dict[str, Any]
     
-    # Error handling
-    errors: List[Dict[str, Any]]
-    retry_count: int
-    
-    # Progress tracking
+    # Workflow management
+    current_agent: str
+    completed_agents: List[str]
+    failed_agents: List[str]
     overall_progress: float
     step_progress: Dict[str, float]
     
-    # Metadata
-    started_at: datetime
-    updated_at: datetime
-    workflow_config: Dict[str, Any]
-
-class EnhancedAgent:
-    """Base class for enhanced agents with reasoning capabilities"""
+    # System data
+    template_data: Dict[str, Any]
+    style_data: Dict[str, Any]
+    model_config: Dict[str, Any]
     
-    def __init__(self, role: AgentRole, capabilities: AgentCapability, 
-                 model_registry, cache_manager=None):
-        self.role = role
-        self.capabilities = capabilities
-        self.model_registry = model_registry
-        self.cache_manager = cache_manager
-        self.status = AgentStatus.IDLE
-        self.current_tasks: List[str] = []
-        
-    async def execute(self, state: AgentState) -> AgentState:
-        """Execute agent task with enhanced error handling and reasoning"""
-        
-        self.status = AgentStatus.WORKING
-        task_context = state["task_context"]
-        
+    # Results
+    final_content: str
+    metadata: Dict[str, Any]
+    quality_score: Dict[str, Any]
+    errors: List[Dict[str, Any]]
+
+class EnhancedOrchestrator:
+    """Enterprise orchestrator with real agent integration"""
+
+    def __init__(self):
+        self.model_registry = EnhancedModelRegistry()
+        self.style_loader = StyleProfileLoader()
+        self.cache_manager: Optional[ContentCacheManager] = None
+        self.job_queue: Optional[JobQueue] = None
+
+        # Initialize workflow graph
+        self.workflow = self._create_workflow()
+
+        # Enhanced agent instances
+        self.agents = {
+            "planner": IntelligentPlannerAgent(),
+            "researcher": IntelligentResearcherAgent(),
+            "writer": InnovativeWriterAgent(),
+            "editor": IntelligentEditorAgent(),
+            "seo_optimizer": IntelligentSEOAgent(),
+            "publisher": IntelligentPublisherAgent()
+        }
+
+    def _create_workflow(self):
+        """Create the LangGraph workflow with enhanced agents"""
+        from langgraph.graph import StateGraph, END
+
+        # Import enhanced agents only
+        available_agents = {}
+
+        # Try to import each enhanced agent individually
         try:
-            logger.info(f"{self.role.value} agent starting task {task_context.task_id}")
-            
-            # Check prerequisites
-            if not self._check_prerequisites(state):
-                raise Exception(f"Prerequisites not met for {self.role.value}")
-            
-            # Execute agent-specific logic with reasoning
-            result = await self._execute_with_reasoning(state)
-            
-            # Update state
-            state = self._update_state(state, result)
-            
-            # Mark completion
-            state["completed_agents"].append(self.role.value)
-            self.status = AgentStatus.COMPLETED
-            
-            logger.info(f"{self.role.value} agent completed task {task_context.task_id}")
-            return state
-            
+            from .agents.enhanced_planner import planner
+            available_agents['planner'] = planner
+            logger.debug("✅ Enhanced planner imported")
+        except ImportError as e:
+            logger.warning(f"Enhanced planner not available: {e}")
+
+        try:
+            from .agents.enhanced_researcher import researcher
+            available_agents['researcher'] = researcher
+            logger.debug("✅ Enhanced researcher imported")
+        except ImportError as e:
+            logger.warning(f"Enhanced researcher not available: {e}")
+
+        try:
+            from .agents.writer import writer  # ✅ RunnableLambda function
+            available_agents['writer'] = writer
+            logger.debug("✅ Enhanced writer imported")
+        except ImportError as e:
+            logger.warning(f"Enhanced writer not available: {e}")
+
+        try:
+            from .agents.enhanced_editor import editor
+            available_agents['editor'] = editor
+            logger.debug("✅ Enhanced editor imported")
+        except ImportError as e:
+            logger.warning(f"Enhanced editor not available: {e}")
+
+        try:
+            from .agents.enhanced_seo_agent import seo_agent
+            available_agents['seo_agent'] = seo_agent
+            logger.debug("✅ Enhanced SEO agent imported")
+        except ImportError as e:
+            logger.warning(f"Enhanced SEO agent not available: {e}")
+
+        try:
+            from .agents.enhanced_publisher import publisher
+            available_agents['publisher'] = publisher
+            logger.debug("✅ Enhanced publisher imported")
+        except ImportError as e:
+            logger.warning(f"Enhanced publisher not available: {e}")
+
+        try:
+            from .agents.enhanced_image_agent import image_agent
+            available_agents['image_agent'] = image_agent
+            logger.debug("✅ Enhanced image agent imported")
+        except ImportError as e:
+            logger.debug(f"Enhanced image agent not available: {e}")
+
+        # Check if we have minimum required agents
+        required_agents = ['planner', 'writer']
+        missing_required = [agent for agent in required_agents if agent not in available_agents]
+
+        if missing_required:
+            logger.error(f"Missing required enhanced agents: {missing_required}")
+            # Create minimal workflow that just returns input
+            workflow = StateGraph(dict)
+            workflow.add_node("minimal", lambda state: {
+                **state,
+                "draft": f"Error: Missing required agents: {missing_required}",
+                "status": "error"
+            })
+            workflow.set_entry_point("minimal")
+            workflow.set_finish_point("minimal")
+            return workflow.compile()
+
+        # Create the workflow graph
+        workflow = StateGraph(dict)
+
+        # Add available agents as nodes
+        for agent_name, agent_func in available_agents.items():
+            workflow.add_node(agent_name, agent_func)
+            logger.debug(f"Added {agent_name} to workflow")
+
+        # Build workflow path based on available agents
+        workflow_path = []
+
+        # Define optimal agent sequence
+        preferred_sequence = [
+            'planner', 'researcher', 'writer', 'editor', 
+            'seo_agent', 'image_agent', 'publisher'
+        ]
+
+        # Build path from available agents in preferred order
+        for agent_name in preferred_sequence:
+            if agent_name in available_agents:
+                workflow_path.append(agent_name)
+
+        if not workflow_path:
+            logger.error("No agents available for workflow")
+            # Return minimal workflow
+            workflow.add_node("error", lambda state: {
+                **state, 
+                "error": "No enhanced agents available",
+                "status": "failed"
+            })
+            workflow.set_entry_point("error")
+            workflow.set_finish_point("error")
+            return workflow.compile()
+
+        # Set entry point
+        workflow.set_entry_point(workflow_path[0])
+
+        # Add edges between consecutive agents
+        for i in range(len(workflow_path) - 1):
+            current_agent = workflow_path[i]
+            next_agent = workflow_path[i + 1]
+            workflow.add_edge(current_agent, next_agent)
+            logger.debug(f"Added edge: {current_agent} -> {next_agent}")
+
+        # End workflow after last agent
+        if workflow_path:
+            workflow.add_edge(workflow_path[-1], END)
+            logger.debug(f"Added end edge from {workflow_path[-1]}")
+
+        # Compile and return
+        compiled_workflow = workflow.compile()
+        logger.info(f"✅ Enhanced workflow created with {len(workflow_path)} agents: {' -> '.join(workflow_path)}")
+
+        return compiled_workflow
+
+    def _should_continue_to_agent(self, state: Dict[str, Any], agent_name: str) -> bool:
+        """Determine if workflow should continue to specific agent"""
+
+        # Check if agent is enabled in dynamic parameters
+        dynamic_params = state.get("dynamic_parameters", {})
+
+        # Agent-specific checks
+        if agent_name == "image_agent":
+            return dynamic_params.get("generate_images", False)
+        elif agent_name == "publisher":
+            return dynamic_params.get("auto_publish", False)
+        elif agent_name == "seo_agent":
+            return dynamic_params.get("optimize_seo", True)  # Default true
+
+        return True  # Default to continuing
+
+    def _create_conditional_workflow(self):
+        """Create workflow with conditional routing (advanced)"""
+        from langgraph.graph import StateGraph, END
+
+        # This is for more advanced conditional routing
+        # For now, use the simple linear workflow above
+        return self._create_workflow()
+
+    def _prepare_agent_state(self, state: Dict[str, Any], agent_name: str) -> Dict[str, Any]:
+        """Prepare state for specific agent"""
+
+        # Add agent-specific metadata
+        agent_state = state.copy()
+        agent_state["current_agent"] = agent_name
+        agent_state["agent_start_time"] = time.time()
+
+        # Agent-specific state preparation
+        if agent_name == "planner":
+            # Planner needs topic and parameters
+            agent_state["planning_request"] = {
+                "topic": state.get("topic"),
+                "requirements": state.get("dynamic_parameters", {})
+            }
+
+        elif agent_name == "researcher":
+            # Researcher needs research guidance from planner
+            agent_state["research_requirements"] = state.get("research_guidance", {})
+
+        elif agent_name == "writer":
+            # Writer needs content plan and research data
+            agent_state["writing_guidance"] = {
+                "plan": state.get("content_plan", {}),
+                "research": state.get("research_results", {}),
+                "style": state.get("style_guidance", {})
+            }
+
+        elif agent_name == "editor":
+            # Editor needs draft content and editing guidelines
+            agent_state["editing_input"] = {
+                "draft": state.get("draft", ""),
+                "guidelines": state.get("style_guidance", {})
+            }
+
+        elif agent_name == "seo_agent":
+            # SEO agent needs content and optimization requirements
+            agent_state["seo_input"] = {
+                "content": state.get("edited_draft", state.get("draft", "")),
+                "requirements": state.get("seo_guidance", {})
+            }
+
+        elif agent_name == "image_agent":
+            # Image agent needs content and visual requirements
+            agent_state["image_requirements"] = {
+                "content": state.get("formatted_content", ""),
+                "topic": state.get("topic", ""),
+                "style": state.get("style_guidance", {})
+            }
+
+        elif agent_name == "publisher":
+            # Publisher needs final content and publishing settings
+            agent_state["publishing_content"] = {
+                "content": state.get("formatted_content", ""),
+                "metadata": state.get("seo_metadata", {}),
+                "images": state.get("generated_images", {}),
+                "settings": state.get("dynamic_parameters", {})
+            }
+
+        return agent_state
+
+    def set_cache_manager(self, cache_manager: ContentCacheManager):
+        """Set cache manager for content caching"""
+        self.cache_manager = cache_manager
+
+    def set_job_queue(self, job_queue: JobQueue):
+        """Set job queue for async processing"""
+        self.job_queue = job_queue
+
+    def _calculate_quality_score(self, state: AgentState) -> Dict[str, Any]:
+        """Calculate content quality score"""
+        score = {
+            "overall": 75,  # Base score
+            "completeness": 80,
+            "coherence": 75,
+            "style_adherence": 70,
+            "technical_accuracy": 80
+        }
+
+        # Adjust based on successful agents
+        if "researcher" in state["completed_agents"]:
+            score["technical_accuracy"] += 10
+        if "editor" in state["completed_agents"]:
+            score["coherence"] += 10
+            score["completeness"] += 5
+        if "seo_optimizer" in state["completed_agents"]:
+            score["style_adherence"] += 10
+
+        # Penalize for failed agents
+        score["overall"] -= len(state["failed_agents"]) * 10
+
+        # Ensure bounds
+        for key in score:
+            score[key] = max(0, min(100, score[key]))
+
+        # Calculate overall as average
+        score["overall"] = sum(v for k, v in score.items() if k != "overall") / (len(score) - 1)
+
+        return score
+
+    async def generate_content(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Main content generation entry point"""
+
+        try:
+            # Create initial state
+            initial_state = {
+                "template_id": request_data["template"],
+                "style_profile": request_data["style_profile"],
+                "parameters": request_data.get("dynamic_parameters", {}),
+                "generation_id": str(uuid.uuid4()),
+                "content": "",
+                "current_agent": "initialize",
+                "completed_agents": [],
+                "failed_agents": [],
+                "overall_progress": 0.0,
+                "step_progress": {},
+                "errors": [],
+                "metadata": {}
+            }
+
+            # Execute workflow
+            final_state = await self.workflow.ainvoke(
+                initial_state,
+                config={"thread_id": initial_state["generation_id"]}
+            )
+
+            # Return result
+            return {
+                "success": True,
+                "content": final_state.get("final_content", ""),
+                "metadata": final_state.get("metadata", {}),
+                "quality_score": final_state.get("quality_score", {}),
+                "generation_id": final_state["generation_id"]
+            }
+
         except Exception as e:
-            logger.error(f"{self.role.value} agent failed: {e}")
+            logger.error(f"Content generation failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "generation_id": request_data.get("generation_id", "unknown")
+            }
+
+    async def _initialize_state(self, state: AgentState) -> AgentState:
+        """Initialize workflow state"""
+        state["step_progress"]["initialize"] = 100.0
+        state["overall_progress"] = 5.0
+        state["current_agent"] = "load_templates"
+        return state
+
+    async def _load_templates(self, state: AgentState) -> AgentState:
+        """Load template and style profile data"""
+        try:
+            # Load template data
+            template_data = await self.style_loader.load_template(state["template_id"])
+            if not template_data:
+                raise Exception(f"Template not found: {state['template_id']}")
+
+            # Load style profile data  
+            style_data = await self.style_loader.load_style_profile(state["style_profile"])
+            if not style_data:
+                raise Exception(f"Style profile not found: {state['style_profile']}")
+
+            state["template_data"] = template_data
+            state["style_data"] = style_data
+            state["step_progress"]["load_templates"] = 100.0
+            state["overall_progress"] = 10.0
+            state["current_agent"] = "check_cache"
+
+            return state
+
+        except Exception as e:
+                    logger.error(f"Template loading failed: {e}")
+                    state["errors"].append({
+                        "agent": "load_templates",
+                        "error": str(e),
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    raise
+        
+    async def _check_cache(self, state: AgentState) -> AgentState:
+        """Check for cached content"""
+        try:
+            cached = await self.cache_manager.get_cached_content(
+                template_id=state["template_id"],
+                style_profile=state["style_profile"],
+                parameters=state["parameters"],
+                model_name=self.model_registry.get_default_model()
+            )
+            state["cached_content"] = cached
+        except Exception as e:
+            logger.warning(f"Cache check failed: {e}")
+            state["cached_content"] = None
+
+        state["step_progress"]["check_cache"] = 100.0
+        state["current_agent"] = "plan" if not state["cached_content"] else "finalize"
+        return state
+
+    def _should_use_cache(self, state: AgentState) -> str:
+        """Decide whether to use cached content"""
+        return "use_cache" if state.get("cached_content") else "generate_new"
+    async def _execute_planner(self, state: AgentState) -> AgentState:
+        """Execute intelligent planning agent"""
+        try:
+            planner = self.agents["planner"]
+            # Convert orchestrator state to planner format
+            planner_state = self._create_agent_state(state, "planner")
+            # Call planner's actual method
+            result = planner.intelligent_plan(planner_state)
+            # Extract planning results
+            state["outline"] = result.get("content_plan", {})
+            state["metadata"].update(result.get("metadata", {}))
+            state["completed_agents"].append("planner")
+            state["step_progress"]["plan"] = 100.0
+            state["overall_progress"] = 25.0
+            state["current_agent"] = "research"
+            return state
+        except Exception as e:
+            logger.error(f"Planning failed: {e}")
+            state["failed_agents"].append("planner")
             state["errors"].append({
-                "agent": self.role.value,
+                "agent": "planner",
                 "error": str(e),
                 "timestamp": datetime.now().isoformat()
             })
-            state["failed_agents"].append(self.role.value)
-            self.status = AgentStatus.ERROR
             raise
-    
-    def _check_prerequisites(self, state: AgentState) -> bool:
-        """Check if all prerequisites are met"""
-        for dependency in self.capabilities.dependencies:
-            if dependency.value not in state["completed_agents"]:
-                logger.warning(f"{self.role.value} waiting for {dependency.value}")
-                return False
-        return True
-    
-    async def _execute_with_reasoning(self, state: AgentState) -> Dict[str, Any]:
-        """Execute with chain-of-thought reasoning"""
         
-        # Create reasoning prompt
-        reasoning_prompt = self._create_reasoning_prompt(state)
+    async def _execute_researcher(self, state: AgentState) -> AgentState:
+        """Execute intelligent research agent"""
+        try:
+            researcher = self.agents["researcher"]
+            # Convert orchestrator state to researcher format
+            researcher_state = self._create_agent_state(state, "researcher")
+            # Call researcher's actual method
+            result = await researcher.conduct_intelligent_research(researcher_state)
+            # Extract research results
+            state["research_data"] = result.get("research", {})
+            state["metadata"].update(result.get("research_metadata", {}))
+            state["completed_agents"].append("researcher")
+            state["step_progress"]["research"] = 100.0
+            state["overall_progress"] = 45.0
+            state["current_agent"] = "write"
+            return state
+        except Exception as e:
+            logger.error(f"Research failed: {e}")
+            state["failed_agents"].append("researcher")
+            state["errors"].append({
+                "agent": "researcher", 
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            })
+            raise
         
-        # Get response from model with reasoning
-        messages = [
-            {"role": "system", "content": self._get_system_prompt()},
-            {"role": "user", "content": reasoning_prompt}
+    async def _execute_writer(self, state: AgentState) -> AgentState:
+        """Execute innovative writer agent"""
+        try:
+            writer = self.agents["writer"]
+            # Convert orchestrator state to writer format
+            writer_state = self._create_agent_state(state, "writer")
+            # Call writer's actual method
+            result = writer.generate_adaptive_content(writer_state)
+            # Extract writing results
+            state["draft_content"] = result.get("draft", "")
+            state["content"] = result.get("draft", "")
+            state["metadata"].update(result.get("metadata", {}))
+            # Store innovation report
+            if "innovation_report" in result:
+                state["metadata"]["innovation_report"] = result["innovation_report"]
+            state["completed_agents"].append("writer")
+            state["step_progress"]["write"] = 100.0
+            state["overall_progress"] = 65.0
+            state["current_agent"] = "edit"
+            return state
+        except Exception as e:
+            logger.error(f"Writing failed: {e}")
+            state["failed_agents"].append("writer")
+            state["errors"].append({
+                "agent": "writer",
+                "error": str(e), 
+                "timestamp": datetime.now().isoformat()
+            })
+            raise
+        
+    async def _execute_editor(self, state: AgentState) -> AgentState:
+        """Execute intelligent editor agent"""
+        try:
+            editor = self.agents["editor"]
+            # Convert orchestrator state to editor format
+            editor_state = self._create_agent_state(state, "editor")
+            # Call editor's actual method
+            result = editor.intelligent_edit(editor_state)
+            # Extract editing results
+            state["edited_content"] = result.get("edited_draft", "")
+            state["content"] = result.get("edited_draft", "")
+            state["metadata"].update(result.get("editing_metadata", {}))
+            state["completed_agents"].append("editor")
+            state["step_progress"]["edit"] = 100.0
+            state["overall_progress"] = 80.0
+            state["current_agent"] = "seo_optimize"
+            return state
+        except Exception as e:
+            logger.error(f"Editing failed: {e}")
+            state["failed_agents"].append("editor")
+            state["errors"].append({
+                "agent": "editor",
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            })
+            raise
+        
+    async def _execute_seo(self, state: AgentState) -> AgentState:
+        """Execute intelligent SEO optimization agent"""
+        try:
+            seo_agent = self.agents["seo_optimizer"]
+            # Convert orchestrator state to SEO format
+            seo_state = self._create_agent_state(state, "seo")
+            # Call SEO agent's actual method
+            result = await seo_agent.optimize_content(seo_state)
+            # Extract SEO results
+            if result.get("seo_optimized_content"):
+                state["content"] = result["seo_optimized_content"]
+            state["seo_metadata"] = result.get("seo_metadata", {})
+            state["metadata"].update(result.get("seo_metadata", {}))
+            state["completed_agents"].append("seo_optimizer")
+            state["step_progress"]["seo_optimize"] = 100.0
+            state["overall_progress"] = 95.0
+            state["current_agent"] = "finalize"
+            return state
+        except Exception as e:
+            logger.error(f"SEO optimization failed: {e}")
+            state["failed_agents"].append("seo_optimizer")
+            state["errors"].append({
+                "agent": "seo_optimizer",
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            })
+            # SEO is optional, continue workflow
+            state["current_agent"] = "finalize"
+            return state
+    async def _finalize_content(self, state: AgentState) -> AgentState:
+        """Finalize content and prepare results"""
+        try:
+            # Use cached content if available
+            if state.get("cached_content"):
+                cached = state["cached_content"]
+                state["final_content"] = cached.content
+                state["metadata"] = cached.metadata
+                state["quality_score"] = {"overall": 90, "source": "cache"}
+                state["overall_progress"] = 100.0
+                logger.info(f"Using cached content for {state['generation_id']}")
+            else:
+                # Use generated content
+                state["final_content"] = state.get("edited_content") or state.get("draft_content") or state.get("content", "")
+                # Compile metadata
+                state["metadata"] = {
+                    "generation_id": state["generation_id"],
+                    "template_id": state["template_id"],
+                    "style_profile": state["style_profile"],
+                    "completed_agents": state["completed_agents"],
+                    "failed_agents": state["failed_agents"],
+                    "generation_time": datetime.now().isoformat(),
+                    "word_count": len(state["final_content"].split()),
+                    "seo_metadata": state.get("seo_metadata", {}),
+                    "parameters": state["parameters"]
+                }
+                # Calculate quality score
+                state["quality_score"] = self._calculate_quality_score(state)
+                state["overall_progress"] = 100.0
+            state["step_progress"]["finalize"] = 100.0
+            state["current_agent"] = "cache_result"
+            return state
+        except Exception as e:
+            logger.error(f"Finalization failed: {e}")
+            state["errors"].append({
+                "agent": "finalize",
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            })
+            raise
+        
+    async def _cache_result(self, state: AgentState) -> AgentState:
+        """Cache the generated content"""
+        if self.cache_manager and not state.get("cached_content"):
+            try:
+                await self.cache_manager.cache_content(
+                    template_id=state["template_id"],
+                    style_profile=state["style_profile"],
+                    parameters=state["parameters"],
+                    model_name=self.model_registry.get_default_model(),
+                    content=state["final_content"],
+                    metadata=state["metadata"]
+                )
+                logger.info(f"Cached content for {state['generation_id']}")
+            except Exception as e:
+                logger.warning(f"Failed to cache content: {e}")
+        state["step_progress"]["cache_result"] = 100.0
+        return state
+    def _create_agent_state(self, orchestrator_state: AgentState, agent_type: str) -> Dict[str, Any]:
+        """Convert orchestrator state to agent-specific format"""
+        # Base agent state with legacy compatibility
+        agent_state = {
+            # Legacy fields for compatibility
+            "templateId": orchestrator_state["template_id"],
+            "styleProfileId": orchestrator_state["style_profile"],
+            "style_profile": orchestrator_state["style_profile"],
+            "dynamic_parameters": orchestrator_state["parameters"],
+            # Rich context from template and style data
+            "template_data": orchestrator_state.get("template_data", {}),
+            "style_data": orchestrator_state.get("style_data", {}),
+            # Content progression
+            "topic": (orchestrator_state["parameters"].get("topic") or 
+                     orchestrator_state.get("template_data", {}).get("title", "Untitled")),
+        }
+        return agent_state
+
+# Extension to style_profile_loader for template support
+class EnhancedStyleProfileLoader(StyleProfileLoader):
+    """Extended loader with template support"""
+    
+    def __init__(self):
+        super().__init__()
+        self.templates_cache: Dict[str, Dict[str, Any]] = {}
+        self.templates_path: Optional[Path] = None
+        self._find_and_load_templates()
+    
+    def _find_and_load_templates(self):
+        """Find and load content templates"""
+        from pathlib import Path
+        
+        cwd = Path.cwd()
+        search_paths = [
+            cwd / "data" / "content_templates",
+            cwd / "content_templates", 
+            cwd / ".." / "data" / "content_templates",
+            cwd / "frontend" / "content-templates"
         ]
         
-        response = await self.model_registry.generate_with_fallback(
-            messages=messages,
-            preferred_model="gpt-4o",
-            max_retries=self.capabilities.retry_count
-        )
+        for path in search_paths:
+            resolved_path = path.resolve()
+            if resolved_path.exists() and resolved_path.is_dir():
+                yaml_files = list(resolved_path.glob("*.yaml")) + list(resolved_path.glob("*.yml"))
+                
+                if yaml_files:
+                    logger.info(f"Found templates directory: {resolved_path}")
+                    self.templates_path = resolved_path
+                    self._load_templates_from_directory(resolved_path)
+                    return
         
-        # Parse reasoning and result
-        return self._parse_response(response.content, state)
+        logger.warning("No content templates directory found")
     
-    def _create_reasoning_prompt(self, state: AgentState) -> str:
-        """Create prompt that encourages reasoning"""
-        return f"""
-        Current task: {state['task_context'].content_type} content generation
-        Template: {state['template_id']}
-        Style: {state['style_profile']}
+    def _load_templates_from_directory(self, directory: Path):
+        """Load all template YAML files"""
+        import yaml
         
-        Please analyze the current state and explain your reasoning step-by-step:
-        1. What is the current situation?
-        2. What needs to be accomplished?
-        3. What approach will you take?
-        4. What is your expected output?
+        yaml_files = list(directory.glob("*.yaml")) + list(directory.glob("*.yml"))
+        loaded_count = 0
         
-        Then provide your work in the appropriate format.
+        for yaml_file in yaml_files:
+            try:
+                with open(yaml_file, 'r', encoding='utf-8') as f:
+                    template_data = yaml.safe_load(f)
+                
+                if template_data:
+                    template_name = yaml_file.stem
+                    self.templates_cache[template_name] = template_data
+                    loaded_count += 1
+                    
+            except Exception as e:
+                logger.error(f"Error loading template {yaml_file.name}: {e}")
         
-        Current state: {json.dumps({k: v for k, v in state.items() if k not in ['task_context']}, default=str, indent=2)}
-        """
+        logger.info(f"Successfully loaded {loaded_count} content templates")
     
-    def _get_system_prompt(self) -> str:
-        """Get agent-specific system prompt"""
-        return f"You are a {self.role.value} agent specialized in content creation workflows."
+    async def load_template(self, template_id: str) -> Optional[Dict[str, Any]]:
+        """Load a specific content template"""
+        if template_id not in self.templates_cache:
+            logger.warning(f"Template '{template_id}' not found")
+            return None
+        return self.templates_cache[template_id]
     
-    def _parse_response(self, response: str, state: AgentState) -> Dict[str, Any]:
-        """Parse agent response - to be implemented by subclasses"""
-        return {"output": response}
+    async def load_style_profile(self, profile_name: str) -> Optional[Dict[str, Any]]:
+        """Load a style profile (async version)"""
+        return self.get_profile(profile_name)
     
-    def _update_state(self, state: AgentState, result: Dict[str, Any]) -> AgentState:
-        """Update state with agent results - to be implemented by subclasses"""
-        state["updated_at"] = datetime.now()
-        return state
-
-class EnhancedPlannerAgent(EnhancedAgent):
-    """Enhanced planner with strategic thinking"""
-    
-    def _get_system_prompt(self) -> str:
-        return """You are an expert content planning agent. Your role is to:
-        1. Analyze the content requirements and create a detailed plan
-        2. Determine the optimal workflow and agent sequence
-        3. Set quality benchmarks and success criteria
-        4. Anticipate potential challenges and create mitigation strategies
-        
-        Think strategically about the entire content creation process."""
-    
-    def _parse_response(self, response: str, state: AgentState) -> Dict[str, Any]:
-        """Parse planning response"""
-        # Extract structured plan from response
-        try:
-            # Look for JSON in response or create structured plan
-            plan = {
-                "content_strategy": "",
-                "workflow_steps": [],
-                "quality_criteria": [],
-                "estimated_duration": 0,
-                "resource_requirements": [],
-                "risk_factors": []
+    async def get_all_templates(self) -> List[Dict[str, Any]]:
+        """Get all available templates with metadata"""
+        templates = []
+        for template_id, template_data in self.templates_cache.items():
+            template_info = {
+                "id": template_id,
+                "name": template_data.get("name", template_id),
+                "description": template_data.get("description", ""),
+                "category": template_data.get("category", "general"),
+                "sections": template_data.get("sections", []),
+                "metadata": template_data.get("metadata", {}),
+                "filename": f"{template_id}.yaml"
             }
-            
-            # Parse response to extract plan elements
-            lines = response.split('\n')
-            current_section = None
-            
-            for line in lines:
-                line = line.strip()
-                if "strategy" in line.lower():
-                    current_section = "strategy"
-                elif "steps" in line.lower() or "workflow" in line.lower():
-                    current_section = "steps"
-                elif "quality" in line.lower() or "criteria" in line.lower():
-                    current_section = "quality"
-                elif current_section and line:
-                    if current_section == "strategy":
-                        plan["content_strategy"] += line + " "
-                    elif current_section == "steps":
-                        if line.startswith(('-', '*', '1.', '2.')):
-                            plan["workflow_steps"].append(line[2:].strip())
-                    elif current_section == "quality":
-                        if line.startswith(('-', '*', '1.', '2.')):
-                            plan["quality_criteria"].append(line[2:].strip())
-            
-            return {"plan": plan, "raw_response": response}
-            
-        except Exception as e:
-            logger.warning(f"Failed to parse plan response: {e}")
-            return {"plan": {"content_strategy": response}, "raw_response": response}
+            templates.append(template_info)
+        return templates
     
-    def _update_state(self, state: AgentState, result: Dict[str, Any]) -> AgentState:
-        """Update state with planning results"""
-        plan = result.get("plan", {})
-        
-        state["outline"] = {
-            "strategy": plan.get("content_strategy", ""),
-            "workflow_steps": plan.get("workflow_steps", []),
-            "quality_criteria": plan.get("quality_criteria", []),
-            "created_by": self.role.value
-        }
-        
-        # Set next agents based on plan
-        state["next_agents"] = ["researcher", "writer"]
-        
-        # Update progress
-        state["step_progress"]["planning"] = 100.0
-        state["overall_progress"] = 15.0
-        
-        return super()._update_state(state, result)
+    async def get_all_style_profiles(self) -> List[Dict[str, Any]]:
+        """Get all available style profiles with metadata"""
+        profiles = []
+        for profile_id, profile_data in self.profiles_cache.items():
+            profile_info = {
+                "id": profile_id,
+                "name": profile_data.get("name", profile_id),
+                "description": profile_data.get("description", ""),
+                "category": profile_data.get("category", "general"),
+                "tone": profile_data.get("writing_style", {}).get("tone", ""),
+                "voice": profile_data.get("writing_style", {}).get("voice", ""),
+                "structure": profile_data.get("content_structure", {}).get("structure", ""),
+                "system_prompt": profile_data.get("system_prompt", ""),
+                "settings": profile_data.get("settings", {}),
+                "filename": f"{profile_id}.yaml"
+            }
+            profiles.append(profile_info)
+        return profiles
 
-class EnhancedResearcherAgent(EnhancedAgent):
-    """Enhanced researcher with fact verification"""
+# Factory function for creating orchestrator
+async def create_enhanced_orchestrator(
+    cache_manager: Optional[ContentCacheManager] = None,
+    job_queue: Optional[JobQueue] = None
+) -> EnhancedOrchestrator:
+    """Create enhanced orchestrator with dependencies"""
     
-    def _get_system_prompt(self) -> str:
-        return """You are an expert research agent. Your role is to:
-        1. Gather comprehensive, accurate information on the topic
-        2. Verify facts and identify authoritative sources
-        3. Organize research findings for content creation
-        4. Flag any areas requiring additional investigation
-        
-        Focus on accuracy, relevance, and credibility of sources."""
+    orchestrator = EnhancedOrchestrator()
     
-    def _parse_response(self, response: str, state: AgentState) -> Dict[str, Any]:
-        """Parse research response"""
-        research_data = {
-            "key_findings": [],
-            "sources": [],
-            "fact_checks": [],
-            "research_gaps": [],
-            "confidence_score": 0.8
-        }
-        
-        # Parse structured research from response
-        sections = response.split('\n\n')
-        for section in sections:
-            if "finding" in section.lower():
-                research_data["key_findings"].append(section.strip())
-            elif "source" in section.lower() or "http" in section:
-                research_data["sources"].append(section.strip())
-            elif "gap" in section.lower() or "missing" in section.lower():
-                research_data["research_gaps"].append(section.strip())
-        
-        return {"research": research_data, "raw_response": response}
+    if cache_manager:
+        orchestrator.set_cache_manager(cache_manager)
     
-    def _update_state(self, state: AgentState, result: Dict[str, Any]) -> AgentState:
-        """Update state with research results"""
-        state["research_data"] = result.get("research", {})
-        state["step_progress"]["research"] = 100.0
-        state["overall_progress"] = 35.0
-        state["next_agents"] = ["writer"]
-        
-        return super()._update_state(state, result)
+    if job_queue:
+        orchestrator.set_job_queue(job_queue)
+    
+    return orchestrator
 
-class EnhancedWriterAgent(EnhancedAgent):
-    """Enhanced writer with style adaptation"""
+# Integration with job queue
+async def register_orchestrator_tasks(job_manager, orchestrator: EnhancedOrchestrator):
+    """Register orchestrator tasks with job queue"""
+    from .job_queue import task_registry
     
-    def _get_system_prompt(self) -> str:
-        return """You are an expert content writer. Your role is to:
-        1. Create engaging, well-structured content based on research and planning
-        2. Adapt writing style to match the specified style profile
-        3. Incorporate research findings naturally and accurately
-        4. Ensure content meets quality and engagement standards
+    @task_registry.register("enhanced_content_generation")
+    async def enhanced_content_task(job: Job, progress_callback: Callable):
+        """Enhanced content generation task"""
+        params = job.parameters
         
-        Focus on clarity, engagement, and style consistency."""
+        # Update progress through workflow
+        def update_progress(progress: float, metadata: Dict = None):
+            asyncio.create_task(progress_callback(progress, metadata))
+        
+        # Execute through orchestrator
+        result = await orchestrator.generate_content(params)
+        
+        if result["success"]:
+            return {
+                "content": result["content"],
+                "metadata": result["metadata"],
+                "quality_score": result.get("quality_score", {}),
+                "generation_id": result["generation_id"]
+            }
+        else:
+            raise Exception(result.get("error", "Unknown generation error"))
     
-    def _create_reasoning_prompt(self, state: AgentState) -> str:
-        """Enhanced prompt with research and planning context"""
-        base_prompt = super()._create_reasoning_prompt(state)
-        
-        research_summary = ""
-        if state.get("research_data"):
-            research_summary = f"\nResearch findings: {json.dumps(state['research_data'], indent=2)}"
-        
-        planning_summary = ""
-        if state.get("outline"):
-            planning_summary = f"\nContent plan: {json.dumps(state['outline'], indent=2)}"
-        
-        return f"{base_prompt}{research_summary}{planning_summary}"
-    
-    def _parse_response(self, response: str, state: AgentState) -> Dict[str, Any]:
-        """Parse writing response"""
-        # Extract content from response
-        content = response
-        
-        # Try to identify if there's structured content vs reasoning
-        if "CONTENT:" in response.upper():
-            parts = response.split("CONTENT:")
-            if len(parts) > 1:
-                content = parts[-1].strip()
-        
-        return {
-            "content": content,
-            "word_count": len(content.split()),
-            "raw_response": response
-        }
-    
-    def _update_state(self, state: AgentState, result: Dict[str, Any]) -> AgentState:
-        """Update state with written content"""
-        state["draft_content"] = result.get("content", "")
-        state["content"] = state["draft_content"]  # Set main content field
-        state["step_progress"]["writing"] = 100.0
-        state["overall_progress"] = 65.0
-        state["next_agents"] = ["editor", "seo_optimizer"]
-        
-        return super()._update_state(state, result)
-
-class EnhancedEditorAgent(EnhancedAgent):
-    """Enhanced editor with quality improvement"""
-    
-    def _get_system_prompt(self) -> str:
-        return """You are an expert content editor. Your role is to:
-        1. Review and improve content structure, flow, and clarity
-        2. Ensure consistency in tone and style
-        3. Correct grammar, spelling, and formatting issues
-        4. Enhance readability and engagement
-        
-        Focus on making content polished and professional."""
-    
-    def _parse_response(self, response: str, state: AgentState) -> Dict[str, Any]:
-        """Parse editing response"""
-        edited_content = response
-        
-        # Look for edited content section
-        if "EDITED CONTENT:" in response.upper():
-            parts = response.split("EDITED CONTENT:")
-            if len(parts) > 1:
-                edited_content = parts[-1].strip()
-        
-        return {
-            "edited_content": edited_content,
-            "improvements": [],  # Could extract improvement notes
-            "raw_response": response
-        }
-    
-    def _update_state(self, state: AgentState, result: Dict[str, Any]) -> AgentState:
-        """Update state with edited content"""
-        state["edited_content"] = result.get("edited_content", "")
-        state["content"] = state["edited_content"]  # Update main content
-        state["step_progress"]["editing"] = 100.0
-        state["overall_progress"] = 85.0
-        state["next_agents"] = ["quality_assessor"]
-        
-        return super()._update_state(state, result)
-
-class EnhancedQualityAssessor(EnhancedAgent):
-    """Quality assessment agent"""
-    
-    def _get_system_prompt(self) -> str:
-        return """You are a content quality assessment expert. Your role is to:
-        1. Evaluate content against quality criteria
-        2. Provide objective quality scores
-        3. Identify areas for improvement
-        4. Ensure content meets publication standards
-        
-        Be thorough and objective in your assessment."""
-    
-    def _parse_response(self, response: str, state: AgentState) -> Dict[str, Any]:
-        """Parse quality assessment response"""
-        quality_score = {
-            "overall_score": 85,  # Default score
-            "readability": 80,
-            "accuracy": 90,
-            "engagement": 85,
-            "seo_potential": 75,
-            "recommendations": []
-        }
-        
-        # Extract scores and recommendations from response
-        lines = response.split('\n')
-        for line in lines:
-            if "score" in line.lower() and any(char.isdigit() for char in line):
-                # Try to extract numeric scores
-                import re
-                numbers = re.findall(r'\d+', line)
-                if numbers:
-                    score = int(numbers[0])
-                    if "overall" in line.lower():
-                        quality_score["overall_score"] = score
-                    elif "readability" in line.lower():
-                        quality_score["readability"] = score
-                    elif "accuracy" in line.lower():
-                        quality_score["accuracy"] = score
-            elif line.strip().startswith(('-', '*', '•')):
-                quality_score["recommendations"].append(line.strip()[1:].strip())
+    logger.info("Registered enhanced orchestrator tasks with job queue")

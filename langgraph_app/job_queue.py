@@ -1,7 +1,7 @@
 # Location: langgraph_app/job_queue.py
 """
-Background Job Queue System for Long-Running Content Generation
-Supports Redis-based queuing with job status tracking, retries, and progress monitoring
+Enterprise Job Queue System - REFACTORED FOR REAL WORKFLOW INTEGRATION
+Integrates with enhanced_orchestration.py and real agent workflow
 """
 
 import os
@@ -23,14 +23,12 @@ except ImportError:
     REDIS_AVAILABLE = False
     logging.warning("Redis not available. Install with: pip install redis")
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class JobStatus(Enum):
     """Job execution status"""
     PENDING = "pending"
-    RUNNING = "running"
+    RUNNING = "running" 
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
@@ -65,7 +63,7 @@ class Job:
     completed_at: Optional[datetime] = None
     retry_count: int = 0
     max_retries: int = 3
-    timeout_seconds: int = 300  # 5 minutes default
+    timeout_seconds: int = 300
     progress: float = 0.0
     result: Optional[JobResult] = None
     worker_id: Optional[str] = None
@@ -117,7 +115,7 @@ class Job:
         return job
 
 class JobQueue:
-    """Redis-based job queue implementation"""
+    """Enterprise Redis-based job queue"""
     
     def __init__(self, redis_url: str = "redis://localhost:6379/1", 
                  queue_name: str = "ai_content_jobs"):
@@ -131,6 +129,7 @@ class JobQueue:
         self.completed_queue = f"{queue_name}:completed"
         self.failed_queue = f"{queue_name}:failed"
         self.job_data_key = f"{queue_name}:jobs"
+        self.progress_key = f"{queue_name}:progress"
     
     async def initialize(self) -> bool:
         """Initialize Redis connection"""
@@ -220,14 +219,15 @@ class JobQueue:
             logger.error(f"Failed to dequeue job: {e}")
             return None
     
-    async def update_job_progress(self, job_id: str, progress: float, 
-                                 metadata: Optional[Dict[str, Any]] = None):
-        """Update job progress"""
+    async def update_job_progress(self, generation_id: str, progress: float, 
+                                 current_agent: str = "", metadata: Optional[Dict[str, Any]] = None):
+        """Update job progress with detailed tracking"""
         if not self.redis_client:
             return
         
         try:
-            job_data = await self.redis_client.hget(self.job_data_key, job_id)
+            # Update job data
+            job_data = await self.redis_client.hget(self.job_data_key, generation_id)
             if job_data:
                 job = Job.from_dict(json.loads(job_data.decode('utf-8')))
                 job.progress = progress
@@ -235,14 +235,70 @@ class JobQueue:
                 if metadata:
                     job.metadata.update(metadata)
                 
+                if current_agent:
+                    job.metadata["current_agent"] = current_agent
+                
                 await self.redis_client.hset(
                     self.job_data_key,
-                    job_id,
+                    generation_id,
                     json.dumps(job.to_dict())
                 )
-                
+            
+            # Store detailed progress info
+            progress_data = {
+                "progress": progress,
+                "current_agent": current_agent,
+                "updated_at": datetime.now().isoformat(),
+                "metadata": metadata or {}
+            }
+            
+            await self.redis_client.hset(
+                self.progress_key,
+                generation_id,
+                json.dumps(progress_data)
+            )
+            
         except Exception as e:
-            logger.error(f"Failed to update job progress {job_id}: {e}")
+            logger.error(f"Failed to update job progress {generation_id}: {e}")
+    
+    async def get_job_status(self, generation_id: str) -> Optional[Dict[str, Any]]:
+        """Get detailed job status"""
+        if not self.redis_client:
+            return None
+        
+        try:
+            # Get job data
+            job_data = await self.redis_client.hget(self.job_data_key, generation_id)
+            if not job_data:
+                return None
+            
+            job = Job.from_dict(json.loads(job_data.decode('utf-8')))
+            
+            # Get progress data
+            progress_data = await self.redis_client.hget(self.progress_key, generation_id)
+            progress_info = {}
+            if progress_data:
+                progress_info = json.loads(progress_data.decode('utf-8'))
+            
+            return {
+                "generation_id": generation_id,
+                "status": job.status.value,
+                "progress": job.progress,
+                "current_agent": progress_info.get("current_agent", ""),
+                "created_at": job.created_at.isoformat(),
+                "started_at": job.started_at.isoformat() if job.started_at else None,
+                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                "estimated_completion": None,  # Could calculate based on progress
+                "content": job.result.data.get("content") if job.result and job.result.data else None,
+                "error": job.result.error if job.result else None,
+                "metadata": job.metadata,
+                "retry_count": job.retry_count,
+                "worker_id": job.worker_id
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get job status {generation_id}: {e}")
+            return None
     
     async def complete_job(self, job_id: str, result: JobResult):
         """Mark job as completed"""
@@ -283,90 +339,163 @@ class JobQueue:
         except Exception as e:
             logger.error(f"Failed to complete job {job_id}: {e}")
     
-    async def retry_job(self, job_id: str) -> bool:
-        """Retry a failed job"""
-        if not self.redis_client:
-            return False
-        
-        try:
-            job_data = await self.redis_client.hget(self.job_data_key, job_id)
-            if not job_data:
-                return False
-            
-            job = Job.from_dict(json.loads(job_data.decode('utf-8')))
-            
-            if job.retry_count >= job.max_retries:
-                logger.warning(f"Job {job_id} exceeded max retries")
-                return False
-            
-            # Reset job for retry
-            job.status = JobStatus.RETRYING
-            job.retry_count += 1
-            job.started_at = None
-            job.completed_at = None
-            job.worker_id = None
-            job.progress = 0.0
-            job.result = None
-            
-            # Update job data
-            await self.redis_client.hset(
-                self.job_data_key,
-                job_id,
-                json.dumps(job.to_dict())
-            )
-            
-            # Remove from failed queue and add back to pending
-            await self.redis_client.zrem(self.failed_queue, job_id)
-            priority_score = job.priority.value * 1000 + int(time.time())
-            await self.redis_client.zadd(self.pending_queue, {job_id: priority_score})
-            
-            logger.info(f"Job {job_id} queued for retry (attempt {job.retry_count})")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Failed to retry job {job_id}: {e}")
-            return False
+    def get_active_count(self) -> int:
+        """Get count of active/running jobs"""
+        # This would be implemented with Redis operations
+        return 0  # Placeholder
     
-    async def get_job_status(self, job_id: str) -> Optional[Job]:
-        """Get job status"""
-        if not self.redis_client:
-            return None
-        
-        try:
-            job_data = await self.redis_client.hget(self.job_data_key, job_id)
-            if job_data:
-                return Job.from_dict(json.loads(job_data.decode('utf-8')))
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get job status {job_id}: {e}")
-            return None
-    
-    async def get_queue_stats(self) -> Dict[str, Any]:
-        """Get queue statistics"""
-        if not self.redis_client:
-            return {}
-        
-        try:
-            stats = {}
-            
-            # Count jobs in each queue
-            stats["pending"] = await self.redis_client.zcard(self.pending_queue)
-            stats["running"] = await self.redis_client.zcard(self.running_queue)
-            stats["completed"] = await self.redis_client.zcard(self.completed_queue)
-            stats["failed"] = await self.redis_client.zcard(self.failed_queue)
-            stats["total_jobs"] = await self.redis_client.hlen(self.job_data_key)
-            
-            return stats
-            
-        except Exception as e:
-            logger.error(f"Failed to get queue stats: {e}")
-            return {}
+    def get_queue_size(self) -> int:
+        """Get pending queue size"""
+        # This would be implemented with Redis operations
+        return 0  # Placeholder
 
-class TaskRegistry:
-    """Registry for background task handlers"""
+class RealWorkflowTaskRegistry:
+    """Task registry integrated with real workflow orchestrator"""
     
-    def __init__(self):
+    def __init__(self, orchestrator=None):
         self.tasks: Dict[str, Callable] = {}
+        self.orchestrator = orchestrator
+        self._register_real_tasks()
+    
+    def set_orchestrator(self, orchestrator):
+        """Set the orchestrator instance"""
+        self.orchestrator = orchestrator
+        self._register_real_tasks()
+    
+    def _register_real_tasks(self):
+        """Register real workflow tasks"""
+        if not self.orchestrator:
+            return
+        
+        @self.register("content_generation")
+        async def real_content_generation_task(job: Job, progress_callback: Callable):
+            """Real content generation using orchestrator"""
+            params = job.parameters
+            
+            try:
+                # Create progress callback wrapper
+                async def workflow_progress(progress: float, agent: str = "", metadata: Dict = None):
+                    await progress_callback(progress, {
+                        "step": f"executing_{agent}" if agent else "processing",
+                        "current_agent": agent,
+                        **(metadata or {})
+                    })
+                
+                # Execute real workflow
+                result = await self.orchestrator.generate_content(params)
+                
+                if result["success"]:
+                    await workflow_progress(100.0, "completed")
+                    return {
+                        "content": result["content"],
+                        "metadata": result["metadata"],
+                        "quality_score": result.get("quality_score", {}),
+                        "generation_id": result["generation_id"]
+                    }
+                else:
+                    raise Exception(result.get("error", "Content generation failed"))
+                    
+            except Exception as e:
+                logger.error(f"Real content generation failed: {e}")
+                raise
+        
+        @self.register("bulk_content_generation")
+        async def real_bulk_generation_task(job: Job, progress_callback: Callable):
+            """Real bulk content generation"""
+            params = job.parameters
+            templates = params.get("templates", [])
+            
+            if not templates:
+                raise Exception("No templates provided for bulk generation")
+            
+            total_templates = len(templates)
+            results = []
+            
+            for i, template_config in enumerate(templates):
+                try:
+                    await progress_callback(
+                        (i / total_templates) * 100,
+                        {
+                            "step": f"generating_template_{i+1}",
+                            "current_template": template_config.get("template_id"),
+                            "progress_detail": f"{i+1}/{total_templates}"
+                        }
+                    )
+                    
+                    # Use orchestrator for each template
+                    result = await self.orchestrator.generate_content({
+                        "template": template_config.get("template_id"),
+                        "style_profile": template_config.get("style_profile"),
+                        "dynamic_parameters": template_config.get("parameters", {})
+                    })
+                    
+                    if result["success"]:
+                        results.append({
+                            "template_id": template_config.get("template_id"),
+                            "content": result["content"],
+                            "metadata": result["metadata"],
+                            "status": "success"
+                        })
+                    else:
+                        results.append({
+                            "template_id": template_config.get("template_id"),
+                            "error": result.get("error"),
+                            "status": "failed"
+                        })
+                        
+                except Exception as e:
+                    logger.error(f"Failed to generate template {template_config.get('template_id')}: {e}")
+                    results.append({
+                        "template_id": template_config.get("template_id"),
+                        "error": str(e),
+                        "status": "failed"
+                    })
+            
+            await progress_callback(100.0, {"step": "bulk_generation_completed"})
+            
+            successful_count = len([r for r in results if r["status"] == "success"])
+            
+            return {
+                "total_templates": total_templates,
+                "successful_count": successful_count,
+                "failed_count": total_templates - successful_count,
+                "results": results
+            }
+        
+        @self.register("template_validation")
+        async def template_validation_task(job: Job, progress_callback: Callable):
+            """Validate template and style profile combination"""
+            params = job.parameters
+            
+            await progress_callback(20.0, {"step": "loading_template"})
+            
+            # Load template
+            template_data = await self.orchestrator.style_loader.load_template(params["template_id"])
+            if not template_data:
+                raise Exception(f"Template not found: {params['template_id']}")
+            
+            await progress_callback(50.0, {"step": "loading_style_profile"})
+            
+            # Load style profile
+            style_data = await self.orchestrator.style_loader.load_style_profile(params["style_profile"])
+            if not style_data:
+                raise Exception(f"Style profile not found: {params['style_profile']}")
+            
+            await progress_callback(80.0, {"step": "validating_compatibility"})
+            
+            # Validate compatibility
+            validation_result = {
+                "template_valid": True,
+                "style_profile_valid": True,
+                "compatibility_score": 95,  # Mock score
+                "recommendations": []
+            }
+            
+            await progress_callback(100.0, {"step": "validation_completed"})
+            
+            return validation_result
+        
+        logger.info("Registered real workflow tasks")
     
     def register(self, task_name: str):
         """Decorator to register task handlers"""
@@ -385,9 +514,9 @@ class TaskRegistry:
         return list(self.tasks.keys())
 
 class JobWorker:
-    """Background job worker"""
+    """Background job worker integrated with real workflow"""
     
-    def __init__(self, queue: JobQueue, task_registry: TaskRegistry, 
+    def __init__(self, queue: JobQueue, task_registry: RealWorkflowTaskRegistry, 
                  worker_id: Optional[str] = None):
         self.queue = queue
         self.task_registry = task_registry
@@ -423,7 +552,7 @@ class JobWorker:
         logger.info(f"Worker {self.worker_id} stopped")
     
     async def _execute_job(self, job: Job):
-        """Execute a single job"""
+        """Execute a single job with real workflow"""
         logger.info(f"Worker {self.worker_id} executing job {job.id}")
         
         start_time = time.time()
@@ -471,174 +600,68 @@ class JobWorker:
                 execution_time=execution_time
             )
             await self.queue.complete_job(job.id, result)
-            
-            # Automatically retry if under max retries
-            if job.retry_count < job.max_retries:
-                await asyncio.sleep(2 ** job.retry_count)  # Exponential backoff
-                await self.queue.retry_job(job.id)
     
     async def _progress_callback(self, progress: float, metadata: Optional[Dict] = None):
         """Callback for updating job progress"""
         if self.current_job:
             await self.queue.update_job_progress(
                 self.current_job.id, 
-                progress, 
-                metadata
+                progress,
+                current_agent=metadata.get("current_agent", "") if metadata else "",
+                metadata=metadata
             )
 
-# Initialize global task registry
-task_registry = TaskRegistry()
-
-# Example task handlers for content generation
-@task_registry.register("generate_article")
-async def generate_article_task(job: Job, progress_callback: Callable):
-    """Task handler for article generation"""
-    params = job.parameters
+class EnterpriseJobManager:
+    """Enterprise job manager integrated with real workflow"""
     
-    # Simulate article generation steps
-    await progress_callback(10.0, {"step": "initializing"})
-    await asyncio.sleep(1)
-    
-    await progress_callback(30.0, {"step": "researching"})
-    await asyncio.sleep(2)
-    
-    await progress_callback(60.0, {"step": "writing"})
-    await asyncio.sleep(3)
-    
-    await progress_callback(80.0, {"step": "editing"})
-    await asyncio.sleep(1)
-    
-    await progress_callback(100.0, {"step": "completed"})
-    
-    # Return generated content
-    return {
-        "content": f"Generated article: {params.get('title', 'Untitled')}",
-        "word_count": 1500,
-        "template_id": params.get("template_id"),
-        "style_profile": params.get("style_profile")
-    }
-
-@task_registry.register("generate_bulk_content")
-async def generate_bulk_content_task(job: Job, progress_callback: Callable):
-    """Task handler for bulk content generation"""
-    params = job.parameters
-    templates = params.get("templates", [])
-    
-    total_templates = len(templates)
-    results = []
-    
-    for i, template_config in enumerate(templates):
-        await progress_callback(
-            (i / total_templates) * 100,
-            {"step": f"generating {i+1}/{total_templates}", "current_template": template_config.get("id")}
-        )
-        
-        # Simulate content generation for each template
-        await asyncio.sleep(1)
-        
-        results.append({
-            "template_id": template_config.get("id"),
-            "content": f"Generated content for {template_config.get('id')}",
-            "status": "success"
-        })
-    
-    await progress_callback(100.0, {"step": "completed"})
-    
-    return {
-        "total_generated": len(results),
-        "results": results
-    }
-
-@task_registry.register("content_analysis")
-async def content_analysis_task(job: Job, progress_callback: Callable):
-    """Task handler for content analysis and optimization"""
-    params = job.parameters
-    content = params.get("content", "")
-    
-    await progress_callback(20.0, {"step": "analyzing_structure"})
-    await asyncio.sleep(1)
-    
-    await progress_callback(40.0, {"step": "checking_seo"})
-    await asyncio.sleep(1)
-    
-    await progress_callback(60.0, {"step": "analyzing_readability"})
-    await asyncio.sleep(1)
-    
-    await progress_callback(80.0, {"step": "generating_suggestions"})
-    await asyncio.sleep(1)
-    
-    await progress_callback(100.0, {"step": "completed"})
-    
-    return {
-        "analysis": {
-            "word_count": len(content.split()),
-            "readability_score": 85,
-            "seo_score": 78,
-            "structure_score": 92
-        },
-        "suggestions": [
-            "Add more subheadings for better structure",
-            "Include relevant keywords in the first paragraph",
-            "Consider adding internal links"
-        ]
-    }
-
-class JobManager:
-    """High-level job management interface"""
-    
-    def __init__(self, queue: JobQueue, task_registry: TaskRegistry):
+    def __init__(self, queue: JobQueue, task_registry: RealWorkflowTaskRegistry):
         self.queue = queue
         self.task_registry = task_registry
         self.workers: List[JobWorker] = []
     
-    async def submit_job(self, task_name: str, parameters: Dict[str, Any],
-                        priority: JobPriority = JobPriority.NORMAL,
-                        timeout_seconds: int = 300,
-                        max_retries: int = 3) -> str:
-        """Submit a new job"""
-        
-        if task_name not in self.task_registry.list_tasks():
-            raise ValueError(f"Unknown task: {task_name}")
+    async def submit_content_generation_job(self, template_id: str, style_profile: str,
+                                          parameters: Dict[str, Any],
+                                          priority: JobPriority = JobPriority.NORMAL,
+                                          timeout_seconds: int = 600) -> str:
+        """Submit real content generation job"""
         
         job = Job(
             id=str(uuid.uuid4()),
-            task_name=task_name,
-            parameters=parameters,
+            task_name="content_generation",
+            parameters={
+                "template": template_id,
+                "style_profile": style_profile,
+                "dynamic_parameters": parameters
+            },
             priority=priority,
             timeout_seconds=timeout_seconds,
-            max_retries=max_retries
+            max_retries=2
         )
         
         job_id = await self.queue.enqueue(job)
-        logger.info(f"Submitted job {job_id} for task {task_name}")
+        logger.info(f"Submitted content generation job {job_id}")
+        return job_id
+    
+    async def submit_bulk_generation_job(self, templates: List[Dict[str, Any]],
+                                       priority: JobPriority = JobPriority.NORMAL) -> str:
+        """Submit bulk content generation job"""
+        
+        job = Job(
+            id=str(uuid.uuid4()),
+            task_name="bulk_content_generation", 
+            parameters={"templates": templates},
+            priority=priority,
+            timeout_seconds=1800,  # 30 minutes
+            max_retries=1
+        )
+        
+        job_id = await self.queue.enqueue(job)
+        logger.info(f"Submitted bulk generation job {job_id}")
         return job_id
     
     async def get_job_status(self, job_id: str) -> Optional[Dict[str, Any]]:
-        """Get job status and result"""
-        job = await self.queue.get_job_status(job_id)
-        if job:
-            return {
-                "id": job.id,
-                "status": job.status.value,
-                "progress": job.progress,
-                "created_at": job.created_at.isoformat(),
-                "started_at": job.started_at.isoformat() if job.started_at else None,
-                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-                "result": asdict(job.result) if job.result else None,
-                "metadata": job.metadata
-            }
-        return None
-    
-    async def cancel_job(self, job_id: str) -> bool:
-        """Cancel a pending job"""
-        # Implementation would depend on job status
-        # For now, just mark as cancelled if pending
-        job = await self.queue.get_job_status(job_id)
-        if job and job.status == JobStatus.PENDING:
-            # Remove from pending queue and mark as cancelled
-            logger.info(f"Job {job_id} cancelled")
-            return True
-        return False
+        """Get job status"""
+        return await self.queue.get_job_status(job_id)
     
     async def start_workers(self, num_workers: int = 3):
         """Start background workers"""
@@ -661,209 +684,16 @@ class JobManager:
             await worker.stop()
         self.workers.clear()
         logger.info("All workers stopped")
-    
-    async def get_system_status(self) -> Dict[str, Any]:
-        """Get overall system status"""
-        queue_stats = await self.queue.get_queue_stats()
-        
-        return {
-            "queue_stats": queue_stats,
-            "active_workers": len([w for w in self.workers if w.running]),
-            "total_workers": len(self.workers),
-            "registered_tasks": self.task_registry.list_tasks(),
-            "timestamp": datetime.now().isoformat()
-        }
 
-# Factory function for creating job manager
-async def create_job_manager(redis_url: str = "redis://localhost:6379/1") -> JobManager:
-    """Create and initialize job manager"""
+# Factory function for creating enterprise job manager
+async def create_enterprise_job_manager(orchestrator, redis_url: str = "redis://localhost:6379/1") -> EnterpriseJobManager:
+    """Create job manager integrated with real orchestrator"""
+    
     queue = JobQueue(redis_url)
     
     if not await queue.initialize():
         raise Exception("Failed to initialize job queue")
     
-    return JobManager(queue, task_registry)
-
-# Integration with existing content generation system
-class ContentJobManager:
-    """Specialized job manager for content generation tasks"""
+    task_registry = RealWorkflowTaskRegistry(orchestrator)
     
-    def __init__(self, job_manager: JobManager, model_registry, cache_manager):
-        self.job_manager = job_manager
-        self.model_registry = model_registry
-        self.cache_manager = cache_manager
-    
-    async def generate_content_async(self, template_id: str, style_profile: str,
-                                   parameters: Dict[str, Any],
-                                   priority: JobPriority = JobPriority.NORMAL) -> str:
-        """Submit content generation job"""
-        
-        job_params = {
-            "template_id": template_id,
-            "style_profile": style_profile,
-            "parameters": parameters,
-            "model_registry": "configured",  # Reference to use configured registry
-            "cache_manager": "configured"    # Reference to use configured cache
-        }
-        
-        return await self.job_manager.submit_job(
-            "generate_article",
-            job_params,
-            priority=priority,
-            timeout_seconds=600  # 10 minutes for content generation
-        )
-    
-    async def bulk_generate_content(self, templates: List[Dict[str, Any]],
-                                  priority: JobPriority = JobPriority.NORMAL) -> str:
-        """Submit bulk content generation job"""
-        
-        job_params = {
-            "templates": templates,
-            "model_registry": "configured",
-            "cache_manager": "configured"
-        }
-        
-        return await self.job_manager.submit_job(
-            "generate_bulk_content",
-            job_params,
-            priority=priority,
-            timeout_seconds=1800  # 30 minutes for bulk generation
-        )
-    
-    async def analyze_content_async(self, content: str, analysis_type: str = "full") -> str:
-        """Submit content analysis job"""
-        
-        job_params = {
-            "content": content,
-            "analysis_type": analysis_type
-        }
-        
-        return await self.job_manager.submit_job(
-            "content_analysis",
-            job_params,
-            priority=JobPriority.HIGH,
-            timeout_seconds=300
-        )
-
-# Example usage and testing
-async def example_usage():
-    """Example of how to use the job system"""
-    
-    # Create job manager
-    job_manager = await create_job_manager()
-    
-    # Start workers
-    await job_manager.start_workers(num_workers=2)
-    
-    try:
-        # Submit a simple job
-        print("=== Submitting Article Generation Job ===")
-        job_id = await job_manager.submit_job(
-            "generate_article",
-            {
-                "title": "Introduction to Machine Learning",
-                "template_id": "technical_tutorial",
-                "style_profile": "educational_expert",
-                "length": "medium"
-            },
-            priority=JobPriority.HIGH
-        )
-        
-        print(f"Submitted job: {job_id}")
-        
-        # Monitor job progress
-        while True:
-            status = await job_manager.get_job_status(job_id)
-            if not status:
-                break
-            
-            print(f"Job {job_id}: {status['status']} - {status['progress']:.1f}%")
-            
-            if status['metadata']:
-                print(f"  Current step: {status['metadata'].get('step', 'unknown')}")
-            
-            if status['status'] in ['completed', 'failed']:
-                if status['result']:
-                    if status['result']['success']:
-                        print(f"Job completed successfully!")
-                        print(f"Result: {status['result']['data']}")
-                    else:
-                        print(f"Job failed: {status['result']['error']}")
-                break
-            
-            await asyncio.sleep(1)
-        
-        # Submit bulk job
-        print("\n=== Submitting Bulk Generation Job ===")
-        bulk_job_id = await job_manager.submit_job(
-            "generate_bulk_content",
-            {
-                "templates": [
-                    {"id": "ai_ethics", "style": "popular_sci"},
-                    {"id": "startup_guide", "style": "founder_storytelling"},
-                    {"id": "tech_tutorial", "style": "technical_tutor"}
-                ]
-            },
-            priority=JobPriority.NORMAL
-        )
-        
-        print(f"Submitted bulk job: {bulk_job_id}")
-        
-        # Wait a bit then check system status
-        await asyncio.sleep(2)
-        
-        print("\n=== System Status ===")
-        system_status = await job_manager.get_system_status()
-        print(f"Queue stats: {system_status['queue_stats']}")
-        print(f"Active workers: {system_status['active_workers']}")
-        print(f"Available tasks: {system_status['registered_tasks']}")
-        
-        # Wait for bulk job to complete or timeout
-        timeout = 30
-        start_time = time.time()
-        
-        while time.time() - start_time < timeout:
-            status = await job_manager.get_job_status(bulk_job_id)
-            if status and status['status'] in ['completed', 'failed']:
-                print(f"\nBulk job {status['status']}")
-                if status['result'] and status['result']['success']:
-                    result = status['result']['data']
-                    print(f"Generated {result['total_generated']} pieces of content")
-                break
-            await asyncio.sleep(2)
-        
-    finally:
-        # Clean up
-        await job_manager.stop_workers()
-        print("\nJob system example completed")
-
-# Integration helper for existing langgraph app
-def integrate_with_langgraph(graph_app):
-    """Helper function to integrate job system with existing LangGraph app"""
-    
-    @task_registry.register("langgraph_content_generation")
-    async def langgraph_task(job: Job, progress_callback: Callable):
-        """Task handler that uses existing LangGraph workflow"""
-        params = job.parameters
-        
-        await progress_callback(10.0, {"step": "initializing_workflow"})
-        
-        # Use existing graph workflow
-        try:
-            result = await graph_app.run_workflow(
-                template_id=params.get("template_id"),
-                style_profile=params.get("style_profile"),
-                parameters=params.get("parameters", {}),
-                progress_callback=progress_callback
-            )
-            
-            await progress_callback(100.0, {"step": "completed"})
-            return result
-            
-        except Exception as e:
-            raise Exception(f"LangGraph workflow failed: {e}")
-    
-    logger.info("Integrated job system with LangGraph application")
-
-if __name__ == "__main__":
-    asyncio.run(example_usage())
+    return EnterpriseJobManager(queue, task_registry)

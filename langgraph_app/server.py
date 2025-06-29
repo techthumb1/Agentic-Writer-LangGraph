@@ -33,7 +33,7 @@ try:
         ProcessingStatus,
         MetricsCollector
     )
-    from model_registry import get_model
+    from langgraph_app.enhanced_model_registry import get_model
     LANGGRAPH_AVAILABLE = True
     print("✅ LangGraph modules loaded successfully")
 except ImportError as e:

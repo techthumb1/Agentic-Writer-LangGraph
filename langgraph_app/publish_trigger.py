@@ -1,6 +1,6 @@
 # langgraph_app/publisher_trigger.py
 
-from langgraph_app.agents.publisher import publisher
+from langgraph_app.agents.enhanced_publisher import publisher
 import yaml
 
 # Load previously stored values
