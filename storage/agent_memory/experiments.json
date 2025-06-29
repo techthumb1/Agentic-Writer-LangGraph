@@ -1,0 +1,110 @@
+[
+  {
+    "timestamp": "2025-06-28T01:29:46.090450",
+    "context": {
+      "topic_category": "general",
+      "audience": "General",
+      "intent": "inform",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "technical",
+      "structure": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Untitled",
+      "audience": "General",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "technical",
+      "structure_pattern": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-06-28T01:29:46.090334",
+      "word_count": 693,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-06-28T10:27:45.869758",
+    "context": {
+      "topic_category": "general",
+      "audience": "General",
+      "intent": "inform",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "technical",
+      "structure": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Untitled",
+      "audience": "General",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "technical",
+      "structure_pattern": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-06-28T10:27:45.869646",
+      "word_count": 738,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-06-28T15:56:19.402170",
+    "context": {
+      "topic_category": "general",
+      "audience": "General",
+      "intent": "inform",
+      "complexity": 5,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "creative",
+      "structure": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Untitled",
+      "audience": "General",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 5,
+      "innovation_level": "balanced",
+      "writing_mode": "creative",
+      "structure_pattern": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.3,
+        "conversational": 0.5,
+        "technical": 0.2,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-06-28T15:56:19.402058",
+      "word_count": 706,
+      "model_used": "gpt-4o"
+    }
+  }
+]

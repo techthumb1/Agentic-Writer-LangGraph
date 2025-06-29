@@ -1,0 +1,657 @@
+.
+├── .commitlintrc.json
+├── .DS_Store
+├── .env
+├── .env.example
+├── .eslintrc.js
+├── .git
+│   ├── .DS_Store
+│   ├── COMMIT_EDITMSG
+│   ├── config
+│   ├── description
+│   ├── FETCH_HEAD
+│   ├── HEAD
+│   ├── hooks
+│   │   ├── applypatch-msg.sample
+│   │   ├── commit-msg.sample
+│   │   ├── fsmonitor-watchman.sample
+│   │   ├── post-update.sample
+│   │   ├── pre-applypatch.sample
+│   │   ├── pre-commit.sample
+│   │   ├── pre-merge-commit.sample
+│   │   ├── pre-push.sample
+│   │   ├── pre-rebase.sample
+│   │   ├── pre-receive.sample
+│   │   ├── prepare-commit-msg.sample
+│   │   ├── push-to-checkout.sample
+│   │   └── update.sample
+│   ├── index
+│   ├── info
+│   │   └── exclude
+│   ├── logs
+│   │   ├── .DS_Store
+│   │   ├── HEAD
+│   │   └── refs
+│   ├── objects
+│   │   ├── .DS_Store
+│   │   ├── 00
+│   │   ├── 01
+│   │   ├── 02
+│   │   ├── 03
+│   │   ├── 04
+│   │   ├── 05
+│   │   ├── 06
+│   │   ├── 07
+│   │   ├── 08
+│   │   ├── 09
+│   │   ├── 0a
+│   │   ├── 0b
+│   │   ├── 0c
+│   │   ├── 0d
+│   │   ├── 0e
+│   │   ├── 0f
+│   │   ├── 10
+│   │   ├── 11
+│   │   ├── 12
+│   │   ├── 13
+│   │   ├── 14
+│   │   ├── 15
+│   │   ├── 16
+│   │   ├── 17
+│   │   ├── 18
+│   │   ├── 19
+│   │   ├── 1a
+│   │   ├── 1b
+│   │   ├── 1c
+│   │   ├── 1d
+│   │   ├── 1e
+│   │   ├── 1f
+│   │   ├── 20
+│   │   ├── 22
+│   │   ├── 23
+│   │   ├── 24
+│   │   ├── 25
+│   │   ├── 26
+│   │   ├── 27
+│   │   ├── 28
+│   │   ├── 29
+│   │   ├── 2a
+│   │   ├── 2b
+│   │   ├── 2c
+│   │   ├── 2d
+│   │   ├── 2e
+│   │   ├── 2f
+│   │   ├── 30
+│   │   ├── 31
+│   │   ├── 32
+│   │   ├── 33
+│   │   ├── 34
+│   │   ├── 35
+│   │   ├── 36
+│   │   ├── 37
+│   │   ├── 38
+│   │   ├── 39
+│   │   ├── 3b
+│   │   ├── 3c
+│   │   ├── 3d
+│   │   ├── 3e
+│   │   ├── 3f
+│   │   ├── 40
+│   │   ├── 41
+│   │   ├── 42
+│   │   ├── 43
+│   │   ├── 44
+│   │   ├── 45
+│   │   ├── 46
+│   │   ├── 47
+│   │   ├── 48
+│   │   ├── 49
+│   │   ├── 4a
+│   │   ├── 4b
+│   │   ├── 4c
+│   │   ├── 4d
+│   │   ├── 4e
+│   │   ├── 4f
+│   │   ├── 50
+│   │   ├── 51
+│   │   ├── 52
+│   │   ├── 53
+│   │   ├── 54
+│   │   ├── 55
+│   │   ├── 56
+│   │   ├── 57
+│   │   ├── 58
+│   │   ├── 59
+│   │   ├── 5a
+│   │   ├── 5b
+│   │   ├── 5c
+│   │   ├── 5d
+│   │   ├── 5e
+│   │   ├── 5f
+│   │   ├── 60
+│   │   ├── 61
+│   │   ├── 62
+│   │   ├── 63
+│   │   ├── 64
+│   │   ├── 65
+│   │   ├── 66
+│   │   ├── 67
+│   │   ├── 68
+│   │   ├── 69
+│   │   ├── 6a
+│   │   ├── 6b
+│   │   ├── 6c
+│   │   ├── 6d
+│   │   ├── 6e
+│   │   ├── 6f
+│   │   ├── 70
+│   │   ├── 71
+│   │   ├── 72
+│   │   ├── 73
+│   │   ├── 74
+│   │   ├── 75
+│   │   ├── 76
+│   │   ├── 77
+│   │   ├── 78
+│   │   ├── 79
+│   │   ├── 7a
+│   │   ├── 7b
+│   │   ├── 7c
+│   │   ├── 7d
+│   │   ├── 7e
+│   │   ├── 7f
+│   │   ├── 80
+│   │   ├── 81
+│   │   ├── 82
+│   │   ├── 83
+│   │   ├── 84
+│   │   ├── 85
+│   │   ├── 86
+│   │   ├── 87
+│   │   ├── 88
+│   │   ├── 89
+│   │   ├── 8a
+│   │   ├── 8b
+│   │   ├── 8c
+│   │   ├── 8d
+│   │   ├── 8e
+│   │   ├── 8f
+│   │   ├── 90
+│   │   ├── 91
+│   │   ├── 92
+│   │   ├── 93
+│   │   ├── 94
+│   │   ├── 95
+│   │   ├── 96
+│   │   ├── 97
+│   │   ├── 98
+│   │   ├── 99
+│   │   ├── 9a
+│   │   ├── 9b
+│   │   ├── 9c
+│   │   ├── 9d
+│   │   ├── 9e
+│   │   ├── 9f
+│   │   ├── a0
+│   │   ├── a1
+│   │   ├── a2
+│   │   ├── a3
+│   │   ├── a4
+│   │   ├── a5
+│   │   ├── a6
+│   │   ├── a7
+│   │   ├── a8
+│   │   ├── a9
+│   │   ├── aa
+│   │   ├── ab
+│   │   ├── ac
+│   │   ├── ad
+│   │   ├── ae
+│   │   ├── af
+│   │   ├── b0
+│   │   ├── b1
+│   │   ├── b2
+│   │   ├── b3
+│   │   ├── b4
+│   │   ├── b5
+│   │   ├── b6
+│   │   ├── b7
+│   │   ├── b8
+│   │   ├── b9
+│   │   ├── ba
+│   │   ├── bb
+│   │   ├── bc
+│   │   ├── bd
+│   │   ├── be
+│   │   ├── bf
+│   │   ├── c0
+│   │   ├── c1
+│   │   ├── c2
+│   │   ├── c3
+│   │   ├── c4
+│   │   ├── c5
+│   │   ├── c6
+│   │   ├── c7
+│   │   ├── c8
+│   │   ├── c9
+│   │   ├── ca
+│   │   ├── cb
+│   │   ├── cc
+│   │   ├── cd
+│   │   ├── ce
+│   │   ├── cf
+│   │   ├── d0
+│   │   ├── d1
+│   │   ├── d2
+│   │   ├── d3
+│   │   ├── d4
+│   │   ├── d5
+│   │   ├── d6
+│   │   ├── d7
+│   │   ├── d8
+│   │   ├── d9
+│   │   ├── da
+│   │   ├── db
+│   │   ├── dc
+│   │   ├── dd
+│   │   ├── de
+│   │   ├── df
+│   │   ├── e0
+│   │   ├── e1
+│   │   ├── e2
+│   │   ├── e3
+│   │   ├── e5
+│   │   ├── e6
+│   │   ├── e7
+│   │   ├── e8
+│   │   ├── e9
+│   │   ├── ea
+│   │   ├── eb
+│   │   ├── ec
+│   │   ├── ed
+│   │   ├── ee
+│   │   ├── ef
+│   │   ├── f0
+│   │   ├── f1
+│   │   ├── f2
+│   │   ├── f3
+│   │   ├── f4
+│   │   ├── f5
+│   │   ├── f6
+│   │   ├── f7
+│   │   ├── f8
+│   │   ├── f9
+│   │   ├── fa
+│   │   ├── fb
+│   │   ├── fc
+│   │   ├── fd
+│   │   ├── fe
+│   │   ├── ff
+│   │   ├── info
+│   │   └── pack
+│   ├── ORIG_HEAD
+│   ├── packed-refs
+│   └── refs
+│       ├── .DS_Store
+│       ├── heads
+│       ├── remotes
+│       └── tags
+├── .github
+│   └── workflows
+│       └── ci.yml
+├── .gitignore
+├── .husky
+│   ├── _
+│   │   ├── .gitignore
+│   │   ├── applypatch-msg
+│   │   ├── commit-msg
+│   │   ├── h
+│   │   ├── husky.sh
+│   │   ├── post-applypatch
+│   │   ├── post-checkout
+│   │   ├── post-commit
+│   │   ├── post-merge
+│   │   ├── post-rewrite
+│   │   ├── pre-applypatch
+│   │   ├── pre-auto-gc
+│   │   ├── pre-commit
+│   │   ├── pre-merge-commit
+│   │   ├── pre-push
+│   │   ├── pre-rebase
+│   │   └── prepare-commit-msg
+│   ├── commit-msg
+│   └── pre-commit
+├── .next
+│   └── trace
+├── .pytest_cache
+│   ├── .DS_Store
+│   ├── .gitignore
+│   ├── CACHEDIR.TAG
+│   ├── README.md
+│   └── v
+│       ├── .DS_Store
+│       └── cache
+├── backups
+│   └── 20250618_235827
+├── check_existing.sh
+├── data
+│   ├── .DS_Store
+│   ├── content_templates
+│   │   ├── analytical_authoritative.yaml
+│   │   ├── approachable_engaging.yaml
+│   │   ├── assertive_friendly.yaml
+│   │   ├── blog_post.yaml
+│   │   ├── decision_trees.yaml
+│   │   ├── federated_learning_101.yaml
+│   │   ├── future_of_llms.yaml
+│   │   ├── introduction_to_contrastive_learning.yaml
+│   │   ├── professional.yaml
+│   │   ├── startup_trends_brief.yaml
+│   │   └── week_2.yaml
+│   └── style_profiles
+│       ├── .DS_Store
+│       ├── ai_in_healthcare.yaml
+│       ├── ai_news_brief.yaml
+│       ├── beginner_friendly.yaml
+│       ├── debate_position.yaml
+│       ├── educational_expert.yaml
+│       ├── experimental_lab_log.yaml
+│       ├── founder_storytelling.yaml
+│       ├── future_of_llms.yaml
+│       ├── jason.yaml
+│       ├── market_flash.yaml
+│       ├── phd_academic.yaml
+│       ├── phd_lit_review.yaml
+│       ├── policy_watch.yaml
+│       ├── popular_sci.yaml
+│       ├── startup_trends_brief.yaml
+│       ├── startup_usecases.yaml
+│       ├── technical_dive.yaml
+│       └── technical_tutor.yaml
+├── deployment
+│   └── render.yaml
+├── docker-compose.yaml
+├── docker-compose.yml
+├── frontend
+│   ├── .DS_Store
+│   ├── .env.example
+│   ├── .env.local
+│   ├── .eslintrc.js
+│   ├── .gitignore
+│   ├── .next
+│   │   ├── app-build-manifest.json
+│   │   ├── build-manifest.json
+│   │   ├── cache
+│   │   ├── package.json
+│   │   ├── react-loadable-manifest.json
+│   │   ├── server
+│   │   ├── static
+│   │   ├── trace
+│   │   └── types
+│   ├── .prettierignore
+│   ├── .prettierrc
+│   ├── app
+│   │   ├── .DS_Store
+│   │   ├── about
+│   │   ├── api
+│   │   ├── api-access
+│   │   ├── auth
+│   │   ├── careers
+│   │   ├── case-studies
+│   │   ├── community
+│   │   ├── contact
+│   │   ├── content
+│   │   ├── customers
+│   │   ├── dashboard
+│   │   ├── docs
+│   │   ├── favicon.ico
+│   │   ├── generate
+│   │   ├── globals.css
+│   │   ├── help
+│   │   ├── integrations
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   ├── press
+│   │   ├── pricing
+│   │   ├── privacy
+│   │   ├── profile
+│   │   ├── providers.tsx
+│   │   ├── settings
+│   │   ├── solutions
+│   │   ├── status
+│   │   ├── templates
+│   │   ├── terms
+│   │   ├── testing
+│   │   └── theme-provider.tsx
+│   ├── auth.config.ts
+│   ├── auth.ts
+│   ├── components
+│   │   ├── .DS_Store
+│   │   ├── CollapsibleNavigation.tsx
+│   │   ├── content-editor.tsx
+│   │   ├── DynamicParameters.tsx
+│   │   ├── error-boundary.tsx
+│   │   ├── examples
+│   │   ├── GeneratedContentDisplay.tsx
+│   │   ├── GeneratedContentDisplay.tsx.backup
+│   │   ├── GeneratingDialog.tsx
+│   │   ├── GenerationPreview.tsx
+│   │   ├── NavigationClient.tsx
+│   │   ├── NavigationClient.tsx.backup
+│   │   ├── ResponsiveNavigation.tsx
+│   │   ├── SimpleThemeSwitcher.tsx
+│   │   ├── StyleProfilesSelector.tsx
+│   │   ├── TemplateSelector.tsx
+│   │   ├── ThemeSelector.tsx
+│   │   ├── ToastProvider.tsx
+│   │   └── ui
+│   ├── components.json
+│   ├── content-templates
+│   │   ├── Analytical Authoritative.yaml
+│   │   ├── Approachable Engaging.yaml
+│   │   ├── Assertive Friendly.yaml
+│   │   ├── Decision Trees.yaml
+│   │   ├── Federated Learning: 101.yaml
+│   │   ├── Future of LLMs.yaml
+│   │   ├── Introduction to Contrastive Learning.yaml
+│   │   ├── Startup Trends Brief.yaml
+│   │   └── Startup Usecases.yaml
+│   ├── create_routes.sh
+│   ├── debug.sh
+│   ├── Dockerfile
+│   ├── eslint.config.mjs
+│   ├── eslint.config.mjs.backup
+│   ├── generated_content
+│   │   └── .DS_Store
+│   ├── hooks
+│   │   ├── use-performance.ts
+│   │   ├── use-performance.ts.backup
+│   │   ├── use-toast.ts
+│   │   ├── useEnhancedGeneration.ts
+│   │   ├── useGenerationStatus.ts
+│   │   ├── useRealContentGeneration.ts
+│   │   ├── userIntegratedContentGeneration.ts
+│   │   ├── useStyleProfiles.ts
+│   │   ├── useTemplates.ts
+│   │   └── useUnifiedTheme.ts
+│   ├── jest.config.js
+│   ├── jest.setup.js
+│   ├── lib
+│   │   ├── analytics.tsx
+│   │   ├── api-client.tsx
+│   │   ├── api.ts
+│   │   ├── constants.ts
+│   │   ├── content-generation-engine.ts
+│   │   ├── file-loader.ts
+│   │   ├── prisma.ts
+│   │   ├── react-query-provider.tsx
+│   │   ├── string.ts
+│   │   ├── toast-utils.ts
+│   │   ├── utils.ts
+│   │   ├── validation.ts
+│   │   └── withCors.ts
+│   ├── middleware.ts
+│   ├── middleware.ts.backup
+│   ├── next-env.d.ts
+│   ├── next.config.ts
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── package.json.backup
+│   ├── playwright.config.ts
+│   ├── pnpm-lock.yaml
+│   ├── postcss.config.mjs
+│   ├── prisma
+│   │   ├── migrations
+│   │   ├── schema.prisma
+│   │   ├── seed.ts
+│   │   └── seed.ts.backup
+│   ├── public
+│   │   ├── file.svg
+│   │   ├── globe.svg
+│   │   ├── next.svg
+│   │   ├── vercel.svg
+│   │   └── window.svg
+│   ├── README.md
+│   ├── schemas
+│   │   └── generateContentSchema.ts
+│   ├── styles
+│   │   └── globals.css
+│   ├── tailwinds.config.ts
+│   ├── test-simple-oauth.js
+│   ├── tests
+│   │   ├── e2e
+│   │   └── unit
+│   ├── tsconfig.json
+│   ├── tsconfig.json.backup
+│   ├── tsconfig.tsbuildinfo
+│   ├── types
+│   │   ├── api.ts
+│   │   ├── components.ts
+│   │   ├── content.ts
+│   │   ├── index.ts
+│   │   ├── models.ts
+│   │   └── theme.ts
+│   └── utils
+│       ├── formUtils.ts
+│       └── safeListDirs.ts
+├── generated_content
+│   ├── .DS_Store
+│   ├── preview-federated-learning-for-beginners.html
+│   ├── preview-understanding-decision-trees.html
+│   └── week_1
+│       └── federated_learning_101.md
+├── langgraph_app
+│   ├── __init__.py
+│   ├── __main__2.py
+│   ├── .DS_Store
+│   ├── agents
+│   │   ├── __init__.py
+│   │   ├── .DS_Store
+│   │   ├── call_writer_agent_mock.py
+│   │   ├── enhanced_call_writer.py
+│   │   ├── enhanced_code_agent.py
+│   │   ├── enhanced_editor.py
+│   │   ├── enhanced_formatter.py
+│   │   ├── enhanced_image_agent.py
+│   │   ├── enhanced_planner.py
+│   │   ├── enhanced_publisher.py
+│   │   ├── enhanced_researcher.py
+│   │   ├── enhanced_seo_agent.py
+│   │   └── writer.py
+│   ├── cache_system.py
+│   ├── content_generation_workflow.py
+│   ├── Dockerfile
+│   ├── enhanced_graph.py
+│   ├── enhanced_model_registry.py
+│   ├── enhanced_orchestration.py
+│   ├── generate_template.py
+│   ├── graph.py
+│   ├── integrated_server.py
+│   ├── integrated_workflow.py
+│   ├── integration_coordinator.py
+│   ├── job_queue.py
+│   ├── main.py
+│   ├── publish_trigger.py
+│   ├── semantic_search.py
+│   ├── server.py
+│   ├── style_profile_loader.py
+│   └── utils.py
+├── LICENSE
+├── migration.sh
+├── package-lock.json
+├── package.json
+├── pnpm-lock.yaml
+├── project_structure.txt
+├── prompts
+│   ├── .DS_Store
+│   └── writer
+│       ├── business_writer.txt
+│       ├── conversational_mentor.txt
+│       ├── educator_writer.txt
+│       ├── grad_level_writer.txt
+│       ├── hands_on_developer.txt
+│       ├── journalistic_writer.txt
+│       ├── opinionated_thinker.txt
+│       ├── research_summarizer.txt
+│       ├── startup_storyteller.txt
+│       └── summary_plus_depth.txt
+├── README.md
+├── requirements.lock.txt
+├── requirements.txt
+├── run_server.sh
+├── scripts
+│   ├── cleanup-console.ts
+│   ├── cleanup-script.sh
+│   ├── deploy.sh
+│   ├── dev.sh
+│   ├── rotate-api-key.py
+│   └── targeted-enhancement.sh
+├── server_startup.sh
+├── storage
+│   ├── .DS_Store
+│   ├── agent_memory
+│   │   └── experiments.json
+│   ├── causal_inference_guide
+│   │   ├── artificial_intelligence_mock.json
+│   │   └── artificial_intelligence_mock.md
+│   ├── decision_trees_intro
+│   │   ├── artificial_intelligence_mock.json
+│   │   └── artificial_intelligence_mock.md
+│   └── future_of_llms
+│       ├── artificial_intelligence_mock.json
+│       └── artificial_intelligence_mock.md
+├── style_profiles
+│   ├── .DS_Store
+│   ├── ai_in_healthcare.yaml
+│   ├── ai_news_brief.yaml
+│   ├── beginner_friendly.yaml
+│   ├── debate_position.yaml
+│   ├── educational_expert.yaml
+│   ├── experimental_lab_log.yaml
+│   ├── founder_storytelling.yaml
+│   ├── future_of_llms.yaml
+│   ├── jason.yaml
+│   ├── market_flash.yaml
+│   ├── phd_academic.yaml
+│   ├── phd_lit_review.yaml
+│   ├── policy_watch.yaml
+│   ├── popular_sci.yaml
+│   ├── startup_trends_brief.yaml
+│   ├── startup_usecases.yaml
+│   ├── technical_dive.yaml
+│   └── technical_tutor.yaml
+├── test_unified.py
+├── tests
+│   ├── .DS_Store
+│   └── test_agents.py
+└── writer
+    ├── .DS_Store
+    ├── include
+    │   ├── python3.12
+    │   └── site
+    ├── lib
+    │   ├── .DS_Store
+    │   └── python3.12
+    └── pyvenv.cfg
+
+349 directories, 306 files
