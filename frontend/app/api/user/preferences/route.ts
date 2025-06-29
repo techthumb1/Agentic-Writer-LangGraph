@@ -68,8 +68,6 @@ export async function PUT(request: NextRequest) {
     //   }
     // });
 
-    });
-
     return NextResponse.json({ 
       success: true, 
       message: 'Preferences updated successfully',

@@ -35,8 +35,6 @@ export async function PUT(request: NextRequest) {
     //   }
     // });
 
-    });
-
     return NextResponse.json({ 
       success: true, 
       message: 'Notification settings updated successfully',

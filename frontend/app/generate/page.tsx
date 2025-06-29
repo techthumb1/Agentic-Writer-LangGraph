@@ -3,11 +3,9 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery, useMutation } from "@tanstack/react-query";
-// Removed unused z import
+import { useMutation } from "@tanstack/react-query";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-// import { Badge } from "@/components/ui/badge";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -23,6 +21,12 @@ import DynamicParameters from "@/components/DynamicParameters";
 import GeneratingDialog from "@/components/GeneratingDialog";
 import { GenerationPreview } from "@/components/GenerationPreview";
 import { GenerateContentFormValues, generateContentSchema } from "@/schemas/generateContentSchema";
+import { useTemplates } from "@/hooks/useTemplates";
+import { useStyleProfiles } from "@/hooks/useStyleProfiles";
+import { 
+  adaptTemplateCollection, 
+  adaptStyleProfileCollection 
+} from "@/utils/typeAdapters";
 
 // ----------------------
 // Enhanced Interfaces
@@ -37,18 +41,30 @@ interface TemplateParameter {
   required?: boolean;
 }
 
-interface ContentTemplate {
+// Extended template interface that includes parameters
+interface ExtendedTemplate {
   id: string;
   name: string;
   description?: string;
-  parameters: TemplateParameter[];
+  category?: string;
+  sections?: string[];
+  metadata?: Record<string, unknown>;
+  filename?: string;
+  parameters?: TemplateParameter[]; // Make parameters optional since API templates might not have them
 }
 
-interface StyleProfile {
+// Extended style profile interface
+interface ExtendedStyleProfile {
   id: string;
   name: string;
   description?: string;
+  category?: string;
+  tone?: string;
+  voice?: string;
+  structure?: string;
+  system_prompt?: string;
   settings?: Record<string, unknown>;
+  filename?: string;
 }
 
 interface GeneratedContent {
@@ -82,8 +98,6 @@ function useEnhancedGeneration() {
 
     while (attempts < maxAttempts) {
       try {
-        console.log(`🔄 Polling attempt ${attempts + 1} for request ${requestId}`);
-        
         const statusRes = await fetch(`/api/generate/status/${requestId}`);
         
         if (!statusRes.ok) {
@@ -91,10 +105,8 @@ function useEnhancedGeneration() {
         }
 
         const statusData = await statusRes.json();
-        console.log(`📊 Status response:`, statusData);
 
         if (statusData.status === 'completed') {
-          console.log("✅ Generation completed!");
           return statusData.data;
         } else if (statusData.status === 'failed') {
           throw new Error(statusData.error || 'Generation failed');
@@ -124,9 +136,7 @@ function useEnhancedGeneration() {
       setError(null);
       setRequestId(null);
       
-      // DEBUG: Log the exact payload being sent
-      console.log("🔍 DEBUGGING - Original form payload:");
-      console.log("Raw payload:", JSON.stringify(payload, null, 2));
+      console.log('🚀 Starting generation with payload:', payload);
 
       const payloadForBackend = {
         template: payload.templateId,
@@ -138,7 +148,7 @@ function useEnhancedGeneration() {
         use_mock: payload.use_mock || false,
       };
       
-      console.log("🔍 Backend payload:", JSON.stringify(payloadForBackend, null, 2));
+      console.log('📤 Sending to backend:', payloadForBackend);
       
       // Step 1: Start the generation
       const res = await fetch("/api/generate", {
@@ -150,7 +160,7 @@ function useEnhancedGeneration() {
         body: JSON.stringify(payloadForBackend),
       });
       
-      console.log("🔍 Initial response status:", res.status);
+      console.log('📥 Response status:', res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
@@ -165,7 +175,7 @@ function useEnhancedGeneration() {
       }
       
       const initialResponse = await res.json();
-      console.log("✅ Initial API Response:", initialResponse);
+      console.log('📄 Initial response:', initialResponse);
 
       // Check if we got the content immediately (synchronous response)
       if (initialResponse.data && initialResponse.status !== 'pending') {
@@ -175,7 +185,6 @@ function useEnhancedGeneration() {
       // If we have a request_id, poll for completion (asynchronous response)
       if (initialResponse.request_id) {
         setRequestId(initialResponse.request_id);
-        console.log("🔄 Starting polling for request:", initialResponse.request_id);
         return await pollGenerationStatus(initialResponse.request_id);
       }
 
@@ -189,7 +198,7 @@ function useEnhancedGeneration() {
         metadata: data.metadata,
         saved_path: data.saved_path,
       });
-      console.log("✅ Generation Success:", data);
+      console.log('✅ Generation completed successfully');
     },
     onError: (error) => {
       setIsGenerating(false);
@@ -226,12 +235,17 @@ function useEnhancedGeneration() {
     resetGeneration,
   };
 }
+
 // ----------------------
 // Main Integrated Component
 // ----------------------
-export default function GenerateContentPage() {
-  const [selectedTemplate, setSelectedTemplate] = useState<ContentTemplate | null>(null);
+export default function GeneratePage() {
+  // State for generating dialog
   const [isGeneratingDialogOpen, setIsGeneratingDialogOpen] = useState(false);
+  
+  // Use the updated hooks
+  const { templates, isLoading: templatesLoading, isError: templatesError, error: templatesErrorDetails } = useTemplates();
+  const { styleProfiles, isLoading: profilesLoading, isError: profilesError } = useStyleProfiles();
 
   const {
     isGenerating,
@@ -241,29 +255,6 @@ export default function GenerateContentPage() {
     cancelGeneration,
     resetGeneration,
   } = useEnhancedGeneration();
-
-  // ----------------------
-  // Data Queries
-  // ----------------------
-  const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
-    queryKey: ["templates"],
-    queryFn: async () => {
-      const res = await fetch("/api/templates");
-      const json = await res.json();
-      console.log("/api/templates →", json);
-      return json.data?.items || json || [];
-    },
-  });
-
-  const { data: styleProfiles = [], isLoading: isLoadingStyleProfiles } = useQuery({
-    queryKey: ["styleProfiles"],
-    queryFn: async () => {
-      const res = await fetch("/api/style-profiles");
-      const json = await res.json();
-      console.log("/api/style-profiles →", json);
-      return json.data?.items || json || [];
-    },
-  });
 
   // ----------------------
   // Form Setup - Using backend-compatible schema
@@ -283,14 +274,30 @@ export default function GenerateContentPage() {
   const watchedTemplateId = form.watch("templateId");
   const watchedStyleProfileId = form.watch("styleProfileId");
 
+  // Safe template and style profile finding
+  const selectedTemplate: ExtendedTemplate | null = templates && Array.isArray(templates) 
+    ? templates.find((t: ExtendedTemplate) => t.id === watchedTemplateId) || null
+    : null;
+    
+  const selectedStyleProfile: ExtendedStyleProfile | null = styleProfiles && Array.isArray(styleProfiles)
+    ? styleProfiles.find((sp: ExtendedStyleProfile) => sp.id === watchedStyleProfileId) || null
+    : null;
+
+  // Debug logging
+  console.log('🔍 Debug info:', {
+    templates: templates?.length || 0,
+    styleProfiles: styleProfiles?.length || 0,
+    selectedTemplate: selectedTemplate?.name,
+    selectedStyleProfile: selectedStyleProfile?.name,
+    watchedTemplateId,
+    watchedStyleProfileId
+  });
+
   // Update selected template when form changes
   useEffect(() => {
-    const template = templates.find((t: ContentTemplate) => t.id === watchedTemplateId);
-    setSelectedTemplate(template || null);
-    
-    if (template && Array.isArray(template.parameters)) {
+    if (selectedTemplate && selectedTemplate.parameters && Array.isArray(selectedTemplate.parameters)) {
       const newDefaults: Record<string, string | number | boolean> = {};
-      template.parameters.forEach((param: TemplateParameter) => {
+      selectedTemplate.parameters.forEach((param: TemplateParameter) => {
         if (param.default !== undefined) {
           newDefaults[param.name] = param.default;
         } else {
@@ -311,18 +318,74 @@ export default function GenerateContentPage() {
       });
       form.resetField("dynamic_parameters", { defaultValue: newDefaults });
     }
-  }, [watchedTemplateId, templates, form]);
+  }, [watchedTemplateId, selectedTemplate, form]);
 
   // Sync generating dialog with generation state
   useEffect(() => {
     setIsGeneratingDialogOpen(isGenerating);
   }, [isGenerating]);
 
+  // Loading states
+  if (templatesLoading || profilesLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Loading templates and style profiles...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error states
+  if (templatesError || profilesError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center text-red-600">
+          <h2 className="text-xl font-bold mb-2">Error Loading Data</h2>
+          <p className="mb-4">
+            {templatesError && "Failed to load templates. "}
+            {profilesError && "Failed to load style profiles."}
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            {templatesErrorDetails?.message}
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No data states
+  if (!templates || !Array.isArray(templates) || templates.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2">No Templates Available</h2>
+          <p className="text-gray-600 mb-4">
+            Templates: {templates?.length || 0} | Type: {typeof templates}
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ----------------------
   // Event Handlers
   // ----------------------
   const onSubmit = (values: GenerateContentFormValues) => {
-    console.log("🚀 Form Submitted →", values);
+    console.log('📝 Form submitted:', values);
     startGeneration(values);
   };
 
@@ -331,8 +394,6 @@ export default function GenerateContentPage() {
       const slug = result.saved_path.split("/").pop()?.replace(/\.(json|md)$/, "");
       if (slug) {
         window.location.href = `/content/${slug}`;
-      } else {
-        console.warn("⚠️ No valid slug found for redirection.");
       }
     }
   };
@@ -341,13 +402,18 @@ export default function GenerateContentPage() {
     watchedTemplateId && 
     watchedStyleProfileId && 
     !isGenerating && 
-    !isLoadingTemplates && 
-    !isLoadingStyleProfiles;
-
-  const selectedStyleProfile = styleProfiles.find((sp: StyleProfile) => sp.id === watchedStyleProfileId);
+    !templatesLoading && 
+    !profilesLoading;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 text-gray-900 dark:text-white">
+      {/* Debug info (remove after fixing) */}
+      <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+        <p>📊 Debug: {templates?.length || 0} templates, {styleProfiles?.length || 0} profiles loaded</p>
+        <p>🎯 Selected: {selectedTemplate?.name || 'None'} | {selectedStyleProfile?.name || 'None'}</p>
+        <p>🔍 Watching: {watchedTemplateId} | {watchedStyleProfileId}</p>
+      </div>
+
       {/* Enhanced Header */}
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
@@ -376,10 +442,11 @@ export default function GenerateContentPage() {
               <CardContent>
                 <TemplateSelector
                   form={form}
-                  templates={templates}
-                  styleProfiles={styleProfiles}
-                  isLoadingTemplates={isLoadingTemplates}
-                  isLoadingStyleProfiles={isLoadingStyleProfiles}
+                  // FIXED VERSION:
+                templates={adaptTemplateCollection(templates || [])}
+                styleProfiles={adaptStyleProfileCollection(styleProfiles || [])}
+                  isLoadingTemplates={templatesLoading}
+                  isLoadingStyleProfiles={profilesLoading}
                 />
                 {selectedTemplate && (
                   <div className="mt-4">
@@ -425,7 +492,7 @@ export default function GenerateContentPage() {
           </div>
 
           {/* Dynamic Parameters */}
-          {selectedTemplate && Array.isArray(selectedTemplate.parameters) && selectedTemplate.parameters.length > 0 && (
+          {selectedTemplate && selectedTemplate.parameters && Array.isArray(selectedTemplate.parameters) && selectedTemplate.parameters.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Template Parameters</CardTitle>

@@ -22,7 +22,6 @@ export async function PUT(request: NextRequest) {
     //   data: { name, email }
     // });
 
-    console.log('Profile update request:', { name, email, userId: session.user.id });
 
     return NextResponse.json({ 
       success: true, 

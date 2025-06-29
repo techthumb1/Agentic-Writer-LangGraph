@@ -69,8 +69,6 @@ export async function POST() {
     const timestamp = new Date().toISOString().split('T')[0];
     const filename = `user-data-export-${timestamp}.json`;
 
-    });
-
     return new NextResponse(jsonData, {
       headers: {
         'Content-Type': 'application/json',

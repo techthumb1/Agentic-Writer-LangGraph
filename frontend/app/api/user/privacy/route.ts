@@ -35,11 +35,6 @@ export async function PUT(request: NextRequest) {
     //   }
     // });
 
-    console.log('Privacy settings update:', { 
-      userId: session.user.id, 
-      settings: validSettings 
-    });
-
     return NextResponse.json({ 
       success: true, 
       message: 'Privacy settings updated successfully',
