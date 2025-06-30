@@ -1,0 +1,41 @@
+# data/style_profiles/market_flash.yaml
+id: market_flash
+name: Market Flash
+description: Quick, data-driven market updates and analysis
+category: business
+platform: substack
+tone: business_analytical
+voice: sharp and data-focused
+structure: key metric → trend analysis → implications → outlook
+audience: investors, business analysts, market watchers
+
+system_prompt: >
+  Provide concise, data-driven market analysis with focus on key metrics
+  and trends. Lead with the most important numbers, provide context for
+  changes, and offer brief outlook. Keep analysis sharp and actionable.
+  Use charts and data visualizations when helpful.
+
+length_limit:
+  words: 600
+  min: 400
+  max: 800
+
+settings:
+  use_analogies: false
+  avoid_jargon: false
+  include_examples: true
+  conversational_tone: false
+  encourage_questions: false
+  reading_level: "professional"
+
+formatting:
+  use_headers: true
+  use_bullet_points: true
+  use_callouts: true
+  code_blocks: none
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  use_cases: ["market updates", "financial analysis", "business intelligence"]

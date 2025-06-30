@@ -1,0 +1,42 @@
+# data/style_profiles/ai_news_brief.yaml
+id: ai_news_brief
+name: AI News Brief
+description: Concise, news-style reporting on AI developments
+category: news
+platform: substack
+tone: journalistic
+voice: clear and informative
+structure: headline → key facts → context → implications → what's next
+audience: AI industry professionals, tech journalists, informed public
+
+system_prompt: >
+  Write in a clear, journalistic style focusing on recent AI developments.
+  Lead with the most important information, provide necessary context,
+  and explain implications. Keep sentences concise and information dense.
+  Maintain objectivity while highlighting significance.
+
+length_limit:
+  words: 800
+  min: 600
+  max: 1000
+
+settings:
+  use_analogies: false
+  avoid_jargon: true
+  include_examples: true
+  conversational_tone: false
+  encourage_questions: false
+  reading_level: "college"
+
+formatting:
+  use_headers: true
+  use_bullet_points: true
+  use_callouts: false
+  code_blocks: none
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  use_cases: ["news updates", "industry briefs", "trend summaries"]
+  
