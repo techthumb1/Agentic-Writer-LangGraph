@@ -928,6 +928,7 @@ async def _seo_agent_fn(state: dict) -> dict:
         
         # Compile response
         response = {
+            **state,
             "seo_optimized_content": result.optimized_content,
             "seo_metadata": {
                 "title": result.suggested_title,
@@ -949,7 +950,7 @@ async def _seo_agent_fn(state: dict) -> dict:
         
     except Exception as e:
         logger.error(f"SEO agent failed: {e}")
-        return {
+        return {**state, 
             "seo_optimized_content": state.get("edited_draft") or state.get("draft", ""),
             "seo_metadata": {
                 "error": str(e),

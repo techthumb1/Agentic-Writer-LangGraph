@@ -47,9 +47,12 @@ class IntelligentFormatterAgent:
         }
         
         return {
+            **state,
             "formatted_article": formatted_content,
+            "content": formatted_content,
             "formatting_metadata": formatting_metadata
         }
+
     
     def _format_for_medium(self, content: str, code: str, image: str, state: Dict) -> str:
         """Format for Medium publication"""
@@ -260,7 +263,14 @@ def _formatter_fn(state: dict) -> dict:
 def _legacy_formatter_fn(state: dict) -> dict:
     draft = state.get("draft", "No Draft Found")
     wrapped = f"<html><body>{draft}</body></html>"
-    return {"formatted_article": wrapped}
+    final_state = None  # inserted for safety
+    if final_state:
+        if final_state:
+            return {**final_state, "formatted_article": wrapped}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
+    else:
+        return {"error": "final_state undefined", "status": "failed"}
 
 # Function to load style profile (moved from original file)
 def load_style_profile(name: str) -> dict:

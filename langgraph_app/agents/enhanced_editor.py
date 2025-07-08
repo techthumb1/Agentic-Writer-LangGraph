@@ -83,7 +83,8 @@ Please provide the edited version that maximizes impact while preserving the aut
         
         draft = state.get("draft", "")
         if not draft:
-            return {"edited_draft": "No draft provided for editing."}
+            # No draft provided, return an appropriate error or message
+            return {**state, "edited_draft": "No draft provided for editing."}
         
         # Determine editing strategy
         strategy = self.determine_editing_strategy(state)
@@ -105,7 +106,7 @@ Please provide the edited version that maximizes impact while preserving the aut
         
         edited_content = response.choices[0].message.content.strip()
         
-        return {
+        return {**state, 
             "edited_draft": edited_content,
             "editing_metadata": {
                 "strategy_used": strategy,

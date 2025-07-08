@@ -469,9 +469,9 @@ class IntelligentImageAgent:
         return await loop.run_in_executor(None, _sync_generate)
     
     def _create_successful_image_result(self, image_url: str, context: ImageGenerationContext, 
-                                      style: ImageStyle, spec: ImageSpecification, prompt: str) -> Dict:
+                                    style: ImageStyle, spec: ImageSpecification, prompt: str) -> Dict:
         """Create comprehensive successful result"""
-        
+
         return {
             "cover_image_url": image_url,
             "image_metadata": {
@@ -491,14 +491,14 @@ class IntelligentImageAgent:
                 "composition_type": spec.composition_type
             }
         }
-    
+
+
     def _create_error_image_result(self, error_message: str, context: Optional[ImageGenerationContext], 
-                                 style: Optional[ImageStyle]) -> Dict:
+                                   style: Optional[ImageStyle]) -> Dict:
         """Create comprehensive error result with fallback"""
-        
-        # Provide fallback placeholder image
+    
         fallback_url = "https://via.placeholder.com/1200x800/4A90E2/FFFFFF?text=Content+Image"
-        
+    
         return {
             "cover_image_url": fallback_url,
             "image_metadata": {
@@ -512,9 +512,10 @@ class IntelligentImageAgent:
             }
         }
     
+    
     def _create_empty_image_result(self, reason: str) -> Dict:
         """Create result when no image is needed"""
-        
+    
         return {
             "cover_image_url": "",
             "image_metadata": {
@@ -524,6 +525,7 @@ class IntelligentImageAgent:
                 "generation_timestamp": datetime.now().isoformat()
             }
         }
+
     
     # Enhanced legacy method for backward compatibility and sync execution
     def generate_intelligent_image(self, state: Dict) -> Dict:
@@ -596,18 +598,14 @@ def _enhanced_image_agent_sync_fn(state: dict) -> dict:
     image_agent = IntelligentImageAgent()
     
     # Check if we're already in an async context
-    try:
-        current_loop = asyncio.get_running_loop()
-        logger.info("Running in existing event loop context")
+
+    logger.info("Running in existing event loop context")
         
-        # We're in an async context, so we need to handle this carefully
-        # Use the legacy sync method to avoid event loop conflicts
-        return image_agent.generate_intelligent_image(state)
+    # We're in an async context, so we need to handle this carefully
+    # Use the legacy sync method to avoid event loop conflicts
+    return image_agent.generate_intelligent_image(state)
         
-    except RuntimeError:
-        # No event loop running, we can create one
-        logger.info("No event loop running, creating new one")
-        return asyncio.run(image_agent.generate_images(state))
+   
 
 # Async version for when explicitly needed
 async def _enhanced_image_agent_async_fn(state: dict) -> dict:

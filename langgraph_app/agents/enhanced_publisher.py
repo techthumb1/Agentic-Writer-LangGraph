@@ -661,7 +661,8 @@ async def _publisher_fn(state: dict) -> dict:
         platforms_to_publish = dynamic_params.get("publish_platforms", [platform])
         
         if not publish_enabled:
-            return {
+            return {**state, 
+                "content": content_text,  # Always return the content!
                 "publishing_result": {
                     "status": "skipped",
                     "reason": "Auto-publishing disabled",
@@ -670,7 +671,9 @@ async def _publisher_fn(state: dict) -> dict:
                 "publishing_metadata": {
                     "skipped": True,
                     "processed_at": datetime.now().isoformat()
-                }
+                },
+                "formatted_content": content_text,
+                "final_content": content_text
             }
         
         logger.info(f"Starting publishing to platforms: {platforms_to_publish}")
@@ -719,7 +722,7 @@ async def _publisher_fn(state: dict) -> dict:
         
         if not platform_configs:
             logger.warning("No valid publishing platforms configured")
-            return {
+            return {**state, 
                 "publishing_result": {
                     "status": "failed",
                     "reason": "No valid publishing platforms configured"
@@ -779,7 +782,7 @@ async def _publisher_fn(state: dict) -> dict:
         
     except Exception as e:
         logger.error(f"Publisher agent failed: {e}")
-        return {
+        return {**state, 
             "publishing_result": {
                 "status": "failed",
                 "reason": str(e)
@@ -802,9 +805,10 @@ class IntelligentPublisherAgent:
         self.model_registry = model_registry
         self.multi_publisher = None
         
-    def intelligent_publish(self, state: Dict) -> Dict:
-        """Main publishing function with platform intelligence"""
-        return asyncio.run(self._async_publish(state))
+    async def intelligent_publish(self, state: Dict) -> Dict:
+        return await self._async_publish(state)
+
+
     
     async def _async_publish(self, state: Dict) -> Dict:
         """Async publishing logic"""
@@ -824,7 +828,7 @@ class IntelligentPublisherAgent:
             platforms_to_publish = dynamic_params.get("publish_platforms", [platform])
             
             if not publish_enabled:
-                return {
+                return {**state, 
                     "publishing_result": {
                         "status": "skipped",
                         "reason": "Auto-publishing disabled",
@@ -882,7 +886,7 @@ class IntelligentPublisherAgent:
             
             if not platform_configs:
                 logger.warning("No valid publishing platforms configured")
-                return {
+                return {**state, 
                     "publishing_result": {
                         "status": "failed",
                         "reason": "No valid publishing platforms configured"
@@ -910,6 +914,7 @@ class IntelligentPublisherAgent:
             # Compile response
             response = {
                 "publishing_result": {
+                    "content": content_text, # Always return the content!
                     "status": "completed" if result.successful_platforms else "failed",
                     "primary_platform": result.primary_result.platform.value,
                     "primary_status": result.primary_result.status.value,
@@ -933,7 +938,9 @@ class IntelligentPublisherAgent:
                             "error": r.error_message if r.error_message else None
                         }
                         for r in [result.primary_result] + result.secondary_results
-                    ]
+                    ],
+                    "formatted_content": content_text,
+                    "final_content": content_text
                 }
             }
             
@@ -942,7 +949,7 @@ class IntelligentPublisherAgent:
             
         except Exception as e:
             logger.error(f"Publisher agent failed: {e}")
-            return {
+            return {**state, 
                 "publishing_result": {
                     "status": "failed",
                     "reason": str(e)

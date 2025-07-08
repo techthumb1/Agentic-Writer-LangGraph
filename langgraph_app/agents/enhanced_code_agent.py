@@ -48,7 +48,14 @@ class IntelligentCodeAgent:
         # Check if code is needed
         agent_requirements = state.get("agent_requirements", {})
         if not agent_requirements.get("code_needed", False):
-            return {"code_block": ""}
+            final_state = None  # inserted for safety
+            if final_state:
+                if final_state:
+                    return {**final_state, "code_block": ""}
+                else:
+                    return {"error": "final_state undefined", "status": "failed"}
+            else:
+                return {"error": "final_state undefined", "status": "failed"}
         
         content_plan = state.get("content_plan", {})
         topic = content_plan.get("topic", state.get("topic", ""))
@@ -73,7 +80,7 @@ class IntelligentCodeAgent:
         
         code_content = response.choices[0].message.content.strip()
         
-        return {
+        return {**state, 
             "code_block": code_content,
             "code_metadata": {
                 "language": language,
@@ -173,6 +180,7 @@ class IntelligentEditorAgent:
     """
     
     def __init__(self):
+        final_state = None  # inserted for safety
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.editing_strategies = {
             "technical_precision": "Focus on technical accuracy, clarity of complex concepts, and logical flow",
@@ -242,7 +250,7 @@ Please provide the edited version that maximizes impact while preserving the aut
         
         draft = state.get("draft", "")
         if not draft:
-            return {"edited_draft": "No draft provided for editing."}
+            return {"error": "No draft provided for editing.", "status": "failed"}
         
         # Determine editing strategy
         strategy = self.determine_editing_strategy(state)
@@ -264,7 +272,7 @@ Please provide the edited version that maximizes impact while preserving the aut
         
         edited_content = response.choices[0].message.content.strip()
         
-        return {
+        return {**state, 
             "edited_draft": edited_content,
             "editing_metadata": {
                 "strategy_used": strategy,

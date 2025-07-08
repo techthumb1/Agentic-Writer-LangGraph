@@ -291,17 +291,17 @@ class InnovativeWriterAgent:
         )
         
         # Get system prompt - handle both inline content and filenames
-        system_prompt_source = style.get("system_prompt", "grad_level_writer.txt")
+        system_prompt_source = style.get("system_prompt", "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience.")
         system_prompt = self.load_system_prompt(system_prompt_source)
             
         
         # Add innovation instructions to system prompt
         if context.innovation_preference in [AdaptiveLevel.INNOVATIVE, AdaptiveLevel.EXPERIMENTAL]:
             innovation_instruction = """
-You are an innovative writer who pushes creative boundaries while maintaining quality.
-Take calculated creative risks. Challenge conventional wisdom. Find unexpected angles.
-Be bold in your approach while serving the reader's needs.
-"""
+        You are an innovative writer who pushes creative boundaries while maintaining quality.
+        Take calculated creative risks. Challenge conventional wisdom. Find unexpected angles.
+        Be bold in your approach while serving the reader's needs.
+        """
             system_prompt = innovation_instruction + "\n\n" + system_prompt
         
         # Generate content
@@ -337,7 +337,7 @@ Be bold in your approach while serving the reader's needs.
         # Store for future learning (async)
         self._record_generation_attempt(context, strategy, metadata)
         
-        return {
+        return {**state, 
             "draft": generated_content,
             "metadata": metadata,
             "innovation_report": {
@@ -408,7 +408,7 @@ Find a fresh angle or unexpected insight that adds genuine value to the reader's
     def _generate_mock_content(self, state: Dict) -> Dict:
         """Generate mock content with innovation metadata"""
         topic = state.get("topic", "Innovative Content")
-        return {
+        return {**state, 
             "draft": f"# {topic}\n\n🚀 This is an innovative placeholder that adapts to your needs.\n\nExperimental features engaged.",
             "metadata": {"topic": topic, "mode": "mock"},
             "innovation_report": {
@@ -481,13 +481,15 @@ Find a fresh angle or unexpected insight that adds genuine value to the reader's
                 with open(style_path, "r", encoding="utf-8") as f:
                     profile = yaml.safe_load(f)
 
-                    # Validate system_prompt field
+                    # NEW - Keep the system_prompt content as-is (don't "fix" it)
                     if 'system_prompt' in profile:
                         system_prompt = profile['system_prompt']
-                        # If system_prompt looks like content instead of filename, fix it
-                        if len(system_prompt) > 50 or '\n' in system_prompt:
-                            print(f"Warning: system_prompt appears to be content, not filename. Using default.")
-                            profile['system_prompt'] = "grad_level_writer.txt"
+                        # Your YAML system_prompts ARE content - that's correct!
+                        # Remove the validation that was forcing grad_level_writer.txt
+                        print(f"Using system_prompt from style profile: {name}")
+                    else:
+                        # Only set fallback if no system_prompt exists
+                        profile['system_prompt'] = "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience."
 
                     return profile
             else:
@@ -496,7 +498,7 @@ Find a fresh angle or unexpected insight that adds genuine value to the reader's
                     "structure": "discovery → insight → application → impact",
                     "voice": "innovative and authentic", 
                     "tone": "inspiring",
-                    "system_prompt": "grad_level_writer.txt"  # Ensure this is a filename
+                    "system_prompt": "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience."
                 }
 
         except Exception as e:
@@ -505,9 +507,9 @@ Find a fresh angle or unexpected insight that adds genuine value to the reader's
                 "structure": "discovery → insight → application → impact",
                 "voice": "innovative and authentic", 
                 "tone": "inspiring",
-                "system_prompt": "grad_level_writer.txt"
+                "system_prompt": "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience."
             }
-    
+
     def load_system_prompt(self, prompt_name: str) -> str:
         """Load system prompt with fallback and filename validation"""
 

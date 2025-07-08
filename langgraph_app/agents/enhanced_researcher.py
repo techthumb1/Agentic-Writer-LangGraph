@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
-from openai import OpenAI, AsyncOpenAI  # ADD AsyncOpenAI
+from openai import OpenAI, AsyncOpenAI
 from langchain_core.runnables import RunnableLambda
 from dotenv import load_dotenv
 
@@ -25,7 +25,7 @@ class IntelligentResearcherAgent:
     
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # ADD THIS
+        self.async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.research_cache = {}
         self.research_strategies = {
             "factual": "Focus on verified facts, statistics, and authoritative sources",
@@ -98,7 +98,7 @@ class IntelligentResearcherAgent:
         
         return base_queries + strategy_queries.get(strategy, [])
     
-    async def conduct_intelligent_research(self, state: Dict) -> Dict:  # MAKE ASYNC
+    async def conduct_intelligent_research(self, state: Dict) -> Dict:
         """Main research function with adaptive intelligence"""
         
         # Extract context from enhanced state
@@ -115,7 +115,7 @@ class IntelligentResearcherAgent:
         # Check if research is actually needed
         agent_requirements = state.get("agent_requirements", {})
         if not agent_requirements.get("research_needed", True):
-            return {"research": "Research not required for this content type."}
+            return {**state, "research": "Research not required for this content type."}
         
         # Determine research strategy
         strategy = self.determine_research_strategy(context)
@@ -126,28 +126,40 @@ class IntelligentResearcherAgent:
         # Conduct research with appropriate model temperature
         temperature = 0.3 if strategy == "technical_deep_dive" else 0.4
         
-        response = await self.async_client.chat.completions.create(  # MAKE ASYNC
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": self._get_research_system_prompt(strategy)},
-                {"role": "user", "content": research_prompt}
-            ],
-            temperature=temperature,
-        )
-        
-        research_content = response.choices[0].message.content.strip()
-        
-        # Enhanced research output with metadata
-        return {
-            "research": research_content,
-            "research_metadata": {
-                "strategy_used": strategy,
-                "research_depth": context.research_depth,
-                "complexity_level": context.complexity_level,
-                "research_timestamp": datetime.now().isoformat(),
-                "word_count": len(research_content.split())
+        try:
+            response = await self.async_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": self._get_research_system_prompt(strategy)},
+                    {"role": "user", "content": research_prompt}
+                ],
+                temperature=temperature,
+            )
+            
+            research_content = response.choices[0].message.content.strip()
+            
+            # Enhanced research output with metadata
+            return {
+                **state, 
+                "research": research_content,
+                "research_metadata": {
+                    "strategy_used": strategy,
+                    "research_depth": context.research_depth,
+                    "complexity_level": context.complexity_level,
+                    "research_timestamp": datetime.now().isoformat(),
+                    "word_count": len(research_content.split())
+                }
             }
-        }
+        except Exception as e:
+            return {
+                **state,
+                "research": f"Research failed: {str(e)}",
+                "research_metadata": {
+                    "strategy_used": strategy,
+                    "error": str(e),
+                    "research_timestamp": datetime.now().isoformat()
+                }
+            }
     
     def _create_research_prompt(self, context: ResearchContext, strategy: str) -> str:
         """Create tailored research prompt"""
@@ -195,10 +207,9 @@ Focus on information that would be valuable for creating {context.intent}-focuse
         }
         
         return strategy_prompts.get(strategy, base_prompt)
-    
-    # enhanced_researcher.py - Add to the very end:
-from langchain_core.runnables import RunnableLambda
 
+
+# Enhanced researcher agent function for LangGraph workflow
 async def _enhanced_researcher_fn(state: dict) -> dict:
     """Enhanced researcher agent function for LangGraph workflow"""
     researcher_agent = IntelligentResearcherAgent()
@@ -206,4 +217,3 @@ async def _enhanced_researcher_fn(state: dict) -> dict:
 
 # Export the function
 researcher = RunnableLambda(_enhanced_researcher_fn)
-
