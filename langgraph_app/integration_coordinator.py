@@ -592,26 +592,12 @@ class PerformanceMonitor:
                                 if self.template_performance else None
         }
 
-# Factory function for easy setup
-async def create_integrated_system(config: Optional[SystemConfiguration] = None) -> IntegratedContentSystem:
-    """Create and initialize the integrated content system"""
-    
-    if config is None:
-        # Create default configuration
-        config = SystemConfiguration(
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
-            anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
-            redis_cache_url=os.getenv("REDIS_CACHE_URL"),
-            redis_queue_url=os.getenv("REDIS_QUEUE_URL"),
-            vector_store_redis_url=os.getenv("REDIS_VECTOR_URL")
-        )
-    
+# Utility to create and initialize the integrated system
+async def create_integrated_system(config: SystemConfiguration) -> IntegratedContentSystem:
+    """Create and initialize an IntegratedContentSystem instance"""
     system = IntegratedContentSystem(config)
-    
-    if await system.initialize():
-        return system
-    else:
-        raise Exception("Failed to initialize integrated content system")
+    await system.initialize()
+    return system
 
 # Example usage and testing
 async def example_usage():

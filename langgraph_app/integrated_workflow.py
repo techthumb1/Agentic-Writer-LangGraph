@@ -856,6 +856,7 @@ class IntegratedContentWorkflow:
     
     async def generate_content(self, request: Dict[str, Any]) -> Dict[str, Any]:
         """Main entry point that integrates with your existing system"""
+        state = None  # Ensure state is defined for exception handling
         try:
             # Create initial state from request
             prompt = request["prompt"]
@@ -890,7 +891,7 @@ class IntegratedContentWorkflow:
                     priority=request.get("priority", 0)
                 )
                 
-                return {
+                return {**asdict(state), 
                     "job_id": job_id,
                     "status": "queued",
                     "message": "Content generation job queued for processing"
@@ -929,7 +930,7 @@ class IntegratedContentWorkflow:
                 
                 return response
             else:
-                return {
+                return {**asdict(state), 
                     "content": "",
                     "metadata": {
                         "generation_id": final_state.generation_id,
@@ -942,14 +943,24 @@ class IntegratedContentWorkflow:
                 }
                 
         except Exception as e:
-            return {
-                "content": "",
-                "metadata": {
-                    "generation_id": f"error_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                },
-                "status": "error",
-                "error": f"Workflow execution failed: {str(e)}",
-            }
+            if state is not None:
+                return {**asdict(state), 
+                    "content": "",
+                    "metadata": {
+                        "generation_id": f"error_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    },
+                    "status": "error",
+                    "error": f"Workflow execution failed: {str(e)}",
+                }
+            else:
+                return {
+                    "content": "",
+                    "metadata": {
+                        "generation_id": f"error_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    },
+                    "status": "error",
+                    "error": f"Workflow execution failed: {str(e)}",
+                }
     
     def _extract_sections_from_content(self, content: str) -> List[Dict]:
         """Extract sections from final content"""

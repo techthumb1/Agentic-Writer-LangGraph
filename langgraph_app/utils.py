@@ -7,16 +7,13 @@ import hashlib
 import time
 import asyncio
 import logging
-from typing import Dict, Any, Optional, List, Tuple, Union
+from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
-from dataclasses import dataclass, field, asdict
-from pathlib import Path
+from dataclasses import dataclass, field
 import re
 import sqlite3
 import aiofiles
 from textstat import flesch_reading_ease, flesch_kincaid_grade, automated_readability_index
-from collections import Counter, defaultdict
-import statistics
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -345,7 +342,7 @@ class AdvancedCache:
         """Get cache statistics"""
         total_requests = self.hit_count + self.miss_count
         hit_rate = (self.hit_count / total_requests * 100) if total_requests > 0 else 0
-        
+
         return {
             "hit_count": self.hit_count,
             "miss_count": self.miss_count,
@@ -365,27 +362,22 @@ global_cache = AdvancedCache()
 
 def calculate_readability_score(content: str) -> Dict[str, float]:
     """Calculate comprehensive readability scores"""
-    try:
-        if not content or len(content.strip()) < 10:
-            return {"flesch_score": 0, "grade_level": 0, "readability_score": 0}
-        
-        flesch_score = flesch_reading_ease(content)
-        grade_level = flesch_kincaid_grade(content)
-        ari_score = automated_readability_index(content)
-        
-        # Normalize to 0-100 scale
-        readability_score = max(0, min(100, flesch_score))
-        
-        return {
-            "flesch_score": flesch_score,
-            "grade_level": grade_level,
-            "ari_score": ari_score,
-            "readability_score": readability_score
-        }
-    except Exception as e:
-        logger.warning(f"Readability calculation failed: {e}")
-        return {"flesch_score": 50, "grade_level": 10, "readability_score": 50}
-
+    if not content or len(content.strip()) < 10:
+        return {"flesch_score": 0, "grade_level": 0, "readability_score": 0}
+    
+    flesch_score = flesch_reading_ease(content)
+    grade_level = flesch_kincaid_grade(content)
+    ari_score = automated_readability_index(content)
+    
+    # Normalize to 0-100 scale
+    readability_score = max(0, min(100, flesch_score))
+    
+    return {
+        "flesch_score": flesch_score,
+        "grade_level": grade_level,
+        "ari_score": ari_score,
+        "readability_score": readability_score
+    }
 def calculate_seo_score(content: str, target_keywords: List[str] = None) -> Dict[str, Any]:
     """Calculate SEO optimization score"""
     try:
@@ -399,7 +391,7 @@ def calculate_seo_score(content: str, target_keywords: List[str] = None) -> Dict
         # Basic SEO factors
         has_title = bool(re.search(r'^#\s+.+', content, re.MULTILINE))
         has_headings = len(re.findall(r'^#{2,6}\s', content, re.MULTILINE)) > 0
-        has_meta_description = 'meta' in content.lower() or len(content.split('\n')[0]) < 160
+        # has_meta_description is not used
         
         # Word count optimization
         optimal_length = 300 <= word_count <= 2000
@@ -459,7 +451,13 @@ def calculate_seo_score(content: str, target_keywords: List[str] = None) -> Dict
     except Exception as e:
         logger.warning(f"SEO calculation failed: {e}")
         return {"seo_score": 50, "keyword_density": {}, "issues": ["Calculation error"]}
-
+        # Get readability scores
+        readability = calculate_readability_score(content)
+        
+        # Get SEO scores
+        seo_data = calculate_seo_score(content, target_keywords)
+        
+        # Calculate engagement metrics
 def assess_content_quality(content: str, target_keywords: List[str] = None) -> Dict[str, Any]:
     """Comprehensive content quality assessment"""
     try:
@@ -529,37 +527,32 @@ def assess_content_quality(content: str, target_keywords: List[str] = None) -> D
     except Exception as e:
         logger.error(f"Content quality assessment failed: {e}")
         return {"overall_score": 0, "issues": [f"Assessment error: {str(e)}"]}
-
+    
 def calculate_engagement_score(content: str) -> float:
-    """Calculate content engagement potential"""
+    """Calculate engagement score based on questions, calls to action, and examples."""
     try:
         if not content:
             return 0.0
-        
+
         word_count = len(content.split())
         if word_count == 0:
             return 0.0
-        
+
         engagement_indicators = {
             'questions': len(re.findall(r'\?', content)),
-            'exclamations': len(re.findall(r'!', content)),
-            'personal_pronouns': len(re.findall(r'\b(you|your|we|our|us)\b', content, re.IGNORECASE)),
-            'action_words': len(re.findall(r'\b(discover|learn|find|explore|create|build|solve|achieve|master)\b', content, re.IGNORECASE)),
-            'emotional_words': len(re.findall(r'\b(amazing|incredible|powerful|innovative|breakthrough|exciting|remarkable)\b', content, re.IGNORECASE)),
-            'lists_and_bullets': len(re.findall(r'(?:^\s*[-*+]|\d+\.)', content, re.MULTILINE)),
-            'headings': len(re.findall(r'^#+\s', content, re.MULTILINE)),
+            'calls_to_action': len(re.findall(r'\b(call to action|subscribe|learn more|try now|sign up|register)\b', content, re.IGNORECASE)),
             'examples': len(re.findall(r'\b(example|for instance|such as|like|including)\b', content, re.IGNORECASE))
         }
-        
+
         # Calculate engagement density
         total_indicators = sum(engagement_indicators.values())
         engagement_density = total_indicators / word_count * 100
-        
+
         # Normalize to 0-100 scale with optimal range
         engagement_score = min(100, engagement_density * 15)
-        
+
         return engagement_score
-        
+
     except Exception as e:
         logger.warning(f"Engagement calculation failed: {e}")
         return 50.0
@@ -662,7 +655,7 @@ def validate_style_profile(profile: Dict[str, Any], name: str) -> Dict[str, Any]
         "structure": "hook → explanation → example → summary",
         "voice": "experienced and conversational",
         "tone": "educational",
-        "system_prompt": "grad_level_writer.txt",
+        "system_prompt": "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience.",
         "target_audience": "general",
         "expertise_level": "intermediate",
         "personality_traits": ["helpful", "knowledgeable", "engaging"]
@@ -681,7 +674,7 @@ def get_default_style_profile() -> Dict[str, Any]:
         "structure": "hook → explanation → example → summary",
         "voice": "experienced and conversational",
         "tone": "educational",
-        "system_prompt": "grad_level_writer.txt",
+        "system_prompt": "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience.",
         "target_audience": "general",
         "expertise_level": "intermediate",
         "personality_traits": ["helpful", "knowledgeable", "engaging"]
@@ -836,7 +829,6 @@ def get_system_stats() -> Dict[str, Any]:
         cache_stats = global_cache.get_stats()
         db_stats = db_manager.get_performance_stats(hours=24)
         content_insights = db_manager.get_content_insights(days=7)
-        
         return {
             "cache_stats": cache_stats,
             "performance_stats": db_stats,
@@ -850,58 +842,3 @@ def get_system_stats() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get system stats: {e}")
         return {"error": str(e)}
-
-# Decorator for performance monitoring
-def monitor_performance(endpoint: str):
-    """Decorator to monitor function performance"""
-    def decorator(func):
-        async def async_wrapper(*args, **kwargs):
-            start_time = time.time()
-            success = False
-            error_count = 0
-            
-            try:
-                result = await func(*args, **kwargs)
-                success = True
-                return result
-            except Exception as e:
-                error_count = 1
-                raise
-            finally:
-                duration_ms = int((time.time() - start_time) * 1000)
-                
-                metrics = PerformanceMetrics(
-                    endpoint=endpoint,
-                    duration_ms=duration_ms,
-                    error_count=error_count,
-                    success_count=1 if success else 0
-                )
-                
-                db_manager.log_performance(metrics)
-        
-        def sync_wrapper(*args, **kwargs):
-            start_time = time.time()
-            success = False
-            error_count = 0
-            
-            try:
-                result = func(*args, **kwargs)
-                success = True
-                return result
-            except Exception as e:
-                error_count = 1
-                raise
-            finally:
-                duration_ms = int((time.time() - start_time) * 1000)
-                
-                metrics = PerformanceMetrics(
-                    endpoint=endpoint,
-                    duration_ms=duration_ms,
-                    error_count=error_count,
-                    success_count=1 if success else 0
-                )
-                
-                db_manager.log_performance(metrics)
-        
-        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
-    return decorator

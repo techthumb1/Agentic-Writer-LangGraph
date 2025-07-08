@@ -28,6 +28,7 @@ class AgentState(TypedDict):
     """Complete state for enterprise workflow"""
     # Input data
     template_id: str
+    generation_id: str
     style_profile: str
     parameters: Dict[str, Any]
     generation_id: str
@@ -130,12 +131,12 @@ class EnhancedOrchestrator:
         except ImportError as e:
             logger.warning(f"Enhanced publisher not available: {e}")
 
-        try:
-            from .agents.enhanced_image_agent import image_agent
-            available_agents['image_agent'] = image_agent
-            logger.debug("✅ Enhanced image agent imported")
-        except ImportError as e:
-            logger.debug(f"Enhanced image agent not available: {e}")
+        #try:
+        #    from .agents.enhanced_image_agent import image_agent
+        #    available_agents['image_agent'] = image_agent
+        #    logger.debug("✅ Enhanced image agent imported")
+        #except ImportError as e:
+        #    logger.debug(f"Enhanced image agent not available: {e}")
 
         # Check if we have minimum required agents
         required_agents = ['planner', 'writer']
@@ -335,14 +336,13 @@ class EnhancedOrchestrator:
 
     async def generate_content(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """Main content generation entry point"""
-
         try:
-            # Create initial state
+            generation_id = str(uuid.uuid4())
+
             initial_state = {
                 "template_id": request_data["template"],
                 "style_profile": request_data["style_profile"],
                 "parameters": request_data.get("dynamic_parameters", {}),
-                "generation_id": str(uuid.uuid4()),
                 "content": "",
                 "current_agent": "initialize",
                 "completed_agents": [],
@@ -350,22 +350,66 @@ class EnhancedOrchestrator:
                 "overall_progress": 0.0,
                 "step_progress": {},
                 "errors": [],
-                "metadata": {}
+                "metadata": {},
+                "generation_id": generation_id  # ✅ ensure it's in state
             }
 
             # Execute workflow
             final_state = await self.workflow.ainvoke(
                 initial_state,
-                config={"thread_id": initial_state["generation_id"]}
+                config={"thread_id": generation_id}
             )
 
             # Return result
+            # Extract content from multiple possible locations
+            raw_content = (
+                final_state.get("final_content") or 
+                final_state.get("seo_optimized_content") or  # ← ADD THIS - SEO content first
+                final_state.get("edited_draft") or          # ← CHANGE: edited_content → edited_draft
+                final_state.get("draft") or                 # ← CHANGE: draft_content → draft  
+                final_state.get("content") or 
+                ""
+            )
+            
+            # Clean markdown wrapper if present
+            content = raw_content
+            if isinstance(content, str):
+                if content.startswith('```markdown\n'):
+                    content = content.replace('```markdown\n', '', 1).replace('\n```', '')
+                elif content.startswith('```markdown'):
+                    content = content.replace('```markdown', '', 1).replace('```', '')
+                elif content.startswith('```'):
+                    # Handle any other code block wrapper
+                    lines = content.split('\n')
+                    if len(lines) > 1 and lines[0].startswith('```'):
+                        # Remove first line if it's just ```something
+                        content = '\n'.join(lines[1:])
+                        # Remove last ``` if present
+                        if content.endswith('\n```'):
+                            content = content[:-4]
+                        elif content.endswith('```'):
+                            content = content[:-3]
+
+            # Debug logging
+            logger.info(f"DEBUG: Final state keys: {list(final_state.keys())}")
+            logger.info(f"DEBUG: Final state values preview:")
+            for key, value in final_state.items():
+                if isinstance(value, str) and len(value) > 50:
+                    logger.info(f"  {key}: {value[:100]}...")
+                elif isinstance(value, dict) and any('content' in str(k).lower() for k in value.keys()):
+                    logger.info(f"  {key}: {value}")
+                else:
+                    logger.info(f"  {key}: {type(value)} - {len(str(value))} chars")
+
+            logger.info(f"DEBUG: Content length: {len(content)}")
+            logger.info(f"DEBUG: Content preview: {content[:200] if content else 'NO CONTENT FOUND'}")
+            # Return result
             return {
                 "success": True,
-                "content": final_state.get("final_content", ""),
+                "content": content,
                 "metadata": final_state.get("metadata", {}),
                 "quality_score": final_state.get("quality_score", {}),
-                "generation_id": final_state["generation_id"]
+                "generation_id": final_state.get("generation_id", generation_id)
             }
 
         except Exception as e:
@@ -373,7 +417,10 @@ class EnhancedOrchestrator:
             return {
                 "success": False,
                 "error": str(e),
-                "generation_id": request_data.get("generation_id", "unknown")
+                "generation_id": request_data.get("generation_id", generation_id),
+                "content": "",
+                "metadata": {},
+                "quality_score": {}
             }
 
     async def _initialize_state(self, state: AgentState) -> AgentState:
@@ -588,7 +635,7 @@ class EnhancedOrchestrator:
                 state["final_content"] = state.get("edited_content") or state.get("draft_content") or state.get("content", "")
                 # Compile metadata
                 state["metadata"] = {
-                    "generation_id": state["generation_id"],
+                    "generation_id": state.get("generation_id", "unknown"),
                     "template_id": state["template_id"],
                     "style_profile": state["style_profile"],
                     "completed_agents": state["completed_agents"],
@@ -630,6 +677,7 @@ class EnhancedOrchestrator:
                 logger.warning(f"Failed to cache content: {e}")
         state["step_progress"]["cache_result"] = 100.0
         return state
+    
     def _create_agent_state(self, orchestrator_state: AgentState, agent_type: str) -> Dict[str, Any]:
         """Convert orchestrator state to agent-specific format"""
         # Base agent state with legacy compatibility
@@ -786,7 +834,7 @@ async def register_orchestrator_tasks(job_manager, orchestrator: EnhancedOrchest
         result = await orchestrator.generate_content(params)
         
         if result["success"]:
-            return {
+            return {**result, 
                 "content": result["content"],
                 "metadata": result["metadata"],
                 "quality_score": result.get("quality_score", {}),

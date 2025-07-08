@@ -1,852 +1,1557 @@
-# File: langgraph_app/integrated_server.py
-import os
+"""
+Gold-Standard Agentic Writer API Server
+Integrates with LangGraph enhanced content generation system
+"""
+
 import asyncio
-from typing import Dict, Any, Optional, List
-from datetime import datetime
-import uvicorn
-from fastapi import FastAPI, HTTPException, Depends, Header, BackgroundTasks, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+import os
+import uuid
+import yaml
+import json
 import logging
+from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional, Union
+from pathlib import Path
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse, Response
+from fastapi.exception_handlers import HTTPException as FastAPIHTTPException
+from pydantic import BaseModel, Field, field_validator
+import uvicorn
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry, REGISTRY
+import structlog
+
+from .mcp_server_extension import (
+    initialize_mcp_for_existing_server,
+    cleanup_mcp_for_existing_server,
+    enhance_generation_with_mcp,
+    MCPGenerationRequest
+)
+
+# Import your enhanced graph system
+LANGGRAPH_AVAILABLE = False
+try:
+    from .enhanced_graph import (
+        EnhancedContentGraph, 
+        AgentState, 
+        ProcessingStatus,
+        MetricsCollector
+    )
+    from .enhanced_model_registry import get_model
+    LANGGRAPH_AVAILABLE = True
+    print("✅ LangGraph modules loaded successfully")
+except ImportError as e:
+    print(f"⚠️ LangGraph modules not available: {e}")
+    print("🔄 Using mock implementations for testing")
+    
+    class MockProcessingStatus:
+        COMPLETED = "completed"
+        FAILED = "failed"
+        PENDING = "pending"
+        PROCESSING = "processing"
+    
+    ProcessingStatus = MockProcessingStatus()
+    
+    class MockAgentState:
+        def __init__(self, **kwargs):
+            self.requestId = kwargs.get('requestId', '')
+            self.status = kwargs.get('status', ProcessingStatus.PENDING)
+            self.progress = kwargs.get('progress', 0.0)
+            self.content = kwargs.get('content', '')
+            self.metadata = kwargs.get('metadata', {})
+            self.errors = kwargs.get('errors', [])
+            self.warnings = kwargs.get('warnings', [])
+            self.metrics = kwargs.get('metrics', {})
+            self.started_at = kwargs.get('started_at', datetime.now())
+            self.completed_at = kwargs.get('completed_at', None)
+    
+    AgentState = MockAgentState
+    
+    class MockMetricsCollector:
+        def __init__(self):
+            self.metrics = {}
+        
+        def start_timer(self, name):
+            pass
+        
+        def end_timer(self, name):
+            return 1.0
+        
+        def get_metrics(self):
+            return self.metrics
+    
+    MetricsCollector = MockMetricsCollector
+    
+    class MockContentGraph:
+        def __init__(self, llm):
+            self.llm = llm
+            print("🎭 Mock content graph initialized")
+        
+        async def generate_content(self, requestId, template_config, style_config):
+            print(f"🎭 Mock generating content for request: {requestId}")
+            
+            # Simulate realistic generation process
+            import asyncio
+            
+            # Simulate multiple steps with progress updates
+            steps = [
+                (0.2, "Researching topic..."),
+                (0.4, "Planning structure..."),
+                (0.6, "Writing content..."),
+                (0.8, "Editing and refining..."),
+                (1.0, "Finalizing...")
+            ]
+            
+            for progress, step in steps:
+                await asyncio.sleep(0.5)  # Simulate work
+                print(f"🎭 Progress: {int(progress*100)}% - {step}")
+            
+            # Generate mock content based on template
+            topic = template_config.get('dynamic_parameters', {}).get('topic', 'Sample Topic')
+            template_name = template_config.get('name', 'Unknown Template')
+            style_name = style_config.get('name', 'Unknown Style')
+            
+            mock_content = f"""# {topic}
+
+This is a professionally generated article about {topic}.
+
+## Introduction
+
+This content was created using the **{template_name}** template with **{style_name}** styling. The content demonstrates the capabilities of our agentic writing system.
+
+## Key Points
+
+- **Advanced AI Generation**: Utilizes sophisticated language models for content creation
+- **Template-Based Structure**: Follows predefined templates for consistency
+- **Style Customization**: Applies specific writing styles and tones
+- **Quality Assurance**: Includes editing and refinement processes
+
+## Detailed Content
+
+{topic} represents an important area of study and application. Through careful analysis and structured presentation, we can explore its various dimensions and implications.
+
+The methodical approach ensures that all aspects are covered comprehensively while maintaining readability and engagement.
+
+## Technical Implementation
+
+Our system leverages:
+- LangGraph for orchestrating AI agents
+- FastAPI for robust backend services  
+- React for dynamic frontend interfaces
+- Real-time progress tracking and monitoring
+
+## Conclusion
+
+This demonstrates the power of combining advanced AI with well-structured templates and styles to produce high-quality content efficiently.
+
+---
+
+*Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} using Agentic Writer v2.0*
+*Template: {template_name} | Style: {style_name} | Request ID: {requestId}*
+"""
+            
+            mock_result = MockAgentState(
+                requestId=requestId,
+                status=ProcessingStatus.COMPLETED,
+                progress=1.0,
+                content=mock_content,
+                metadata={
+                    "template": template_name,
+                    "style_profile": style_name,
+                    "generated_at": datetime.now().isoformat(),
+                    "word_count": len(mock_content.split()),
+                    "character_count": len(mock_content),
+                    "mock_generation": True
+                },
+                errors=[],
+                warnings=["This is mock content for testing"],
+                metrics={
+                    "word_count": len(mock_content.split()),
+                    "generation_time": 2.5,
+                    "template_used": template_name,
+                    "style_used": style_name
+                },
+                started_at=datetime.now(),
+                completed_at=datetime.now()
+            )
+            
+            print(f"✅ Mock content generated: {len(mock_content)} characters")
+            return mock_result
+    
+    EnhancedContentGraph = MockContentGraph
+    
+    def get_model(model_name):
+        print(f"🎭 Mock model requested: {model_name}")
+        return None  # Mock model
+
+# Configure structured logging
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer()
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+logger = structlog.get_logger()
+
+# Create a custom registry for this application to avoid conflicts
+custom_registry = CollectorRegistry()
+
+# Prometheus metrics with error handling for duplicates
+def get_or_create_counter(name, description, labels, registry=None):
+    """Get existing counter or create new one, avoiding duplicates"""
+    if registry is None:
+        registry = custom_registry
+    
+    try:
+        # Try to create the counter
+        return Counter(name, description, labels, registry=registry)
+    except ValueError as e:
+        if "Duplicated timeseries" in str(e):
+            # If it already exists, find and return it
+            for collector in registry._collector_to_names:
+                if hasattr(collector, '_name') and collector._name == name:
+                    return collector
+            # If we can't find it, create with a slightly different name
+            return Counter(f"{name}_new", description, labels, registry=registry)
+        raise
+
+def get_or_create_histogram(name, description, registry=None):
+    """Get existing histogram or create new one, avoiding duplicates"""
+    if registry is None:
+        registry = custom_registry
+    
+    try:
+        return Histogram(name, description, registry=registry)
+    except ValueError as e:
+        if "Duplicated timeseries" in str(e):
+            # If it already exists, find and return it
+            for collector in registry._collector_to_names:
+                if hasattr(collector, '_name') and collector._name == name:
+                    return collector
+            # If we can't find it, create with a slightly different name
+            return Histogram(f"{name}_new", description, registry=registry)
+        raise
+
+# Initialize Prometheus metrics safely
+REQUEST_COUNT = get_or_create_counter(
+    'agentic_writer_requests_total', 
+    'Total requests', 
+    ['method', 'endpoint', 'status']
+)
+REQUEST_DURATION = get_or_create_histogram(
+    'agentic_writer_request_duration_seconds', 
+    'Request duration'
+)
+GENERATION_COUNT = get_or_create_counter(
+    'content_generation_total', 
+    'Total content generations', 
+    ['status', 'template']
+)
+GENERATION_DURATION = get_or_create_histogram(
+    'content_generation_duration_seconds', 
+    'Content generation duration'
+)
+
+# Custom JSON encoder for datetime serialization
+from datetime import datetime
 import json
 
-# Import your existing infrastructure
-from .integrated_workflow import integrated_workflow, WorkflowType
-from .enhanced_model_registry import ModelRegistry
-from .cache_system import CacheSystem
-from .job_queue import JobQueue
-from .semantic_search import SemanticSearch
-from .style_profile_loader import StyleProfileLoader
-from .server import *  # Your existing server components
-from .enhanced_graph import *  # Your existing enhanced graph
-from .enhanced_orchestration import *  # Your existing orchestration
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Pydantic models with comprehensive validation
+class TemplateParameter(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    label: str = Field(..., min_length=1, max_length=200)
+    type: str = Field(..., pattern=r'^(string|text|textarea|number|select|boolean|array|date|email|url)$')
+    description: Optional[str] = Field(None, max_length=500)
+    placeholder: Optional[str] = Field(None, max_length=500)
+    default: Optional[Union[str, int, float, bool, List[str]]] = None
+    options: Optional[List[str]] = Field(None, max_items=100)
+    required: bool = Field(default=False)
+    validation: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
-# Initialize FastAPI app
+class ContentTemplate(BaseModel):
+    id: str = Field(..., min_length=1, max_length=100)
+    slug: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
+    category: Optional[str] = Field(None, max_length=100)
+    
+    # Enhanced fields for unified structure
+    defaults: Dict[str, Any] = Field(default_factory=dict)
+    system_prompt: Optional[str] = Field(None, max_length=5000)
+    structure: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    research: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    
+    parameters: Dict[str, TemplateParameter] = Field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    version: str = Field(default="1.0.0")
+    filename: str
+
+class StyleProfile(BaseModel):
+    id: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
+    category: str = Field(default="general", max_length=100)
+    platform: Optional[str] = Field(None, max_length=100)
+    tone: Optional[str] = Field(None, max_length=100)
+    voice: Optional[str] = Field(None, max_length=100)
+    structure: Optional[str] = Field(None, max_length=500)
+    audience: Optional[str] = Field(None, max_length=200)
+    
+    # Enhanced fields for unified structure
+    system_prompt: Optional[str] = Field(None, max_length=5000)
+    length_limit: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    settings: Dict[str, Any] = Field(default_factory=dict)
+    formatting: Dict[str, Any] = Field(default_factory=dict)
+    
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    filename: str
+
+def parse_template_parameters(parameters_data: Any) -> Dict[str, TemplateParameter]:
+    """Parse parameters from various formats (dict, list, or mixed) - FIXED VERSION"""
+    processed_parameters = {}
+    
+    if isinstance(parameters_data, dict):
+        # Handle dict format: {param_name: {config...}}
+        for key, param in parameters_data.items():
+            if isinstance(param, dict):
+                # Full parameter specification
+                processed_parameters[key] = TemplateParameter(
+                    name=key,
+                    label=param.get('label', key.replace('_', ' ').title()),
+                    type=param.get('type', 'string'),
+                    description=param.get('description'),
+                    placeholder=param.get('placeholder'),
+                    default=param.get('default'),
+                    options=param.get('options'),
+                    required=param.get('required', False)
+                )
+            else:
+                # Simple parameter (just name and value)
+                processed_parameters[key] = TemplateParameter(
+                    name=key,
+                    label=key.replace('_', ' ').title(),
+                    type='string',
+                    default=param if param is not None else None,
+                    required=False
+                )
+    
+    elif isinstance(parameters_data, list):
+        # Handle list format: [{name: ..., type: ...}, ...] or [param_name1, param_name2, ...]
+        for param in parameters_data:
+            if isinstance(param, dict) and 'name' in param:
+                # Full parameter dict with name field
+                param_name = param['name']
+                processed_parameters[param_name] = TemplateParameter(
+                    name=param_name,
+                    label=param.get('label', param_name.replace('_', ' ').title()),
+                    type=param.get('type', 'string'),
+                    description=param.get('description'),
+                    placeholder=param.get('placeholder'),
+                    default=param.get('default'),
+                    options=param.get('options'),
+                    required=param.get('required', False)
+                )
+            elif isinstance(param, str):
+                # Simple string parameter
+                processed_parameters[param] = TemplateParameter(
+                    name=param,
+                    label=param.replace('_', ' ').title(),
+                    type='string',
+                    required=False
+                )
+            elif isinstance(param, dict):
+                # Dict without explicit 'name' field - use first key as name
+                for key, value in param.items():
+                    processed_parameters[key] = TemplateParameter(
+                        name=key,
+                        label=key.replace('_', ' ').title(),
+                        type='string',
+                        default=value if not isinstance(value, dict) else None,
+                        required=False
+                    )
+                    break  # Only process first key-value pair
+    
+    else:
+        # Handle other types or empty
+        logger.warning(f"Unexpected parameters format: {type(parameters_data)}")
+    
+    return processed_parameters
+
+def load_templates() -> List[ContentTemplate]:
+    """Load and validate all content templates with dynamic structure handling - FIXED VERSION"""
+    templates = []
+    
+    for template_dir in get_template_paths():
+        logger.info(f"📁 Checking template directory: {template_dir}")
+        
+        if not os.path.exists(template_dir):
+            logger.warning(f"Template directory does not exist: {template_dir}")
+            continue
+            
+        try:
+            files = os.listdir(template_dir)
+            logger.info(f"Files found in {template_dir}: {files}")
+            
+            for filename in files:
+                if not filename.endswith('.yaml'):
+                    logger.debug(f"Skipping non-YAML file: {filename}")
+                    continue
+                
+                file_path = os.path.join(template_dir, filename)
+                logger.info(f"📄 Loading template: {file_path}")
+                template_data = load_yaml_file_safe(file_path)
+                
+                if not template_data:
+                    logger.warning(f"Empty or invalid YAML in: {file_path}")
+                    continue
+                
+                try:
+                    # Get the template ID from filename or data
+                    template_id = template_data.get('id', filename.replace('.yaml', ''))
+                    
+                    # Parse parameters dynamically - FIXED TO HANDLE LISTS
+                    parameters_data = template_data.get("parameters", {})
+                    logger.info(f"Processing parameters for {filename}: type={type(parameters_data)}, value={parameters_data}")
+                    
+                    processed_parameters = parse_template_parameters(parameters_data)
+                    
+                    # Create template with enhanced structure
+                    template = ContentTemplate(
+                        id=template_id,
+                        slug=template_data.get('slug', template_id),
+                        name=template_data.get("name", template_id.replace('_', ' ').title()),
+                        description=template_data.get("description", ""),
+                        category=template_data.get("category", "general"),
+                        
+                        # Enhanced fields
+                        defaults=template_data.get("defaults", {}),
+                        system_prompt=template_data.get("system_prompt"),
+                        structure=template_data.get("structure", {}),
+                        research=template_data.get("research", {}),
+                        
+                        parameters=processed_parameters,
+                        metadata=template_data.get("metadata", {}),
+                        version=template_data.get("version", "1.0.0"),
+                        filename=filename
+                    )
+                    templates.append(template)
+                    logger.info(f"✅ Successfully loaded template: {template.name} (ID: {template.id}) with {len(processed_parameters)} parameters")
+                    
+                except Exception as e:
+                    logger.error("Invalid template format", 
+                                filename=filename, 
+                                error=str(e),
+                                template_data_keys=list(template_data.keys()) if isinstance(template_data, dict) else "Not a dict")
+                    continue
+        
+        except Exception as e:
+            logger.error("Error loading templates from directory", 
+                        directory=template_dir, 
+                        error=str(e))
+            continue
+    
+    logger.info(f"📊 Total templates loaded: {len(templates)}")
+    for template in templates:
+        logger.info(f"  - {template.id}: {template.name}")
+    
+    return templates
+
+def load_style_profiles() -> List[StyleProfile]:
+    """Load and validate all style profiles with enhanced structure"""
+    profiles = []
+    
+    for profile_dir in get_style_profile_paths():
+        logger.info(f"📁 Checking style profile directory: {profile_dir}")
+        
+        if not os.path.exists(profile_dir):
+            logger.warning(f"Style profile directory does not exist: {profile_dir}")
+            continue
+            
+        try:
+            files = os.listdir(profile_dir)
+            logger.info(f"Files found in {profile_dir}: {files}")
+            
+            for filename in files:
+                if not filename.endswith('.yaml'):
+                    logger.debug(f"Skipping non-YAML file: {filename}")
+                    continue
+                
+                file_path = os.path.join(profile_dir, filename)
+                logger.info(f"📄 Loading style profile: {file_path}")
+                profile_data = load_yaml_file_safe(file_path)
+                
+                if not profile_data:
+                    logger.warning(f"Empty or invalid YAML in: {file_path}")
+                    continue
+                
+                try:
+                    # Get the profile ID from filename or data
+                    profile_id = profile_data.get('id', filename.replace('.yaml', ''))
+                    
+                    profile = StyleProfile(
+                        id=profile_id,
+                        name=profile_data.get("name", profile_id.replace('_', ' ').title()),
+                        description=profile_data.get("description", ""),
+                        category=profile_data.get("category", "general"),
+                        platform=profile_data.get("platform"),
+                        tone=profile_data.get("tone"),
+                        voice=profile_data.get("voice"),
+                        structure=profile_data.get("structure"),
+                        audience=profile_data.get("audience"),
+                        
+                        # Enhanced fields
+                        system_prompt=profile_data.get("system_prompt"),
+                        length_limit=profile_data.get("length_limit", {}),
+                        settings=profile_data.get("settings", {}),
+                        formatting=profile_data.get("formatting", {}),
+                        
+                        metadata=profile_data.get("metadata", {}),
+                        filename=filename
+                    )
+                    profiles.append(profile)
+                    logger.info(f"✅ Successfully loaded style profile: {profile.name} (ID: {profile.id})")
+                    
+                except Exception as e:
+                    logger.error("Invalid style profile format", 
+                                filename=filename, 
+                                error=str(e),
+                                profile_data_type=type(profile_data).__name__)
+                    continue
+        
+        except Exception as e:
+            logger.error("Error loading style profiles from directory", 
+                        directory=profile_dir, 
+                        error=str(e))
+            continue
+    
+    logger.info(f"📊 Total style profiles loaded: {len(profiles)}")
+    return profiles
+
+# Application lifecycle
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifecycle management - ENHANCED WITH MCP"""
+    logger.info("🚀 Starting Agentic Writer API")
+    
+    # Initialize content graph (your existing code)
+    try:
+        llm = get_model("writer")
+        app.state.content_graph = EnhancedContentGraph(llm)
+        app.state.generation_tasks = {}
+        app.state.metrics_collector = MetricsCollector()
+        logger.info("✅ Content graph initialized successfully")
+    except Exception as e:
+        logger.error("❌ Failed to initialize content graph", error=str(e))
+        raise
+    
+    # ADD MCP INITIALIZATION
+    try:
+        mcp_success = await initialize_mcp_for_existing_server(app)
+        if mcp_success:
+            logger.info("✅ MCP integration enabled")
+        else:
+            logger.warning("⚠️ MCP integration failed, continuing without MCP")
+    except Exception as e:
+        logger.error(f"❌ MCP initialization error: {e}")
+        app.state.mcp_available = False
+    
+    # Validate configuration paths (your existing code)
+    template_paths = get_template_paths()
+    style_paths = get_style_profile_paths()
+    
+    logger.info("📁 Configuration paths", 
+                template_paths=template_paths,
+                style_paths=style_paths)
+    
+    yield
+    
+    # ADD MCP CLEANUP
+    await cleanup_mcp_for_existing_server(app)
+    
+    # Cleanup (your existing code)
+    logger.info("🛑 Shutting down Agentic Writer API")
+
+# FastAPI application with advanced configuration
 app = FastAPI(
-    title="AgentWrite Pro - Integrated AI Backend",
-    description="Full-featured AI Content Generation with LangGraph Agents",
-    version="2.0.0"
+    title="Agentic Writer API",
+    description="Gold-standard AI-powered content generation using LangGraph",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    lifespan=lifespan
 )
 
-# Add CORS middleware
+# Advanced middleware stack
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://your-frontend-domain.com"],
+    allow_origins=["http://localhost:3000", "http://frontend:3000", "https://*.vercel.app"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID", "X-Generation-Time"]
 )
 
-# Initialize your existing infrastructure
-model_registry = ModelRegistry()
-cache_system = CacheSystem()
-job_queue = JobQueue()
-semantic_search = SemanticSearch()
-style_profile_loader = StyleProfileLoader()
-
-# WebSocket connection manager for real-time updates
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-        self.generation_connections: Dict[str, List[WebSocket]] = {}
-
-    async def connect(self, websocket: WebSocket, generation_id: str = None):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-        
-        if generation_id:
-            if generation_id not in self.generation_connections:
-                self.generation_connections[generation_id] = []
-            self.generation_connections[generation_id].append(websocket)
-
-    def disconnect(self, websocket: WebSocket, generation_id: str = None):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-        
-        if generation_id and generation_id in self.generation_connections:
-            if websocket in self.generation_connections[generation_id]:
-                self.generation_connections[generation_id].remove(websocket)
-
-    async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
-
-    async def send_generation_update(self, generation_id: str, message: dict):
-        if generation_id in self.generation_connections:
-            for connection in self.generation_connections[generation_id]:
-                try:
-                    await connection.send_text(json.dumps(message))
-                except:
-                    # Remove dead connections
-                    self.generation_connections[generation_id].remove(connection)
-
-manager = ConnectionManager()
-
-# Enhanced Pydantic models
-class WorkflowSelection(BaseModel):
-    workflow_type: str = Field(default="comprehensive")
-    auto_detect: bool = Field(default=True)
-    async_processing: bool = Field(default=False)
-    priority: int = Field(default=0, ge=0, le=10)
-
-class EnhancedGenerationRequest(BaseModel):
-    prompt: Dict[str, Any]  # Your existing prompt structure
-    preferences: Dict[str, Any]  # Your existing preferences
-    workflow: WorkflowSelection = WorkflowSelection()
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-
-class GenerationStatusResponse(BaseModel):
-    generation_id: str
-    status: str
-    progress: float
-    current_step: str
-    estimated_completion: Optional[datetime] = None
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-
-class WorkflowListResponse(BaseModel):
-    workflows: List[Dict[str, Any]]
-
-# Dependency for API key validation (using your existing auth)
-async def validate_api_key(authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Authorization header required")
+# Request tracking middleware
+@app.middleware("http")
+async def track_requests(request: Request, call_next):
+    requestId = str(uuid.uuid4())
+    request.state.requestId = requestId
     
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization format")
+    start_time = datetime.now()
     
-    api_key = authorization.replace("Bearer ", "")
-    expected_key = os.getenv("LANGGRAPH_API_KEY")
+    with REQUEST_DURATION.time():
+        response = await call_next(request)
     
-    if not expected_key or api_key != expected_key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
+    duration = (datetime.now() - start_time).total_seconds()
     
-    return api_key
+    REQUEST_COUNT.labels(
+        method=request.method,
+        endpoint=request.url.path,
+        status=response.status_code
+    ).inc()
+    
+    response.headers["X-Request-ID"] = requestId
+    response.headers["X-Response-Time"] = f"{duration:.3f}s"
+    
+    logger.info("Request completed",
+                requestId=requestId,
+                method=request.method,
+                path=request.url.path,
+                status_code=response.status_code,
+                duration=duration)
+    
+    return response
 
-@app.get("/health")
-async def enhanced_health_check():
-    """Enhanced health check with infrastructure status"""
+# API Response classes
+class GenerateRequest(BaseModel):
+    template: str = Field(..., min_length=1, max_length=100)
+    style_profile: str = Field(..., min_length=1, max_length=100)
+    dynamic_parameters: Dict[str, Any] = Field(default_factory=dict, max_items=50)
+    priority: int = Field(default=1, ge=1, le=5)
+    timeout_seconds: int = Field(default=300, ge=60, le=1800)
+    
+    @field_validator('dynamic_parameters')
+    @classmethod
+    def validate_parameters(cls, v):
+        # Validate parameter values
+        for key, value in v.items():
+            if isinstance(value, str) and len(value) > 10000:
+                raise ValueError(f"Parameter '{key}' exceeds maximum length")
+        return v
+
+class GenerationStatus(BaseModel):
+    requestId: str
+    status: str = Field(..., pattern=r'^(pending|processing|completed|failed|cancelled)$')
+    progress: float = Field(..., ge=0.0, le=1.0)
+    current_step: str = Field(default="")
+    content: str = Field(default="")
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    errors: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    metrics: Dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime] = None
+
+class PaginationMetadata(BaseModel):
+    page: int = Field(..., ge=1)
+    limit: int = Field(..., ge=1, le=100)
+    total: int = Field(..., ge=0)
+    totalPages: int = Field(..., ge=0)
+    hasNext: bool
+    hasPrev: bool
+
+class APIResponse(BaseModel):
+    success: bool
+    data: Optional[Any] = None
+    error: Optional[Dict[str, Any]] = None
+    timestamp: datetime = Field(default_factory=datetime.now)
+    requestId: Optional[str] = None
+
+# Advanced exception handling
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    logger.error("HTTP exception",
+                 requestId=getattr(request.state, 'requestId', None),
+                 status_code=exc.status_code,
+                 detail=exc.detail)
+    
+    response_data = APIResponse(
+        success=False,
+        error={
+            "code": f"HTTP_{exc.status_code}",
+            "message": exc.detail,
+            "timestamp": datetime.now().isoformat()
+        },
+        requestId=getattr(request.state, 'requestId', None)
+    ).dict()
+    
+    # Convert datetime objects to strings
+    response_data["timestamp"] = response_data["timestamp"].isoformat() if isinstance(response_data["timestamp"], datetime) else response_data["timestamp"]
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=response_data
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception",
+                 requestId=getattr(request.state, 'requestId', None),
+                 error=str(exc),
+                 exc_info=True)
+    
+    response_data = APIResponse(
+        success=False,
+        error={
+            "code": "INTERNAL_SERVER_ERROR",
+            "message": "An unexpected error occurred",
+            "timestamp": datetime.now().isoformat()
+        },
+        requestId=getattr(request.state, 'requestId', None)
+    ).dict()
+    
+    # Convert datetime objects to strings
+    response_data["timestamp"] = response_data["timestamp"].isoformat() if isinstance(response_data["timestamp"], datetime) else response_data["timestamp"]
+    
+    return JSONResponse(
+        status_code=500,
+        content=response_data
+    )
+
+# Advanced file loading with caching and validation
+def get_template_paths() -> List[str]:
+    """Get ordered list of template directory paths"""
+    paths = [
+        "data/content_templates",          # Relative to current directory
+        "../data/content_templates",       # One level up (if running from langgraph_app)
+        "frontend/content-templates",      # Frontend directory
+        "../frontend/content-templates",   # Frontend one level up
+        "content-templates"                # Generic fallback
+    ]
+    existing_paths = [path for path in paths if os.path.exists(path)]
+    logger.info(f"📂 Template paths checked: {paths}")
+    logger.info(f"📂 Template paths found: {existing_paths}")
+    return existing_paths
+
+def get_style_profile_paths() -> List[str]:
+    """Get ordered list of style profile directory paths"""
+    paths = [
+        "data/style_profiles",            # Relative to current directory  
+        "../data/style_profiles",         # One level up (if running from langgraph_app)
+        "frontend/style-profiles",        # Frontend directory
+        "../frontend/style-profiles",     # Frontend one level up
+        "style_profiles",                 # Generic fallback
+        "style-profiles"                  # Alternative naming
+    ]
+    existing_paths = [path for path in paths if os.path.exists(path)]
+    logger.info(f"📂 Style profile paths checked: {paths}")
+    logger.info(f"📂 Style profile paths found: {existing_paths}")
+    return existing_paths
+
+def load_yaml_file_safe(file_path: str) -> Dict[str, Any]:
+    """Load YAML file with comprehensive error handling"""
     try:
-        # Check all your systems
-        health_status = {
-            "status": "healthy",
-            "timestamp": datetime.now(),
-            "version": "2.0.0",
-            "services": {
-                "model_registry": await model_registry.health_check(),
-                "cache_system": await cache_system.health_check(),
-                "job_queue": await job_queue.health_check(),
-                "semantic_search": await semantic_search.health_check(),
-                "style_profile_loader": await style_profile_loader.health_check(),
-            },
-            "available_models": model_registry.get_available_models(),
-            "active_jobs": await job_queue.get_queue_status(),
-            "cache_stats": await cache_system.get_stats(),
-        }
-        
-        # Check if any service is unhealthy
-        unhealthy_services = [
-            service for service, status in health_status["services"].items()
-            if status.get("status") != "healthy"
-        ]
-        
-        if unhealthy_services:
-            health_status["status"] = "degraded"
-            health_status["unhealthy_services"] = unhealthy_services
-        
-        return health_status
-        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = yaml.safe_load(f)
+            if content is None:
+                final_state = None  # inserted for safety
+                if final_state:
+                    if final_state:
+                        return {**final_state,}
+                    else:
+                        return {"error": "final_state undefined", "status": "failed"}
+                else:
+                    return {"error": "final_state undefined", "status": "failed"}
+            if not isinstance(content, dict):
+                logger.warning("Invalid YAML structure", file_path=file_path)
+                if final_state:
+                    return {**final_state,}
+                else:
+                    return {"error": "final_state undefined", "status": "failed"}
+            return content
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=503, detail="Service unavailable")
+        logger.error("Unexpected error loading YAML", file_path=file_path, error=str(e))
+        if 'final_state' in locals() and final_state:
+            return {**final_state,}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
+    except yaml.YAMLError as e:
+        logger.error("YAML parsing error", file_path=file_path, error=str(e))
+        if final_state:
+            return {**final_state,}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
+    except FileNotFoundError:
+        logger.error("File not found", file_path=file_path)
+        if final_state:
+            return {**final_state,}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
+    except Exception as e:
+        logger.error("Unexpected error loading YAML", file_path=file_path, error=str(e))
+        if final_state:
+            return {**final_state,}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
 
-@app.post("/generate/enhanced")
-async def enhanced_generate_content(
-    request: EnhancedGenerationRequest,
-    background_tasks: BackgroundTasks,
-    api_key: str = Depends(validate_api_key)
+# Background task for content generation
+async def generate_content_task(
+    requestId: str,
+    template_config: Dict[str, Any],
+    style_config: Dict[str, Any],
+    app_state,
+    mcp_options: Optional[Dict[str, Any]] = None  # ADD THIS PARAMETER
 ):
-    """Enhanced content generation endpoint with your full agent ecosystem"""
-    try:
-        logger.info(f"Enhanced generation request: {request.workflow.workflow_type}")
-        
-        # Validate workflow type
-        try:
-            workflow_type = WorkflowType(request.workflow.workflow_type)
-        except ValueError:
-            if request.workflow.auto_detect:
-                workflow_type = WorkflowType.COMPREHENSIVE
-            else:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid workflow type: {request.workflow.workflow_type}"
-                )
-        
-        # Validate model availability
-        model = request.preferences.get("model", "gpt-4-turbo")
-        if not model_registry.is_model_available(model):
-            available_models = model_registry.get_available_models()
-            raise HTTPException(
-                status_code=400,
-                detail=f"Model '{model}' not available. Available: {available_models}"
-            )
-        
-        # Prepare request for integrated workflow
-        workflow_request = {
-            "prompt": request.prompt,
-            "preferences": request.preferences,
-            "workflow_type": workflow_type.value,
-            "async": request.workflow.async_processing,
-            "priority": request.workflow.priority,
-            "user_id": request.user_id,
-            "session_id": request.session_id,
-        }
-        
-        # Handle async processing
-        if request.workflow.async_processing:
-            # Generate content asynchronously
-            generation_id = f"async_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{id(request)}"
-            
-            # Add background task
-            background_tasks.add_task(
-                process_async_generation,
-                generation_id,
-                workflow_request
-            )
-            
-            return {
-                "generation_id": generation_id,
-                "status": "queued",
-                "message": "Content generation queued for async processing",
-                "estimated_completion": datetime.now().isoformat(),
-                "websocket_url": f"/ws/generation/{generation_id}"
-            }
-        
-        # Synchronous processing
-        logger.info("Starting synchronous content generation")
+    """Execute content generation with full monitoring - ENHANCED WITH MCP"""
+    
+    # Define the original generation function
+    async def original_generation(requestId, template_config, style_config, app_state):
+        # YOUR EXISTING GENERATION CODE GOES HERE
+        # (everything that was in generate_content_task before)
         start_time = datetime.now()
         
-        result = await integrated_workflow.generate_content(workflow_request)
-        
-        end_time = datetime.now()
-        total_time = (end_time - start_time).total_seconds()
-        
-        logger.info(f"Generation completed in {total_time:.2f} seconds")
-        
-        # Enhance result with timing
-        if "metadata" in result:
-            result["metadata"]["total_processing_time"] = total_time
-            result["metadata"]["infrastructure_stats"] = {
-                "cache_hits": result["metadata"].get("cache_hits", 0),
-                "model_calls": len(result["metadata"].get("agent_steps", [])),
-                "workflow_type": workflow_type.value,
-            }
-        
-        return result
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Enhanced generation failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Enhanced content generation failed: {str(e)}"
-        )
-
-async def process_async_generation(generation_id: str, request: Dict[str, Any]):
-    """Background task for async content generation"""
-    try:
-        # Send initial status
-        await manager.send_generation_update(generation_id, {
-            "type": "status_update",
-            "generation_id": generation_id,
-            "status": "processing",
-            "progress": 0,
-            "current_step": "initializing"
-        })
-        
-        # Process with progress updates
-        result = await integrated_workflow.generate_content(request)
-        
-        # Send completion
-        await manager.send_generation_update(generation_id, {
-            "type": "completion",
-            "generation_id": generation_id,
-            "status": result.get("status", "completed"),
-            "progress": 100,
-            "result": result
-        })
-        
-    except Exception as e:
-        # Send error
-        await manager.send_generation_update(generation_id, {
-            "type": "error",
-            "generation_id": generation_id,
-            "status": "error",
-            "error": str(e)
-        })
-
-@app.get("/generation/status/{generation_id}")
-async def get_generation_status(
-    generation_id: str,
-    api_key: str = Depends(validate_api_key)
-) -> GenerationStatusResponse:
-    """Get status of async generation"""
-    try:
-        status = await integrated_workflow.get_workflow_status(generation_id)
-        return GenerationStatusResponse(**status)
-    except Exception as e:
-        logger.error(f"Failed to get generation status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve status")
-
-@app.get("/workflows/available", response_model=WorkflowListResponse)
-async def list_available_workflows(api_key: str = Depends(validate_api_key)):
-    """List all available workflow types"""
-    try:
-        workflows = await integrated_workflow.list_available_workflows()
-        return WorkflowListResponse(workflows=workflows)
-    except Exception as e:
-        logger.error(f"Failed to list workflows: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve workflows")
-
-@app.get("/infrastructure/stats")
-async def get_infrastructure_stats(api_key: str = Depends(validate_api_key)):
-    """Get detailed infrastructure statistics"""
-    try:
-        return {
-            "cache_system": await cache_system.get_detailed_stats(),
-            "job_queue": await job_queue.get_detailed_stats(),
-            "model_registry": await model_registry.get_usage_stats(),
-            "semantic_search": await semantic_search.get_stats(),
-            "active_generations": len(manager.generation_connections),
-            "total_connections": len(manager.active_connections),
-        }
-    except Exception as e:
-        logger.error(f"Failed to get infrastructure stats: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve stats")
-
-@app.post("/cache/clear")
-async def clear_cache(
-    cache_type: str = "all",
-    api_key: str = Depends(validate_api_key)
-):
-    """Clear cache (admin function)"""
-    try:
-        if cache_type == "all":
-            await cache_system.clear_all()
-        else:
-            await cache_system.clear_by_type(cache_type)
-        
-        return {"message": f"Cache cleared: {cache_type}"}
-    except Exception as e:
-        logger.error(f"Failed to clear cache: {e}")
-        raise HTTPException(status_code=500, detail="Failed to clear cache")
-
-@app.post("/models/reload")
-async def reload_models(api_key: str = Depends(validate_api_key)):
-    """Reload model registry (admin function)"""
-    try:
-        await model_registry.reload()
-        return {
-            "message": "Model registry reloaded",
-            "available_models": model_registry.get_available_models()
-        }
-    except Exception as e:
-        logger.error(f"Failed to reload models: {e}")
-        raise HTTPException(status_code=500, detail="Failed to reload models")
-
-# WebSocket endpoint for real-time generation updates
-@app.websocket("/ws/generation/{generation_id}")
-async def websocket_generation_endpoint(websocket: WebSocket, generation_id: str):
-    await manager.connect(websocket, generation_id)
-    try:
-        while True:
-            # Keep connection alive and handle client messages
-            data = await websocket.receive_text()
+        try:
+            logger.info("Starting content generation",
+                       requestId=requestId,
+                       template=template_config.get("name"),
+                       style=style_config.get("name"))
             
-            # Handle client commands (pause, cancel, etc.)
-            try:
-                command = json.loads(data)
-                if command.get("type") == "ping":
-                    await websocket.send_text(json.dumps({"type": "pong"}))
-                elif command.get("type") == "cancel":
-                    # Cancel generation if possible
-                    await job_queue.cancel_job(generation_id)
-                    await websocket.send_text(json.dumps({
-                        "type": "cancelled",
-                        "generation_id": generation_id
-                    }))
-            except json.JSONDecodeError:
-                pass  # Ignore invalid JSON
-            
-    except WebSocketDisconnect:
-        manager.disconnect(websocket, generation_id)
-
-# Global WebSocket for system updates
-@app.websocket("/ws/system")
-async def websocket_system_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            # Send periodic system stats
-            await asyncio.sleep(30)  # Every 30 seconds
-            
-            stats = {
-                "type": "system_stats",
-                "timestamp": datetime.now().isoformat(),
-                "queue_size": await job_queue.get_queue_size(),
-                "cache_hit_rate": await cache_system.get_hit_rate(),
-                "active_generations": len(manager.generation_connections),
-            }
-            
-            await websocket.send_text(json.dumps(stats))
-            
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-
-# Legacy compatibility endpoints (for your existing frontend)
-@app.post("/generate")
-async def legacy_generate_content(
-    request: Dict[str, Any],
-    api_key: str = Depends(validate_api_key)
-):
-    """Legacy endpoint for backward compatibility"""
-    try:
-        # Convert legacy request to new format
-        enhanced_request = EnhancedGenerationRequest(
-            prompt=request.get("prompt", {}),
-            preferences=request.get("preferences", {}),
-            workflow=WorkflowSelection(
-                workflow_type=request.get("workflow", "comprehensive"),
-                async_processing=False
-            )
-        )
-        
-        # Use the enhanced generation
-        return await enhanced_generate_content(enhanced_request, BackgroundTasks(), api_key)
-        
-    except Exception as e:
-        logger.error(f"Legacy generation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Template and Style Profile Management (integrating your existing loaders)
-@app.get("/templates/list")
-async def list_content_templates(api_key: str = Depends(validate_api_key)):
-    """List available content templates"""
-    try:
-        # Use your existing template loading system
-        templates = await style_profile_loader.list_templates()
-        return {"templates": templates}
-    except Exception as e:
-        logger.error(f"Failed to list templates: {e}")
-        raise HTTPException(status_code=500, detail="Failed to list templates")
-
-@app.get("/templates/{template_id}")
-async def get_template_details(
-    template_id: str,
-    api_key: str = Depends(validate_api_key)
-):
-    """Get detailed template information"""
-    try:
-        template = await style_profile_loader.load_template(template_id)
-        if not template:
-            raise HTTPException(status_code=404, detail="Template not found")
-        return template
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get template: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve template")
-
-@app.post("/templates/validate")
-async def validate_template_structure(
-    template_data: Dict[str, Any],
-    api_key: str = Depends(validate_api_key)
-):
-    """Validate template structure"""
-    try:
-        validation_result = await style_profile_loader.validate_template(template_data)
-        return validation_result
-    except Exception as e:
-        logger.error(f"Template validation failed: {e}")
-        raise HTTPException(status_code=500, detail="Template validation failed")
-
-@app.get("/style-profiles/list")
-async def list_style_profiles(api_key: str = Depends(validate_api_key)):
-    """List available style profiles"""
-    try:
-        profiles = await style_profile_loader.list_profiles()
-        return {"profiles": profiles}
-    except Exception as e:
-        logger.error(f"Failed to list style profiles: {e}")
-        raise HTTPException(status_code=500, detail="Failed to list style profiles")
-
-@app.get("/style-profiles/{profile_id}")
-async def get_style_profile_details(
-    profile_id: str,
-    api_key: str = Depends(validate_api_key)
-):
-    """Get detailed style profile information"""
-    try:
-        profile = await style_profile_loader.load_profile(profile_id)
-        if not profile:
-            raise HTTPException(status_code=404, detail="Style profile not found")
-        return profile
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get style profile: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve style profile")
-
-# Semantic Search Integration
-@app.post("/search/semantic")
-async def semantic_search_endpoint(
-    query: str,
-    content_type: Optional[str] = None,
-    limit: int = 10,
-    api_key: str = Depends(validate_api_key)
-):
-    """Semantic search across your content and knowledge base"""
-    try:
-        results = await semantic_search.search(
-            query=query,
-            content_type=content_type,
-            limit=limit
-        )
-        return {"results": results}
-    except Exception as e:
-        logger.error(f"Semantic search failed: {e}")
-        raise HTTPException(status_code=500, detail="Semantic search failed")
-
-@app.post("/search/similar")
-async def find_similar_content(
-    content: str,
-    threshold: float = 0.7,
-    limit: int = 5,
-    api_key: str = Depends(validate_api_key)
-):
-    """Find similar content using semantic similarity"""
-    try:
-        similar = await semantic_search.find_similar(
-            content=content,
-            threshold=threshold,
-            limit=limit
-        )
-        return {"similar_content": similar}
-    except Exception as e:
-        logger.error(f"Similar content search failed: {e}")
-        raise HTTPException(status_code=500, detail="Similar content search failed")
-
-# Analytics and Reporting
-@app.get("/analytics/generation-stats")
-async def get_generation_analytics(
-    timeframe: str = "7d",
-    api_key: str = Depends(validate_api_key)
-):
-    """Get generation analytics and statistics"""
-    try:
-        stats = await job_queue.get_analytics(timeframe)
-        return {
-            "timeframe": timeframe,
-            "stats": stats,
-            "generated_at": datetime.now().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"Failed to get analytics: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve analytics")
-
-@app.get("/analytics/model-usage")
-async def get_model_usage_stats(
-    timeframe: str = "7d",
-    api_key: str = Depends(validate_api_key)
-):
-    """Get model usage statistics"""
-    try:
-        usage_stats = await model_registry.get_usage_analytics(timeframe)
-        return {
-            "timeframe": timeframe,
-            "model_usage": usage_stats,
-            "generated_at": datetime.now().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"Failed to get model usage stats: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve model usage")
-
-# Admin endpoints for your infrastructure
-@app.post("/admin/restart-service")
-async def restart_service(
-    service_name: str,
-    api_key: str = Depends(validate_api_key)
-):
-    """Restart a specific service (admin only)"""
-    try:
-        # Map service names to restart functions
-        service_map = {
-            "cache": cache_system.restart,
-            "job_queue": job_queue.restart,
-            "semantic_search": semantic_search.restart,
-            "style_loader": style_profile_loader.restart,
-        }
-        
-        if service_name not in service_map:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Unknown service: {service_name}"
-            )
-        
-        await service_map[service_name]()
-        
-        return {"message": f"Service {service_name} restarted successfully"}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to restart service {service_name}: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to restart service: {service_name}"
-        )
-
-@app.get("/admin/system-config")
-async def get_system_config(api_key: str = Depends(validate_api_key)):
-    """Get current system configuration"""
-    try:
-        config = {
-            "model_registry": await model_registry.get_config(),
-            "cache_system": await cache_system.get_config(),
-            "job_queue": await job_queue.get_config(),
-            "semantic_search": await semantic_search.get_config(),
-            "style_profile_loader": await style_profile_loader.get_config(),
-            "workflow_settings": {
-                "available_workflows": [wf.value for wf in WorkflowType],
-                "default_workflow": WorkflowType.COMPREHENSIVE.value,
-                "max_concurrent_jobs": int(os.getenv("MAX_CONCURRENT_JOBS", "10")),
-                "default_timeout": int(os.getenv("DEFAULT_TIMEOUT", "600")),
-            }
-        }
-        return config
-    except Exception as e:
-        logger.error(f"Failed to get system config: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve system config")
-
-# Integration with your existing publishing system
-@app.post("/publish/content")
-async def publish_generated_content(
-    content_id: str,
-    publication_config: Dict[str, Any],
-    api_key: str = Depends(validate_api_key)
-):
-    """Publish generated content using your existing publisher"""
-    try:
-        # Get the content from cache or database
-        content = await cache_system.get(f"content:{content_id}")
-        if not content:
-            raise HTTPException(status_code=404, detail="Content not found")
-        
-        # Use your existing publisher agent
-        publisher = integrated_workflow.publisher
-        publication_result = await publisher.publish_content(
-            content=content["final_content"],
-            config=publication_config,
-            metadata=content.get("metadata", {})
-        )
-        
-        return {
-            "publication_id": publication_result.get("publication_id"),
-            "published_urls": publication_result.get("urls", []),
-            "status": "published",
-            "published_at": datetime.now().isoformat()
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Publication failed: {e}")
-        raise HTTPException(status_code=500, detail="Content publication failed")
-
-# Batch processing endpoint
-@app.post("/batch/generate")
-async def batch_generate_content(
-    requests: List[EnhancedGenerationRequest],
-    background_tasks: BackgroundTasks,
-    api_key: str = Depends(validate_api_key)
-):
-    """Batch content generation"""
-    try:
-        batch_id = f"batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        # Add all requests to the job queue
-        job_ids = []
-        for i, request in enumerate(requests):
-            job_id = f"{batch_id}_{i:03d}"
-            
-            workflow_request = {
-                "prompt": request.prompt,
-                "preferences": request.preferences,
-                "workflow_type": request.workflow.workflow_type,
-                "batch_id": batch_id,
-                "job_id": job_id,
-            }
-            
-            # Add to job queue with priority
-            await job_queue.add_job(
-                job_type="content_generation",
-                job_data=workflow_request,
-                priority=request.workflow.priority,
-                job_id=job_id
+            # Use your enhanced graph
+            result = await app_state.content_graph.generate_content(
+                requestId=requestId,
+                template_config=template_config,
+                style_config=style_config
             )
             
-            job_ids.append(job_id)
-        
-        return {
-            "batch_id": batch_id,
-            "job_ids": job_ids,
-            "total_jobs": len(requests),
-            "status": "queued",
-            "estimated_completion": datetime.now().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"Batch generation failed: {e}")
-        raise HTTPException(status_code=500, detail="Batch generation failed")
+            # Convert to API format
+            status = GenerationStatus(
+                requestId=requestId,
+                status=result.status,
+                progress=result.progress,
+                current_step="Completed" if result.status == ProcessingStatus.COMPLETED else "Failed",
+                content=result.content,
+                metadata=result.metadata,
+                errors=result.errors,
+                warnings=result.warnings,
+                metrics=result.metrics,
+                created_at=result.started_at or start_time,
+                updated_at=datetime.now(),
+                completed_at=result.completed_at
+            )
+            
+            app_state.generation_tasks[requestId] = status
+            
+            # Record metrics
+            duration = (datetime.now() - start_time).total_seconds()
+            GENERATION_DURATION.observe(duration)
+            GENERATION_COUNT.labels(
+                status=result.status,
+                template=template_config.get("name", "unknown")
+            ).inc()
+            
+            logger.info("Content generation completed",
+                       requestId=requestId,
+                       status=result.status,
+                       duration=duration,
+                       word_count=result.metrics.get("word_count", 0))
+            
+            return status
+            
+        except Exception as e:
+            logger.error("Content generation failed",
+                        requestId=requestId,
+                        error=str(e),
+                        exc_info=True)
+            
+            error_status = GenerationStatus(
+                requestId=requestId,
+                status="failed",
+                progress=0.0,
+                current_step="Failed",
+                content="",
+                metadata={},
+                errors=[f"Generation failed: {str(e)}"],
+                warnings=[],
+                metrics={},
+                created_at=start_time,
+                updated_at=datetime.now()
+            )
+            
+            app_state.generation_tasks[requestId] = error_status
+            GENERATION_COUNT.labels(status="failed", template="unknown").inc()
+            return error_status
+    
+    # USE MCP ENHANCEMENT
+    return await enhance_generation_with_mcp(
+        original_generation,
+        requestId,
+        template_config,
+        style_config,
+        app_state,
+        mcp_options
+    )
 
-@app.get("/batch/{batch_id}/status")
-async def get_batch_status(
-    batch_id: str,
-    api_key: str = Depends(validate_api_key)
-):
-    """Get batch processing status"""
-    try:
-        batch_status = await job_queue.get_batch_status(batch_id)
-        return batch_status
-    except Exception as e:
-        logger.error(f"Failed to get batch status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve batch status")
-
-# Root endpoint with full system information
-@app.get("/")
-async def enhanced_root():
-    """Enhanced root endpoint with complete system information"""
-    return {
-        "service": "AgentWrite Pro - Integrated AI Backend",
-        "version": "2.0.0",
-        "status": "running",
-        "features": [
-            "Multi-Agent Content Generation",
-            "Real-time Progress Tracking",
-            "Semantic Search Integration",
-            "Advanced Caching System",
-            "Job Queue Management",
-            "Style Profile Loading",
-            "Batch Processing",
-            "WebSocket Support",
-            "Legacy API Compatibility"
-        ],
-        "workflows": [wf.value for wf in WorkflowType],
-        "endpoints": {
-            "generation": [
-                "/generate/enhanced",
-                "/generate",
-                "/batch/generate"
+# API Endpoints
+@app.get("/", response_model=APIResponse)
+async def root(request: Request):
+    """API root endpoint with system information"""
+    return APIResponse(
+        success=True,
+        data={
+            "name": "Agentic Writer API",
+            "version": "2.0.0",
+            "status": "operational",
+            "features": [
+                "Enhanced LangGraph content generation",
+                "Real-time progress tracking",
+                "Comprehensive metrics",
+                "Template and style management",
+                "Production-ready monitoring"
             ],
-            "management": [
-                "/templates/list",
-                "/style-profiles/list",
-                "/generation/status/{id}"
-            ],
-            "analytics": [
-                "/analytics/generation-stats",
-                "/analytics/model-usage",
-                "/infrastructure/stats"
-            ],
-            "search": [
-                "/search/semantic",
-                "/search/similar"
-            ],
-            "admin": [
-                "/admin/restart-service",
-                "/admin/system-config",
-                "/cache/clear",
-                "/models/reload"
-            ],
-            "realtime": [
-                "/ws/generation/{id}",
-                "/ws/system"
-            ]
+            "endpoints": {
+                "docs": "/docs",
+                "health": "/health",
+                "metrics": "/metrics",
+                "templates": "/api/templates",
+                "styles": "/api/style-profiles",
+                "generate": "/api/generate"
+            }
         },
-        "infrastructure": {
-            "agents": [
-                "PlannerAgent", "ResearcherAgent", "WriterAgent", 
-                "EditorAgent", "SEOAgent", "FormatterAgent",
-                "ImageAgent", "CodeAgent", "PublisherAgent"
-            ],
-            "systems": [
-                "ModelRegistry", "CacheSystem", "JobQueue",
-                "SemanticSearch", "StyleProfileLoader"
-            ]
+        requestId=request.state.requestId
+    )
+
+@app.get("/health")
+async def health_check(request: Request):
+    """Comprehensive health check"""
+    try:
+        template_count = len(load_templates())
+        profile_count = len(load_style_profiles())
+        
+        # Check if template/profile directories exist (more lenient check)
+        template_dirs_exist = any(os.path.exists(path) for path in get_template_paths())
+        profile_dirs_exist = any(os.path.exists(path) for path in get_style_profile_paths())
+        
+        health_data = {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "services": {
+                "content_graph": hasattr(app.state, 'content_graph'),
+                "template_directories": template_dirs_exist,
+                "style_profile_directories": profile_dirs_exist,
+                "api_server": True
+            },
+            "metrics": {
+                "templates_loaded": template_count,
+                "profiles_loaded": profile_count,
+                "active_generations": len(getattr(app.state, 'generation_tasks', {})),
+                "template_directories_found": len(get_template_paths()),
+                "style_directories_found": len(get_style_profile_paths())
+            },
+            "paths": {
+                "template_paths": get_template_paths(),
+                "style_profile_paths": get_style_profile_paths()
+            },
+            "system": {
+                "python_version": "3.12+",
+                "fastapi_version": "0.104+",
+                "langgraph_enabled": LANGGRAPH_AVAILABLE,
+                "mock_mode": not LANGGRAPH_AVAILABLE
+            }
         }
-    }
-
-# Startup event to initialize your systems
-@app.on_event("startup")
-async def startup_event():
-    """Initialize all systems on startup"""
-    logger.info("Starting AgentWrite Pro Integrated Backend...")
-    
-    try:
-        # Initialize your existing infrastructure
-        await model_registry.initialize()
-        await cache_system.initialize()
-        await job_queue.initialize()
-        await semantic_search.initialize()
-        await style_profile_loader.initialize()
         
-        # Initialize the integrated workflow
-        logger.info("All systems initialized successfully")
+        # For now, consider the service healthy if core services are running
+        critical_services = [
+            health_data["services"]["content_graph"],
+            health_data["services"]["api_server"]
+        ]
         
-    except Exception as e:
-        logger.error(f"Startup failed: {e}")
-        raise e
-
-# Shutdown event to cleanup
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    logger.info("Shutting down AgentWrite Pro Integrated Backend...")
-    
-    try:
-        # Cleanup your systems
-        await model_registry.cleanup()
-        await cache_system.cleanup()
-        await job_queue.cleanup()
-        await semantic_search.cleanup()
-        await style_profile_loader.cleanup()
+        all_healthy = all(critical_services)
         
-        logger.info("Shutdown completed successfully")
+        if not all_healthy:
+            health_data["status"] = "unhealthy"
+        elif template_count == 0 or profile_count == 0:
+            health_data["status"] = "degraded"
+        
+        return JSONResponse(
+            status_code=200 if all_healthy else 503,
+            content=health_data
+        )
         
     except Exception as e:
-        logger.error(f"Shutdown error: {e}")
+        logger.error("Health check failed", error=str(e), exc_info=True)
+        
+        error_health = {
+            "status": "error",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e),
+            "services": {
+                "content_graph": False,
+                "template_directories": False,
+                "style_profile_directories": False,
+                "api_server": True
+            }
+        }
+        
+        return JSONResponse(
+            status_code=503,
+            content=error_health
+        )
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint"""
+    return Response(generate_latest(custom_registry), media_type=CONTENT_TYPE_LATEST)
+
+@app.get("/api/templates", response_model=APIResponse)
+async def list_templates(request: Request):
+    """List all available content templates"""
+    try:
+        templates = load_templates()
+        
+        return APIResponse(
+            success=True,
+            data={
+                "items": [template.dict() for template in templates],
+                "count": len(templates)
+            },
+            requestId=request.state.requestId
+        )
+        
+    except Exception as e:
+        logger.error("Failed to load templates", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to load templates")
+
+@app.get("/api/style-profiles", response_model=APIResponse)
+async def list_style_profiles(
+    request: Request,
+    page: int = 1,
+    limit: int = 100,
+    search: str = "",
+    category: str = ""
+):
+    """List style profiles with pagination and filtering"""
+    try:
+        profiles = load_style_profiles()
+        
+        # Apply filters
+        if search:
+            search_lower = search.lower()
+            profiles = [
+                p for p in profiles 
+                if search_lower in p.name.lower() or 
+                   search_lower in (p.description or "").lower()
+            ]
+        
+        if category:
+            profiles = [p for p in profiles if p.category.lower() == category.lower()]
+        
+        # Pagination
+        total = len(profiles)
+        total_pages = (total + limit - 1) // limit
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        paginated_profiles = profiles[start_idx:end_idx]
+        
+        pagination = PaginationMetadata(
+            page=page,
+            limit=limit,
+            total=total,
+            totalPages=total_pages,
+            hasNext=page < total_pages,
+            hasPrev=page > 1
+        )
+        
+        return APIResponse(
+            success=True,
+            data={
+                "items": [profile.dict() for profile in paginated_profiles],
+                "pagination": pagination.dict()
+            },
+            requestId=request.state.requestId
+        )
+        
+    except Exception as e:
+        logger.error("Failed to load style profiles", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to load style profiles")
+
+@app.post("/api/generate-mcp", response_model=APIResponse)
+async def generate_content_with_mcp(
+    request_data: MCPGenerationRequest,
+    background_tasks: BackgroundTasks,
+    request: Request
+):
+    """Generate content with explicit MCP enhancement"""
+    
+    # Convert to your existing GenerateRequest format
+    standard_request = GenerateRequest(
+        template=request_data.template,
+        style_profile=request_data.style_profile,
+        dynamic_parameters=request_data.dynamic_parameters,
+        priority=request_data.priority,
+        timeout_seconds=request_data.timeout_seconds
+    )
+    
+    # Call your existing endpoint with MCP enabled
+    return await generate_content_endpoint(
+        standard_request,
+        background_tasks,
+        request,
+        enable_mcp=request_data.enable_mcp,
+        research_depth=request_data.research_depth
+    )
+
+
+@app.post("/api/generate", response_model=APIResponse)
+async def generate_content_endpoint(
+    request_data: GenerateRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    research_depth: str = "moderate"
+):
+    """Start content generation with enhanced monitoring"""
+    requestId = str(uuid.uuid4())
+    
+    try:
+        # Load and validate template
+        templates = load_templates()
+        template = next(
+            (t for t in templates if t.id == request_data.template.replace('.yaml', '')),
+            None
+        )
+        enable_mcp = False  # Default to False unless set by caller or request
+        mcp_options = {
+            'enable_mcp': enable_mcp and getattr(app.state, 'mcp_available', False),
+            'research_depth': research_depth,
+            'memory_namespace': 'content_generation'
+        }
+
+        if not template:
+            logger.error(f"Template not found: {request_data.template}")
+            logger.error(f"Available templates: {[t.id for t in templates]}")
+            raise HTTPException(status_code=404, detail=f"Template not found: {request_data.template}")
+        
+        # Load and validate style profile - IMPROVED LOGIC
+        profiles = load_style_profiles()
+        
+        # Try multiple ways to find the profile
+        profile = None
+        search_terms = [
+            request_data.style_profile,                    # exact match
+            request_data.style_profile.replace('.yaml', ''), # without extension
+            request_data.style_profile.replace('-', '_'),    # dash to underscore
+            request_data.style_profile.replace('_', '-'),    # underscore to dash
+        ]
+        
+        for search_term in search_terms:
+            profile = next(
+                (p for p in profiles if p.id == search_term),
+                None
+            )
+            if profile:
+                break
+        
+        if not profile:
+            logger.error(f"Style profile not found: {request_data.style_profile}")
+            logger.error(f"Available profiles: {[p.id for p in profiles]}")
+            logger.error(f"Search terms tried: {search_terms}")
+            raise HTTPException(
+                status_code=404, 
+                detail={
+                    "success": False,
+                    "data": None,
+                    "error": {
+                        "code": "HTTP_404",
+                        "message": f"Style profile not found: {request_data.style_profile}",
+                        "available_profiles": [p.id for p in profiles],
+                        "timestamp": datetime.now().isoformat()
+                    },
+                    "timestamp": datetime.now().isoformat(),
+                    "requestId": str(uuid.uuid4())
+                }
+            )
+        
+        logger.info(f"✅ Found style profile: {profile.id} ({profile.name})")
+        
+        # Prepare configurations
+        template_config = template.dict()
+        template_config.update(request_data.dynamic_parameters)
+        
+        style_config = profile.dict()
+        
+        # Initialize generation status
+        initial_status = GenerationStatus(
+            requestId=requestId,
+            status="pending",
+            progress=0.0,
+            current_step="Initializing...",
+            content="",
+            metadata={
+                "template": template.name,
+                "style_profile": profile.name,
+                "started_at": datetime.now().isoformat()
+            },
+            errors=[],
+            warnings=[],
+            metrics={},
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        
+        app.state.generation_tasks[requestId] = initial_status
+        
+        # Start background generation
+        background_tasks.add_task(
+            generate_content_task,
+            requestId,
+            template_config,
+            style_config,
+            app.state,
+            mcp_options
+        )
+        
+        logger.info("Content generation initiated",
+                   requestId=requestId,
+                   template=template.name,
+                   style_profile=profile.name)
+        
+        return APIResponse(
+            success=True,
+            data={
+                "requestId": requestId,
+                "status": "pending",
+                "metadata": initial_status.metadata
+            },
+            requestId=request.state.requestId
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to start generation", 
+                    error=str(e), 
+                    requestId=requestId)
+        raise HTTPException(status_code=500, detail="Failed to start content generation")
+
+@app.get("/api/generate/{requestId}", response_model=APIResponse)
+async def get_generation_result(requestId: str, request: Request):
+    """Get generation status or final result"""
+    if requestId not in app.state.generation_tasks:
+        raise HTTPException(status_code=404, detail="Generation request not found")
+    
+    status = app.state.generation_tasks[requestId]
+    
+    return APIResponse(
+        success=True,
+        data=status.dict(),
+        requestId=request.state.requestId
+    )
+
+@app.delete("/api/generate/{requestId}")
+async def cancel_generation(requestId: str, request: Request):
+    """Cancel an ongoing generation"""
+    if requestId not in app.state.generation_tasks:
+        raise HTTPException(status_code=404, detail="Generation request not found")
+    
+    status = app.state.generation_tasks[requestId]
+    if status.status in ["completed", "failed"]:
+        raise HTTPException(status_code=400, detail="Cannot cancel completed generation")
+    
+    # Update status to cancelled
+    status.status = "cancelled"
+    status.updated_at = datetime.now()
+    app.state.generation_tasks[requestId] = status
+    
+    logger.info("Generation cancelled", requestId=requestId)
+    
+    return APIResponse(
+        success=True,
+        data={"message": "Generation cancelled successfully"},
+        requestId=request.state.requestId
+    )
+
+# Debug endpoints
+@app.get("/debug/profiles")
+async def debug_profiles(request: Request):
+    """Debug endpoint to check style profile loading"""
+    try:
+        profiles = load_style_profiles()
+        template_paths = get_template_paths()
+        style_paths = get_style_profile_paths()
+        
+        return APIResponse(
+            success=True,
+            data={
+                "current_working_directory": os.getcwd(),
+                "template_paths_checked": [
+                    {"path": path, "exists": os.path.exists(path)} 
+                    for path in ["data/content_templates", "../data/content_templates", "frontend/content-templates", "../frontend/content-templates"]
+                ],
+                "style_paths_checked": [
+                    {"path": path, "exists": os.path.exists(path)} 
+                    for path in ["data/style_profiles", "../data/style_profiles", "frontend/style-profiles", "../frontend/style-profiles", "style_profiles", "style-profiles"]
+                ],
+                "template_paths_found": template_paths,
+                "style_paths_found": style_paths,
+                "profiles_loaded": [{"id": p.id, "name": p.name, "filename": p.filename} for p in profiles],
+                "profile_count": len(profiles)
+            },
+            requestId=request.state.requestId
+        )
+    except Exception as e:
+        logger.error("Debug profiles failed", error=str(e))
+        return APIResponse(
+            success=False,
+            error={"message": str(e)},
+            requestId=request.state.requestId
+        )
+
+@app.get("/debug/template-parsing")
+async def debug_template_parsing(request: Request):
+    """Debug how templates are being parsed"""
+    try:
+        debug_info = {
+            "template_directories": get_template_paths(),
+            "parsing_results": []
+        }
+        
+        for template_dir in get_template_paths():
+            if os.path.exists(template_dir):
+                for filename in os.listdir(template_dir):
+                    if filename.endswith('.yaml'):
+                        file_path = os.path.join(template_dir, filename)
+                        try:
+                            template_data = load_yaml_file_safe(file_path)
+                            parameters_data = template_data.get("parameters", {})
+                            
+                            # Test the parameter parsing
+                            try:
+                                processed_params = parse_template_parameters(parameters_data)
+                                param_status = "success"
+                                param_count = len(processed_params)
+                                param_error = None
+                            except Exception as e:
+                                param_status = "failed"
+                                param_count = 0
+                                param_error = str(e)
+                            
+                            debug_info["parsing_results"].append({
+                                "filename": filename,
+                                "template_id": template_data.get('id', 'not_specified'),
+                                "parameters_type": type(parameters_data).__name__,
+                                "parameters_raw_count": len(parameters_data) if hasattr(parameters_data, '__len__') else 0,
+                                "parameter_parsing_status": param_status,
+                                "parameters_processed_count": param_count,
+                                "parameter_error": param_error,
+                                "first_few_keys": list(template_data.keys())[:5],
+                                "parameters_sample": str(parameters_data)[:200] + "..." if len(str(parameters_data)) > 200 else str(parameters_data)
+                            })
+                            
+                        except Exception as e:
+                            debug_info["parsing_results"].append({
+                                "filename": filename,
+                                "status": "file_load_failed",
+                                "error": str(e)
+                            })
+        
+        return APIResponse(
+            success=True,
+            data=debug_info,
+            requestId=request.state.requestId
+        )
+        
+    except Exception as e:
+        return APIResponse(
+            success=False,
+            error={"message": str(e)},
+            requestId=request.state.requestId
+        )
+
+@app.get("/debug/file-structures")
+async def debug_file_structures(request: Request):
+    """Debug endpoint to show how files are being parsed"""
+    try:
+        debug_info = {
+            "templates": [],
+            "style_profiles": [],
+            "parsing_results": {
+                "templates_loaded": 0,
+                "profiles_loaded": 0,
+                "templates_failed": 0,
+                "profiles_failed": 0
+            }
+        }
+        
+        # Debug templates
+        for template_dir in get_template_paths():
+            if os.path.exists(template_dir):
+                for filename in os.listdir(template_dir):
+                    if filename.endswith('.yaml'):
+                        file_path = os.path.join(template_dir, filename)
+                        try:
+                            template_data = load_yaml_file_safe(file_path)
+                            parameters_data = template_data.get("parameters", {})
+                            
+                            debug_info["templates"].append({
+                                "filename": filename,
+                                "id": template_data.get('id', 'not_specified'),
+                                "name": template_data.get('name', 'not_specified'),
+                                "parameters_type": type(parameters_data).__name__,
+                                "parameters_count": len(parameters_data) if hasattr(parameters_data, '__len__') else 0,
+                                "has_system_prompt": bool(template_data.get('system_prompt')),
+                                "has_structure": bool(template_data.get('structure')),
+                                "status": "parsed_successfully"
+                            })
+                            debug_info["parsing_results"]["templates_loaded"] += 1
+                            
+                        except Exception as e:
+                            debug_info["templates"].append({
+                                "filename": filename,
+                                "status": "parse_failed",
+                                "error": str(e)
+                            })
+                            debug_info["parsing_results"]["templates_failed"] += 1
+        
+        # Debug style profiles
+        for profile_dir in get_style_profile_paths():
+            if os.path.exists(profile_dir):
+                for filename in os.listdir(profile_dir):
+                    if filename.endswith('.yaml'):
+                        file_path = os.path.join(profile_dir, filename)
+                        try:
+                            profile_data = load_yaml_file_safe(file_path)
+                            
+                            debug_info["style_profiles"].append({
+                                "filename": filename,
+                                "id": profile_data.get('id', 'not_specified'),
+                                "name": profile_data.get('name', 'not_specified'),
+                                "has_system_prompt": bool(profile_data.get('system_prompt')),
+                                "has_length_limit": bool(profile_data.get('length_limit')),
+                                "has_settings": bool(profile_data.get('settings')),
+                                "status": "parsed_successfully"
+                            })
+                            debug_info["parsing_results"]["profiles_loaded"] += 1
+                            
+                        except Exception as e:
+                            debug_info["style_profiles"].append({
+                                "filename": filename,
+                                "status": "parse_failed",
+                                "error": str(e)
+                            })
+                            debug_info["parsing_results"]["profiles_failed"] += 1
+        
+        return APIResponse(
+            success=True,
+            data=debug_info,
+            requestId=request.state.requestId
+        )
+        
+    except Exception as e:
+        return APIResponse(
+            success=False,
+            error={"message": str(e)},
+            requestId=request.state.requestId
+        )
+
+# Add this endpoint to your integrated_server.py file
+# Place it right after the existing @app.get("/api/generate/{requestId}") endpoint
+
+@app.get("/status/{requestId}")
+async def get_generation_status(requestId: str, request: Request):
+    """Get generation status - this is the endpoint your frontend is calling"""
+    try:
+        print(f"🔍 Backend status check for request: {requestId}")
+        
+        # Check if generation task exists
+        if not hasattr(app.state, 'generation_tasks') or requestId not in app.state.generation_tasks:
+            print(f"❌ Request {requestId} not found in generation tasks")
+            print(f"🔍 Available tasks: {list(getattr(app.state, 'generation_tasks', {}).keys())}")
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "success": False,
+                    "error": "Generation request not found",
+                    "timestamp": datetime.now().isoformat(),
+                    "requestId": requestId
+                }
+            )
+        
+        # Get the generation status
+        status = app.state.generation_tasks[requestId]
+        
+        print(f"✅ Found status for {requestId}: {status.status}")
+        print(f"📝 Content length: {len(status.content)} characters")
+        print(f"🔍 Status object type: {type(status)}")
+        
+        # Format response to match frontend expectations
+        response_data = {
+            "success": True,
+            "data": {
+                "requestId": requestId,
+                "status": status.status,
+                "progress": status.progress,
+                "current_step": status.current_step,
+                "content": status.content,
+                "metadata": status.metadata,
+                "errors": status.errors,
+                "warnings": status.warnings,
+                "metrics": status.metrics,
+                "created_at": status.created_at.isoformat() if status.created_at else None,
+                "updated_at": status.updated_at.isoformat() if status.updated_at else None,
+                "completed_at": status.completed_at.isoformat() if status.completed_at else None
+            },
+            "error": None,
+            "timestamp": datetime.now().isoformat(),
+            "requestId": requestId
+        }
+        
+        print(f"🔍 Returning status: {status.status}, content_present: {bool(status.content)}")
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        print(f"❌ Error in status endpoint: {str(e)}")
+        logger.error("Status check failed", requestId=requestId, error=str(e))
+        
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": f"Status check failed: {str(e)}",
+                "timestamp": datetime.now().isoformat(),
+                "requestId": requestId
+            }
+        )
 
 if __name__ == "__main__":
-    # Configuration from environment
-    host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", 8000))
-    debug = os.getenv("DEBUG", "false").lower() == "true"
-    workers = int(os.getenv("WORKERS", "1"))
-    
-    logger.info(f"Starting AgentWrite Pro Integrated Backend on {host}:{port}")
-    logger.info(f"Debug mode: {debug}, Workers: {workers}")
-    
     uvicorn.run(
-        "langgraph_app.integrated_server:app",
-        host=host,
-        port=port,
-        reload=debug,
-        workers=workers if not debug else 1,
+        "server:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
         log_level="info",
         access_log=True
     )

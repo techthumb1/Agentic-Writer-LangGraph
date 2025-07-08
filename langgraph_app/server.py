@@ -23,17 +23,18 @@ from pydantic import BaseModel, Field, field_validator
 import uvicorn
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry, REGISTRY
 import structlog
+import traceback
 
 # Import your enhanced graph system
 LANGGRAPH_AVAILABLE = False
 try:
-    from enhanced_graph import (
+    from langgraph_app.enhanced_graph import (
         EnhancedContentGraph, 
         AgentState, 
         ProcessingStatus,
         MetricsCollector
     )
-    from langgraph_app.enhanced_model_registry import get_model
+    from .enhanced_model_registry import get_model
     LANGGRAPH_AVAILABLE = True
     print("✅ LangGraph modules loaded successfully")
 except ImportError as e:
@@ -50,7 +51,7 @@ except ImportError as e:
     
     class MockAgentState:
         def __init__(self, **kwargs):
-            self.request_id = kwargs.get('request_id', '')
+            self.requestId = kwargs.get('requestId', '')
             self.status = kwargs.get('status', ProcessingStatus.PENDING)
             self.progress = kwargs.get('progress', 0.0)
             self.content = kwargs.get('content', '')
@@ -83,8 +84,8 @@ except ImportError as e:
             self.llm = llm
             print("🎭 Mock content graph initialized")
         
-        async def generate_content(self, request_id, template_config, style_config):
-            print(f"🎭 Mock generating content for request: {request_id}")
+        async def generate_content(self, requestId, template_config, style_config):
+            print(f"🎭 Mock generating content for request: {requestId}")
             
             # Simulate realistic generation process
             import asyncio
@@ -143,11 +144,11 @@ This demonstrates the power of combining advanced AI with well-structured templa
 ---
 
 *Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} using Agentic Writer v2.0*
-*Template: {template_name} | Style: {style_name} | Request ID: {request_id}*
+*Template: {template_name} | Style: {style_name} | Request ID: {requestId}*
 """
             
             mock_result = MockAgentState(
-                request_id=request_id,
+                requestId=requestId,
                 status=ProcessingStatus.COMPLETED,
                 progress=1.0,
                 content=mock_content,
@@ -596,8 +597,8 @@ app.add_middleware(
 # Request tracking middleware
 @app.middleware("http")
 async def track_requests(request: Request, call_next):
-    request_id = str(uuid.uuid4())
-    request.state.request_id = request_id
+    requestId = str(uuid.uuid4())
+    request.state.requestId = requestId
     
     start_time = datetime.now()
     
@@ -612,11 +613,11 @@ async def track_requests(request: Request, call_next):
         status=response.status_code
     ).inc()
     
-    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Request-ID"] = requestId
     response.headers["X-Response-Time"] = f"{duration:.3f}s"
     
     logger.info("Request completed",
-                request_id=request_id,
+                requestId=requestId,
                 method=request.method,
                 path=request.url.path,
                 status_code=response.status_code,
@@ -626,6 +627,7 @@ async def track_requests(request: Request, call_next):
 
 # API Response classes
 class GenerateRequest(BaseModel):
+    requestId: str = Field(..., min_length=1) 
     template: str = Field(..., min_length=1, max_length=100)
     style_profile: str = Field(..., min_length=1, max_length=100)
     dynamic_parameters: Dict[str, Any] = Field(default_factory=dict, max_items=50)
@@ -642,7 +644,7 @@ class GenerateRequest(BaseModel):
         return v
 
 class GenerationStatus(BaseModel):
-    request_id: str
+    requestId: str
     status: str = Field(..., pattern=r'^(pending|processing|completed|failed|cancelled)$')
     progress: float = Field(..., ge=0.0, le=1.0)
     current_step: str = Field(default="")
@@ -668,13 +670,13 @@ class APIResponse(BaseModel):
     data: Optional[Any] = None
     error: Optional[Dict[str, Any]] = None
     timestamp: datetime = Field(default_factory=datetime.now)
-    request_id: Optional[str] = None
+    requestId: Optional[str] = None
 
 # Advanced exception handling
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     logger.error("HTTP exception",
-                 request_id=getattr(request.state, 'request_id', None),
+                 requestId=getattr(request.state, 'requestId', None),
                  status_code=exc.status_code,
                  detail=exc.detail)
     
@@ -685,7 +687,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             "message": exc.detail,
             "timestamp": datetime.now().isoformat()
         },
-        request_id=getattr(request.state, 'request_id', None)
+        requestId=getattr(request.state, 'requestId', None)
     ).dict()
     
     # Convert datetime objects to strings
@@ -699,7 +701,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     logger.error("Unhandled exception",
-                 request_id=getattr(request.state, 'request_id', None),
+                 requestId=getattr(request.state, 'requestId', None),
                  error=str(exc),
                  exc_info=True)
     
@@ -710,7 +712,7 @@ async def general_exception_handler(request: Request, exc: Exception):
             "message": "An unexpected error occurred",
             "timestamp": datetime.now().isoformat()
         },
-        request_id=getattr(request.state, 'request_id', None)
+        requestId=getattr(request.state, 'requestId', None)
     ).dict()
     
     # Convert datetime objects to strings
@@ -757,24 +759,52 @@ def load_yaml_file_safe(file_path: str) -> Dict[str, Any]:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = yaml.safe_load(f)
             if content is None:
-                return {}
+                final_state = None  # inserted for safety
+                if final_state:
+                    return {**final_state,}
+                else:
+                    return {"error": "final_state undefined", "status": "failed"}
             if not isinstance(content, dict):
                 logger.warning("Invalid YAML structure", file_path=file_path)
-                return {}
+                if final_state:
+                    return {**final_state,}
+                else:
+                    return {"error": "final_state undefined", "status": "failed"}
             return content
-    except yaml.YAMLError as e:
-        logger.error("YAML parsing error", file_path=file_path, error=str(e))
-        return {}
-    except FileNotFoundError:
-        logger.error("File not found", file_path=file_path)
-        return {}
     except Exception as e:
         logger.error("Unexpected error loading YAML", file_path=file_path, error=str(e))
-        return {}
+        if 'final_state' in locals() and final_state:
+            return {**final_state,}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
+    except Exception as e:
+        logger.error("Unexpected error loading YAML", file_path=file_path, error=str(e))
+        if 'final_state' in locals() and final_state:
+            return {**final_state,}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
+    except yaml.YAMLError as e:
+        logger.error("YAML parsing error", file_path=file_path, error=str(e))
+        if final_state:
+            return {**final_state,}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
+    except FileNotFoundError:
+        logger.error("File not found", file_path=file_path)
+        if final_state:
+            return {**final_state,}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
+    except Exception as e:
+        logger.error("Unexpected error loading YAML", file_path=file_path, error=str(e))
+        if final_state:
+            return {**final_state,}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
 
 # Background task for content generation
 async def generate_content_task(
-    request_id: str,
+    requestId: str,
     template_config: Dict[str, Any],
     style_config: Dict[str, Any],
     app_state
@@ -784,20 +814,20 @@ async def generate_content_task(
     
     try:
         logger.info("Starting content generation",
-                   request_id=request_id,
+                   requestId=requestId,
                    template=template_config.get("name"),
                    style=style_config.get("name"))
         
         # Use your enhanced graph
         result = await app_state.content_graph.generate_content(
-            request_id=request_id,
+            request_id=requestId,
             template_config=template_config,
             style_config=style_config
         )
         
         # Convert to API format
         status = GenerationStatus(
-            request_id=request_id,
+            requestId=requestId,
             status=result.status,
             progress=result.progress,
             current_step="Completed" if result.status == ProcessingStatus.COMPLETED else "Failed",
@@ -811,7 +841,7 @@ async def generate_content_task(
             completed_at=result.completed_at
         )
         
-        app_state.generation_tasks[request_id] = status
+        app_state.generation_tasks[requestId] = status
         
         # Record metrics
         duration = (datetime.now() - start_time).total_seconds()
@@ -822,19 +852,19 @@ async def generate_content_task(
         ).inc()
         
         logger.info("Content generation completed",
-                   request_id=request_id,
+                   requestId=requestId,
                    status=result.status,
                    duration=duration,
                    word_count=result.metrics.get("word_count", 0))
         
     except Exception as e:
         logger.error("Content generation failed",
-                    request_id=request_id,
+                    requestId=requestId,
                     error=str(e),
                     exc_info=True)
         
         error_status = GenerationStatus(
-            request_id=request_id,
+            requestId=requestId,
             status="failed",
             progress=0.0,
             current_step="Failed",
@@ -847,7 +877,7 @@ async def generate_content_task(
             updated_at=datetime.now()
         )
         
-        app_state.generation_tasks[request_id] = error_status
+        app_state.generation_tasks[requestId] = error_status
         
         GENERATION_COUNT.labels(status="failed", template="unknown").inc()
 
@@ -877,7 +907,7 @@ async def root(request: Request):
                 "generate": "/api/generate"
             }
         },
-        request_id=request.state.request_id
+        requestId=request.state.requestId
     )
 
 @app.get("/health")
@@ -974,7 +1004,7 @@ async def list_templates(request: Request):
                 "items": [template.dict() for template in templates],
                 "count": len(templates)
             },
-            request_id=request.state.request_id
+            requestId=request.state.requestId
         )
         
     except Exception as e:
@@ -1027,7 +1057,7 @@ async def list_style_profiles(
                 "items": [profile.dict() for profile in paginated_profiles],
                 "pagination": pagination.dict()
             },
-            request_id=request.state.request_id
+            requestId=request.state.requestId
         )
         
     except Exception as e:
@@ -1041,7 +1071,7 @@ async def generate_content_endpoint(
     request: Request
 ):
     """Start content generation with enhanced monitoring"""
-    request_id = str(uuid.uuid4())
+    requestId = request_data.requestId
     
     try:
         # Load and validate template
@@ -1091,7 +1121,7 @@ async def generate_content_endpoint(
                         "timestamp": datetime.now().isoformat()
                     },
                     "timestamp": datetime.now().isoformat(),
-                    "request_id": str(uuid.uuid4())
+                    "requestId": str(uuid.uuid4())
                 }
             )
         
@@ -1105,7 +1135,7 @@ async def generate_content_endpoint(
         
         # Initialize generation status
         initial_status = GenerationStatus(
-            request_id=request_id,
+            requestId=requestId,
             status="pending",
             progress=0.0,
             current_step="Initializing...",
@@ -1122,30 +1152,30 @@ async def generate_content_endpoint(
             updated_at=datetime.now()
         )
         
-        app.state.generation_tasks[request_id] = initial_status
+        app.state.generation_tasks[requestId] = initial_status
         
         # Start background generation
         background_tasks.add_task(
             generate_content_task,
-            request_id,
+            requestId,
             template_config,
             style_config,
             app.state
         )
         
         logger.info("Content generation initiated",
-                   request_id=request_id,
+                   requestId=requestId,
                    template=template.name,
                    style_profile=profile.name)
         
         return APIResponse(
             success=True,
             data={
-                "request_id": request_id,
+                "requestId": requestId,
                 "status": "pending",
                 "metadata": initial_status.metadata
             },
-            request_id=request.state.request_id
+            requestId=request.state.requestId
         )
         
     except HTTPException:
@@ -1153,45 +1183,47 @@ async def generate_content_endpoint(
     except Exception as e:
         logger.error("Failed to start generation", 
                     error=str(e), 
-                    request_id=request_id)
+                    requestId=requestId)
         raise HTTPException(status_code=500, detail="Failed to start content generation")
 
-@app.get("/api/generate/{request_id}", response_model=APIResponse)
-async def get_generation_result(request_id: str, request: Request):
+@app.get("/api/generate/status/{requestId}", response_model=APIResponse)
+async def get_generation_result(requestId: str, request: Request):
     """Get generation status or final result"""
-    if request_id not in app.state.generation_tasks:
+    if requestId not in app.state.generation_tasks:
         raise HTTPException(status_code=404, detail="Generation request not found")
     
-    status = app.state.generation_tasks[request_id]
-    
+    status = app.state.generation_tasks[requestId]
+    print(f"🔍 Generation endpoint - Content will be stored under: {requestId}")
+    print(f"🔍 Generation endpoint - Returning to frontend: {requestId}")
+    print(f"🔍 Generation endpoint - Middleware request ID: {request.state.requestId}")
     return APIResponse(
         success=True,
         data=status.dict(),
-        request_id=request.state.request_id
+        requestId=request.state.requestId
     )
 
-@app.delete("/api/generate/{request_id}")
-async def cancel_generation(request_id: str, request: Request):
-    """Cancel an ongoing generation"""
-    if request_id not in app.state.generation_tasks:
-        raise HTTPException(status_code=404, detail="Generation request not found")
-    
-    status = app.state.generation_tasks[request_id]
-    if status.status in ["completed", "failed"]:
-        raise HTTPException(status_code=400, detail="Cannot cancel completed generation")
-    
-    # Update status to cancelled
-    status.status = "cancelled"
-    status.updated_at = datetime.now()
-    app.state.generation_tasks[request_id] = status
-    
-    logger.info("Generation cancelled", request_id=request_id)
-    
-    return APIResponse(
-        success=True,
-        data={"message": "Generation cancelled successfully"},
-        request_id=request.state.request_id
-    )
+#@app.delete("/api/generate/{requestId}")
+#async def cancel_generation(requestId: str, request: Request):
+#    """Cancel an ongoing generation"""
+#    if requestId not in app.state.generation_tasks:
+#        raise HTTPException(status_code=404, detail="Generation request not found")
+#    
+#    status = app.state.generation_tasks[requestId]
+#    if status.status in ["completed", "failed"]:
+#        raise HTTPException(status_code=400, detail="Cannot cancel completed generation")
+#    
+#    # Update status to cancelled
+#    status.status = "cancelled"
+#    status.updated_at = datetime.now()
+#    app.state.generation_tasks[requestId] = status
+#    
+#    logger.info("Generation cancelled", requestId=requestId)
+#    
+#    return APIResponse(
+#        success=True,
+#        data={"message": "Generation cancelled successfully"},
+#        requestId=request.state.requestId
+#    )
 
 # Debug endpoints
 @app.get("/debug/profiles")
@@ -1219,14 +1251,14 @@ async def debug_profiles(request: Request):
                 "profiles_loaded": [{"id": p.id, "name": p.name, "filename": p.filename} for p in profiles],
                 "profile_count": len(profiles)
             },
-            request_id=request.state.request_id
+            requestId=request.state.requestId
         )
     except Exception as e:
         logger.error("Debug profiles failed", error=str(e))
         return APIResponse(
             success=False,
             error={"message": str(e)},
-            request_id=request.state.request_id
+            requestId=request.state.requestId
         )
 
 @app.get("/debug/template-parsing")
@@ -1280,14 +1312,14 @@ async def debug_template_parsing(request: Request):
         return APIResponse(
             success=True,
             data=debug_info,
-            request_id=request.state.request_id
+            requestId=request.state.requestId
         )
         
     except Exception as e:
         return APIResponse(
             success=False,
             error={"message": str(e)},
-            request_id=request.state.request_id
+            requestId=request.state.requestId
         )
 
 @app.get("/debug/file-structures")
@@ -1366,15 +1398,82 @@ async def debug_file_structures(request: Request):
         return APIResponse(
             success=True,
             data=debug_info,
-            request_id=request.state.request_id
+            requestId=request.state.requestId
         )
         
     except Exception as e:
         return APIResponse(
             success=False,
             error={"message": str(e)},
-            request_id=request.state.request_id
+            requestId=request.state.requestId
         )
+# Add this endpoint to your server.py file, right after the existing endpoints
+
+@app.get("/status/{requestId}")
+async def get_generation_status(requestId: str, request: Request):
+    """Get generation status - this is the endpoint your frontend is calling"""
+    try:
+        print(f"🔍 Backend status check for request: {requestId}")
+        
+        # Check if generation task exists
+        if requestId not in app.state.generation_tasks:
+            print(f"❌ Request {requestId} not found in generation tasks")
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "success": False,
+                    "error": "Generation request not found",
+                    "timestamp": datetime.now().isoformat(),
+                    "requestId": requestId
+                }
+            )
+        
+        # Get the generation status
+        status = app.state.generation_tasks[requestId]
+        
+        print(f"✅ Found status for {requestId}: {status.status}")
+        print(f"📝 Content length: {len(status.content)} characters")
+        
+        # Format response to match frontend expectations
+        response_data = {
+            "success": True,
+            "data": {
+                "requestId": requestId,
+                "status": status.status,
+                "progress": status.progress,
+                "current_step": status.current_step,
+                "content": status.content,
+                "metadata": status.metadata,
+                "errors": status.errors,
+                "warnings": status.warnings,
+                "metrics": status.metrics,
+                "created_at": status.created_at.isoformat() if status.created_at else None,
+                "updated_at": status.updated_at.isoformat() if status.updated_at else None,
+                "completed_at": status.completed_at.isoformat() if status.completed_at else None
+            },
+            "error": None,
+            "timestamp": datetime.now().isoformat(),
+            "requestId": requestId
+        }
+        
+        print(f"🔍 Returning status: {status.status}, content_present: {bool(status.content)}")
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        print(f"❌ Error in status endpoint: {str(e)}")
+        logger.error("Status check failed", requestId=requestId, error=str(e))
+        
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": f"Status check failed: {str(e)}",
+                "timestamp": datetime.now().isoformat(),
+                "requestId": requestId
+            }
+        )
+
 
 if __name__ == "__main__":
     uvicorn.run(
