@@ -12,15 +12,9 @@ import {
   Eye, 
   Save, 
   FileText, 
-  Share2, 
-  Zap, 
   BarChart3, 
-  Brain, 
   Sparkles,
-  RefreshCw,
-  ExternalLink,
-  Settings,
-  TrendingUp
+  ExternalLink
 } from 'lucide-react';
 
 // Enterprise interfaces
@@ -72,6 +66,11 @@ interface EnterpriseMetadata {
   }>;
 }
 
+interface MCPResult {
+  success: boolean;
+  result: string | Record<string, unknown>;
+}
+
 interface GeneratedContentDisplayProps {
   content: string;
   generationId?: string;
@@ -103,7 +102,6 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
   const [analytics, setAnalytics] = useState<ContentAnalytics | null>(initialAnalytics || null);
   const [exportFormat, setExportFormat] = useState<'markdown' | 'html' | 'pdf' | 'docx'>('markdown');
   const [shareableUrl, setShareableUrl] = useState<string | null>(null);
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   
   const { toast } = useToast();
   const { measureFunction, reportMetric } = usePerformanceMonitoring();
@@ -125,358 +123,374 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
   }, [content]);
 
   // Advanced copy with AI-powered variations
-  const handleIntelligentCopy = useCallback(measureFunction(async () => {
-    try {
-      const copyVariations = [];
-      
-      // Original content
-      copyVariations.push({ type: 'original', content });
-      
-      // AI-enhanced variations if MCP is available
-      if (mcpCapabilities?.research && enableAIEnhancements) {
-        try {
-          const enhancedContent = await callTool({
-            tool_name: 'enhance_content',
-            arguments: {
-              content,
-              enhancement_type: 'clarity_and_engagement',
-              preserve_intent: true
+  const handleIntelligentCopy = useCallback(async () => {
+    const func = measureFunction(async () => {
+      try {
+        const copyVariations = [];
+        
+        // Original content
+        copyVariations.push({ type: 'original', content });
+        
+        // AI-enhanced variations if MCP is available
+        if (mcpCapabilities?.research && enableAIEnhancements) {
+          try {
+            const enhancedContent = await callTool({
+              tool_name: 'enhance_content',
+              arguments: {
+                content,
+                enhancement_type: 'clarity_and_engagement',
+                preserve_intent: true
+              }
+            }) as MCPResult;
+            
+            if (enhancedContent.success) {
+              copyVariations.push({ 
+                type: 'enhanced', 
+                content: enhancedContent.result as string 
+              });
             }
-          });
-          
-          if (enhancedContent.success) {
-            copyVariations.push({ 
-              type: 'enhanced', 
-              content: enhancedContent.result as string 
-            });
+          } catch (error) {
+            console.warn('AI enhancement failed:', error);
           }
-        } catch (error) {
-          console.warn('AI enhancement failed:', error);
         }
-      }
-      
-      // Copy with analytics metadata
-      const copyData = {
-        variations: copyVariations,
-        metadata: {
-          generation_id: generationId,
-          copied_at: new Date().toISOString(),
-          content_stats: contentStats,
-          analytics: analytics
+        
+        // Copy with analytics metadata
+        const copyData = {
+          variations: copyVariations,
+          metadata: {
+            generation_id: generationId,
+            copied_at: new Date().toISOString(),
+            content_stats: contentStats,
+            analytics: analytics
+          }
+        };
+        
+        await navigator.clipboard.writeText(JSON.stringify(copyData, null, 2));
+        
+        // Store copy action in MCP memory for learning
+        if (mcpCapabilities?.memory) {
+          await storeMemory({
+            key: `copy_action_${generationId}`,
+            value: JSON.stringify({
+              timestamp: new Date().toISOString(),
+              content_fingerprint: contentStats?.uniqueness_fingerprint,
+              user_intent: 'copy_for_reuse'
+            }),
+            namespace: 'user_interactions'
+          });
         }
-      };
-      
-      await navigator.clipboard.writeText(JSON.stringify(copyData, null, 2));
-      
-      // Store copy action in MCP memory for learning
-      if (mcpCapabilities?.memory) {
-        await storeMemory({
-          key: `copy_action_${generationId}`,
-          value: JSON.stringify({
-            timestamp: new Date().toISOString(),
-            content_fingerprint: contentStats?.uniqueness_fingerprint,
-            user_intent: 'copy_for_reuse'
-          }),
-          namespace: 'user_interactions'
+        
+        toast({
+          title: "Enhanced Copy Complete!",
+          description: `Copied ${copyVariations.length} content variations with metadata.`,
+        });
+        
+        reportMetric({
+          name: 'content_copy_with_ai',
+          value: copyVariations.length,
+          timestamp: Date.now()
+        });
+        
+      } catch {
+        // Fallback to simple copy
+        await navigator.clipboard.writeText(content);
+        toast({
+          title: "Content Copied",
+          description: "Standard copy completed (AI features unavailable).",
         });
       }
-      
-      toast({
-        title: "Enhanced Copy Complete!",
-        description: `Copied ${copyVariations.length} content variations with metadata.`,
-      });
-      
-      reportMetric({
-        name: 'content_copy_with_ai',
-        value: copyVariations.length,
-        timestamp: Date.now()
-      });
-      
-    } catch (error) {
-      // Fallback to simple copy
-      await navigator.clipboard.writeText(content);
-      toast({
-        title: "Content Copied",
-        description: "Standard copy completed (AI features unavailable).",
-      });
-    }
-  }, 'intelligent_copy'), [content, generationId, mcpCapabilities, analytics, contentStats]);
+    }, 'intelligent_copy');
+    
+    return func();
+  }, [content, generationId, mcpCapabilities, analytics, contentStats, enableAIEnhancements, callTool, storeMemory, toast, measureFunction, reportMetric]);
 
   // Advanced export with multiple formats and AI optimization
-  const handleAdvancedExport = useCallback(measureFunction(async () => {
-    setIsExporting(true);
-    try {
-      let exportContent = content;
-      let filename = `content-${generationId || Date.now()}`;
-      
-      // AI-optimize content for export format if available
-      if (enableAIEnhancements && mcpCapabilities?.research) {
-        try {
-          const optimizedContent = await callTool({
-            tool_name: 'optimize_for_format',
-            arguments: {
-              content,
-              target_format: exportFormat,
-              optimization_level: 'enterprise'
+  const handleAdvancedExport = useCallback(async () => {
+    const func = measureFunction(async () => {
+      setIsExporting(true);
+      try {
+        let exportContent = content;
+        let filename = `content-${generationId || Date.now()}`;
+        
+        // AI-optimize content for export format if available
+        if (enableAIEnhancements && mcpCapabilities?.research) {
+          try {
+            const optimizedContent = await callTool({
+              tool_name: 'optimize_for_format',
+              arguments: {
+                content,
+                target_format: exportFormat,
+                optimization_level: 'enterprise'
+              }
+            }) as MCPResult;
+            
+            if (optimizedContent.success) {
+              exportContent = optimizedContent.result as string;
             }
-          });
-          
-          if (optimizedContent.success) {
-            exportContent = optimizedContent.result as string;
+          } catch (optimizeError) {
+            console.warn('Export optimization failed:', optimizeError);
           }
-        } catch (error) {
-          console.warn('Export optimization failed:', error);
         }
-      }
-      
-      // Enhanced export with analytics embedding
-      const exportPackage = {
-        content: exportContent,
-        metadata: {
-          ...metadata,
-          export_timestamp: new Date().toISOString(),
-          export_format: exportFormat,
-          content_analytics: analytics,
-          performance_metrics: contentStats
-        },
-        ai_enhancements: {
-          mcp_enhanced: mcpCapabilities ? true : false,
-          optimization_applied: enableAIEnhancements,
-          competitive_analysis: enableCompetitiveIntelligence ? analytics?.competitive_analysis : null
+        
+        // Enhanced export with analytics embedding
+        const exportPackage = {
+          content: exportContent,
+          metadata: {
+            ...metadata,
+            export_timestamp: new Date().toISOString(),
+            export_format: exportFormat,
+            content_analytics: analytics,
+            performance_metrics: contentStats
+          },
+          ai_enhancements: {
+            mcp_enhanced: mcpCapabilities ? true : false,
+            optimization_applied: enableAIEnhancements,
+            competitive_analysis: enableCompetitiveIntelligence ? analytics?.competitive_analysis : null
+          }
+        };
+        
+        let blob: Blob;
+        let fileExtension: string;
+        
+        switch (exportFormat) {
+          case 'markdown':
+            blob = new Blob([
+              `# ${metadata?.generation_id || 'Generated Content'}\n\n`,
+              `**Generated:** ${new Date().toISOString()}\n`,
+              `**Analytics Score:** ${analytics?.seo_optimization?.score || 'N/A'}\n\n`,
+              `---\n\n`,
+              exportContent,
+              `\n\n---\n\n`,
+              `**Metadata:**\n\`\`\`json\n${JSON.stringify(exportPackage.metadata, null, 2)}\n\`\`\``
+            ], { type: 'text/markdown' });
+            fileExtension = 'md';
+            break;
+            
+          case 'html':
+            blob = new Blob([`
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>${metadata?.generation_id || 'Generated Content'}</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                  body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; 
+                  }
+                  .metadata { 
+                    background: #f8fafc; padding: 1rem; border-radius: 0.5rem; 
+                    margin: 2rem 0; border: 1px solid #e2e8f0; 
+                  }
+                  .analytics-badge {
+                    display: inline-block; background: #2563eb; color: white;
+                    padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem;
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="analytics-badge">SEO Score: ${analytics?.seo_optimization?.score || 'N/A'}</div>
+                <div class="analytics-badge">Readability: ${analytics?.readability_score || 'N/A'}</div>
+                ${convertToHTML(exportContent)}
+                <div class="metadata">
+                  <h4>Generation Metadata</h4>
+                  <pre>${JSON.stringify(exportPackage.metadata, null, 2)}</pre>
+                </div>
+              </body>
+              </html>
+            `], { type: 'text/html' });
+            fileExtension = 'html';
+            break;
+            
+          case 'pdf':
+            // For PDF, we'll create a rich HTML that can be printed to PDF
+            blob = new Blob([createPDFContent(exportContent, exportPackage)], { type: 'text/html' });
+            fileExtension = 'html'; // User can print to PDF
+            filename += '-for-pdf';
+            break;
+            
+          default:
+            blob = new Blob([JSON.stringify(exportPackage, null, 2)], { type: 'application/json' });
+            fileExtension = 'json';
         }
-      };
-      
-      let blob: Blob;
-      let fileExtension: string;
-      
-      switch (exportFormat) {
-        case 'markdown':
-          blob = new Blob([
-            `# ${metadata?.generation_id || 'Generated Content'}\n\n`,
-            `**Generated:** ${new Date().toISOString()}\n`,
-            `**Analytics Score:** ${analytics?.seo_optimization?.score || 'N/A'}\n\n`,
-            `---\n\n`,
-            exportContent,
-            `\n\n---\n\n`,
-            `**Metadata:**\n\`\`\`json\n${JSON.stringify(exportPackage.metadata, null, 2)}\n\`\`\``
-          ].join(''), { type: 'text/markdown' });
-          fileExtension = 'md';
-          break;
-          
-        case 'html':
-          blob = new Blob([`
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>${metadata?.generation_id || 'Generated Content'}</title>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body { 
-                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                  max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; 
-                }
-                .metadata { 
-                  background: #f8fafc; padding: 1rem; border-radius: 0.5rem; 
-                  margin: 2rem 0; border: 1px solid #e2e8f0; 
-                }
-                .analytics-badge {
-                  display: inline-block; background: #2563eb; color: white;
-                  padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="analytics-badge">SEO Score: ${analytics?.seo_optimization?.score || 'N/A'}</div>
-              <div class="analytics-badge">Readability: ${analytics?.readability_score || 'N/A'}</div>
-              ${convertToHTML(exportContent)}
-              <div class="metadata">
-                <h4>Generation Metadata</h4>
-                <pre>${JSON.stringify(exportPackage.metadata, null, 2)}</pre>
-              </div>
-            </body>
-            </html>
-          `], { type: 'text/html' });
-          fileExtension = 'html';
-          break;
-          
-        case 'pdf':
-          // For PDF, we'll create a rich HTML that can be printed to PDF
-          blob = new Blob([createPDFContent(exportContent, exportPackage)], { type: 'text/html' });
-          fileExtension = 'html'; // User can print to PDF
-          filename += '-for-pdf';
-          break;
-          
-        default:
-          blob = new Blob([JSON.stringify(exportPackage, null, 2)], { type: 'application/json' });
-          fileExtension = 'json';
+        
+        // Download the file
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${filename}.${fileExtension}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Export Successful!",
+          description: `Content exported as ${exportFormat.toUpperCase()} with analytics.`,
+        });
+        
+        reportMetric({
+          name: 'advanced_content_export',
+          value: exportContent.length,
+          timestamp: Date.now()
+        });
+        
+      } catch (exportError) {
+        console.error('Export failed:', exportError);
+        toast({
+          title: "Export Failed",
+          description: "Unable to export content with enhancements.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsExporting(false);
       }
-      
-      // Download the file
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${filename}.${fileExtension}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Export Successful!",
-        description: `Content exported as ${exportFormat.toUpperCase()} with analytics.`,
-      });
-      
-      reportMetric({
-        name: 'advanced_content_export',
-        value: exportContent.length,
-        timestamp: Date.now()
-      });
-      
-    } catch (error) {
-      console.error('Export failed:', error);
-      toast({
-        title: "Export Failed",
-        description: "Unable to export content with enhancements.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  }, 'advanced_export'), [content, exportFormat, generationId, metadata, analytics, mcpCapabilities]);
+    }, 'advanced_export');
+    
+    return func();
+  }, [content, exportFormat, generationId, metadata, analytics, mcpCapabilities, enableAIEnhancements, enableCompetitiveIntelligence, contentStats, callTool, toast, measureFunction, reportMetric]);
 
   // AI-powered content analysis
-  const handleRealTimeAnalysis = useCallback(measureFunction(async () => {
+  const handleRealTimeAnalysis = useCallback(async () => {
     if (!enableRealTimeAnalytics) return;
     
-    setIsAnalyzing(true);
-    try {
-      // Multi-layered analysis using different AI models
-      const analysisPromises = [];
-      
-      // Basic analytics via API
-      analysisPromises.push(
-        fetch('/api/analyze/content', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content,
-            analysis_types: ['readability', 'seo', 'sentiment', 'engagement'],
-            generation_id: generationId
-          })
-        }).then(res => res.json())
-      );
-      
-      // Advanced MCP-powered analysis
-      if (mcpCapabilities?.research) {
+    const func = measureFunction(async () => {
+      setIsAnalyzing(true);
+      try {
+        // Multi-layered analysis using different AI models
+        const analysisPromises = [];
+        
+        // Basic analytics via API
         analysisPromises.push(
-          callTool({
-            tool_name: 'analyze_content_competitiveness',
-            arguments: {
+          fetch('/api/analyze/content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
               content,
-              industry_context: metadata?.quality_metrics?.brand_alignment,
-              competitor_benchmark: true
-            }
-          })
+              analysis_types: ['readability', 'seo', 'sentiment', 'engagement'],
+              generation_id: generationId
+            })
+          }).then(res => res.json())
         );
+        
+        // Advanced MCP-powered analysis
+        if (mcpCapabilities?.research) {
+          analysisPromises.push(
+            callTool({
+              tool_name: 'analyze_content_competitiveness',
+              arguments: {
+                content,
+                industry_context: metadata?.quality_metrics?.brand_alignment,
+                competitor_benchmark: true
+              }
+            })
+          );
+        }
+        
+        const [basicAnalysis, mcpAnalysis] = await Promise.allSettled(analysisPromises);
+        
+        // Combine results
+        const combinedAnalytics: ContentAnalytics = {
+          readability_score: 0,
+          sentiment_analysis: { score: 0, confidence: 0, dominant_emotion: 'neutral' },
+          seo_optimization: { score: 0, keyword_density: {}, suggestions: [] },
+          engagement_prediction: { score: 0, viral_potential: 0, target_demographics: [] },
+          ...(basicAnalysis.status === 'fulfilled' ? basicAnalysis.value : {}),
+          ...(mcpAnalysis.status === 'fulfilled' && (mcpAnalysis.value as MCPResult).success ? {
+            competitive_analysis: (mcpAnalysis.value as MCPResult).result as ContentAnalytics['competitive_analysis']
+          } : {})
+        };
+        
+        setAnalytics(combinedAnalytics);
+        
+        toast({
+          title: "Analysis Complete!",
+          description: `Content analyzed with ${analysisPromises.length} AI models.`,
+        });
+        
+      } catch (analysisError) {
+        console.error('Analysis failed:', analysisError);
+        toast({
+          title: "Analysis Failed",
+          description: "Unable to complete real-time analysis.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsAnalyzing(false);
       }
-      
-      const [basicAnalysis, mcpAnalysis] = await Promise.allSettled(analysisPromises);
-      
-      // Combine results
-      const combinedAnalytics: ContentAnalytics = {
-        readability_score: 0,
-        sentiment_analysis: { score: 0, confidence: 0, dominant_emotion: 'neutral' },
-        seo_optimization: { score: 0, keyword_density: {}, suggestions: [] },
-        engagement_prediction: { score: 0, viral_potential: 0, target_demographics: [] },
-        ...(basicAnalysis.status === 'fulfilled' ? basicAnalysis.value : {}),
-        ...(mcpAnalysis.status === 'fulfilled' && mcpAnalysis.value.success ? {
-          competitive_analysis: mcpAnalysis.value.result as any
-        } : {})
-      };
-      
-      setAnalytics(combinedAnalytics);
-      
-      toast({
-        title: "Analysis Complete!",
-        description: `Content analyzed with ${analysisPromises.length} AI models.`,
-      });
-      
-    } catch (error) {
-      console.error('Analysis failed:', error);
-      toast({
-        title: "Analysis Failed",
-        description: "Unable to complete real-time analysis.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAnalyzing(false);
-    }
-  }, 'realtime_analysis'), [content, generationId, mcpCapabilities, enableRealTimeAnalytics]);
+    }, 'realtime_analysis');
+    
+    return func();
+  }, [content, generationId, mcpCapabilities, enableRealTimeAnalytics, metadata?.quality_metrics?.brand_alignment, callTool, toast, measureFunction]);
 
   // Enterprise content saving with advanced features
-  const handleEnterpriseSave = useCallback(measureFunction(async () => {
-    setIsSaving(true);
-    try {
-      const savePayload = {
-        title: `Generated Content - ${new Date().toLocaleDateString()}`,
-        template: metadata?.generation_id || 'unknown',
-        style_profile: 'enterprise',
-        content,
-        dynamic_parameters: {
-          generation_metadata: metadata,
-          content_analytics: analytics,
-          performance_metrics: contentStats,
-          ai_enhancements: {
-            mcp_enhanced: metadata?.mcp_enhanced || false,
-            quality_score: calculateOverallQuality(analytics, metadata),
-            monetization_potential: metadata?.cost_analysis?.monetization_potential || 0
-          }
-        },
-        priority: metadata?.cost_analysis?.projected_roi ? Math.ceil(metadata.cost_analysis.projected_roi * 10) : 1,
-        generation_mode: 'enterprise'
-      };
-      
-      const response = await fetch('/api/content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(savePayload),
-      });
+  const handleEnterpriseSave = useCallback(async () => {
+    const func = measureFunction(async () => {
+      setIsSaving(true);
+      try {
+        const savePayload = {
+          title: `Generated Content - ${new Date().toLocaleDateString()}`,
+          template: metadata?.generation_id || 'unknown',
+          style_profile: 'enterprise',
+          content,
+          dynamic_parameters: {
+            generation_metadata: metadata,
+            content_analytics: analytics,
+            performance_metrics: contentStats,
+            ai_enhancements: {
+              mcp_enhanced: metadata?.mcp_enhanced || false,
+              quality_score: calculateOverallQuality(analytics, metadata),
+              monetization_potential: metadata?.cost_analysis?.monetization_potential || 0
+            }
+          },
+          priority: metadata?.cost_analysis?.projected_roi ? Math.ceil(metadata.cost_analysis.projected_roi * 10) : 1,
+          generation_mode: 'enterprise'
+        };
+        
+        const response = await fetch('/api/content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(savePayload),
+        });
 
-      if (!response.ok) {
-        throw new Error(`Save failed: ${response.status}`);
-      }
+        if (!response.ok) {
+          throw new Error(`Save failed: ${response.status}`);
+        }
 
-      const result = await response.json();
-      
-      // Generate shareable URL for enterprise collaboration
-      if (result.success && result.content?.id) {
-        const shareUrl = `${window.location.origin}/content/${result.content.id}`;
-        setShareableUrl(shareUrl);
+        const result = await response.json();
+        
+        // Generate shareable URL for enterprise collaboration
+        if (result.success && result.content?.id) {
+          const shareUrl = `${window.location.origin}/content/${result.content.id}`;
+          setShareableUrl(shareUrl);
+        }
+        
+        toast({
+          title: "Enterprise Save Complete!",
+          description: `Content saved with analytics and monetization data.`,
+        });
+        
+        reportMetric({
+          name: 'enterprise_content_save',
+          value: metadata?.cost_analysis?.monetization_potential || 0,
+          timestamp: Date.now()
+        });
+        
+      } catch (saveError) {
+        console.error('Save failed:', saveError);
+        toast({
+          title: "Save Failed",
+          description: "Unable to save content with enterprise features.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSaving(false);
       }
-      
-      toast({
-        title: "Enterprise Save Complete!",
-        description: `Content saved with analytics and monetization data.`,
-      });
-      
-      reportMetric({
-        name: 'enterprise_content_save',
-        value: metadata?.cost_analysis?.monetization_potential || 0,
-        timestamp: Date.now()
-      });
-      
-    } catch (error) {
-      console.error('Save failed:', error);
-      toast({
-        title: "Save Failed",
-        description: "Unable to save content with enterprise features.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  }, 'enterprise_save'), [content, metadata, analytics, contentStats]);
+    }, 'enterprise_save');
+    
+    return func();
+  }, [content, metadata, analytics, contentStats, toast, measureFunction, reportMetric]);
 
   // AI-powered content enhancement
   const handleAIEnhancement = useCallback(async () => {
@@ -508,7 +522,7 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
             min_uniqueness_score: 95
           }
         }
-      });
+      }) as MCPResult;
       
       if (enhancements.success && onContentUpdate) {
         onContentUpdate(enhancements.result as string);
@@ -519,8 +533,8 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
         });
       }
       
-    } catch (error) {
-      console.error('Enhancement failed:', error);
+    } catch (enhanceError) {
+      console.error('Enhancement failed:', enhanceError);
       toast({
         title: "Enhancement Failed",
         description: "AI enhancement could not be completed.",
@@ -529,7 +543,7 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
     } finally {
       setIsEnhancing(false);
     }
-  }, [content, mcpCapabilities, enableAIEnhancements, onContentUpdate]);
+  }, [content, mcpCapabilities, enableAIEnhancements, onContentUpdate, callTool, toast]);
 
   // Auto-analyze on content change
   useEffect(() => {
@@ -537,7 +551,7 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
       const timeoutId = setTimeout(handleRealTimeAnalysis, 1000);
       return () => clearTimeout(timeoutId);
     }
-  }, [content, handleRealTimeAnalysis]);
+  }, [content, enableRealTimeAnalytics, handleRealTimeAnalysis]);
 
   // Enterprise preview with competitive intelligence
   const handleEnterprisePreview = useCallback(() => {
@@ -635,7 +649,7 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
             </Button>
             <select 
               value={exportFormat} 
-              onChange={(e) => setExportFormat(e.target.value as any)}
+              onChange={(e) => setExportFormat(e.target.value as typeof exportFormat)}
               className="text-xs border rounded px-2 py-1"
             >
               <option value="markdown">MD</option>
@@ -834,14 +848,30 @@ function convertToHTML(markdown: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/^\- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>')
     .replace(/^(.+)$/gm, '<p>$1</p>')
     .replace(/<\/p>\s*<ul>/g, '</p><ul>')
     .replace(/<\/ul>\s*<p>/g, '</ul><p>')
     .replace(/\n/g, '<br>');
 }
 
-function createPDFContent(content: string, exportPackage: any): string {
+function createPDFContent(content: string, exportPackage: {
+  metadata: {
+    generation_id?: string;
+    content_analytics?: ContentAnalytics | null;
+    cost_analysis?: {
+      generation_cost?: number;
+      projected_roi?: number;
+      monetization_potential?: number;
+    };
+    model_used?: string;
+    tokens_consumed?: number;
+    generation_time?: number;
+    quality_metrics?: {
+      coherence_score?: number;
+    };
+  };
+}): string {
   return `
     <!DOCTYPE html>
     <html>
@@ -959,7 +989,16 @@ function createPDFContent(content: string, exportPackage: any): string {
   `;
 }
 
-function createEnterprisePreview(previewData: any): string {
+function createEnterprisePreview(previewData: {
+  content: string;
+  analytics: ContentAnalytics | null;
+  metadata?: EnterpriseMetadata;
+  competitive_intelligence?: {
+    market_position: number;
+    innovation_score: number;
+    monetization_potential: number;
+  } | null;
+}): string {
   return `
     <!DOCTYPE html>
     <html>

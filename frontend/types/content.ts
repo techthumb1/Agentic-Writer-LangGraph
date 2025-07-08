@@ -354,7 +354,7 @@ export interface GenerationStatusResponse {
   progress: number; // 0-100
   content?: GenerationResult;
   metadata?: GenerationMetadata;
-  request_id: string;
+  requestId: string;
   message?: string;
   estimatedTimeRemaining?: number;
 }
