@@ -1,25 +1,86 @@
-# LangGraph & LangChain core
+# WriterzRoom Backend Dependencies - Updated from existing requirements
+
+# LangGraph & LangChain core (existing)
 langgraph
 langchain
 langchain-openai
 
-# Model APIs
+# Model APIs (existing)
 openai  # GPT-4o access
 anthropic  # Claude (optional)
 google-generativeai  # Gemini Pro (optional)
 
-# Image generation (optional)
-Pillow
-requests
+# Core Framework for API endpoints
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
 
-# Linting, Dev tools
-black
-flake8
-python-dotenv
-pyyaml
+# Database (for content saving functionality)
+sqlalchemy>=2.0.0
+psycopg2-binary  # PostgreSQL support
+sqlite3  # SQLite fallback
 
-# Local code execution
-ipython
+# Publishing Platforms Integration
+requests>=2.31.0  # Enhanced from existing
+httpx>=0.24.0  # For async requests
+beautifulsoup4  # HTML parsing for publishing
+python-substack  # Substack API (if available)
+linkedin-api  # LinkedIn publishing
+tweepy  # Twitter/X publishing
 
-# Testing
-pytest
+# Content Processing (enhanced from existing)
+Pillow  # Image generation (existing)
+markdown>=3.4.0  # Markdown processing for exports
+html2text  # HTML to text conversion
+python-magic  # File type detection
+
+# Scheduling and Background Tasks
+celery>=5.3.0  # For scheduled publishing
+redis>=4.5.0  # Celery broker
+
+# Configuration (enhanced from existing)
+python-dotenv  # Environment variables (existing)
+pyyaml  # YAML config (existing)
+
+# Content Quality & Spell Checking
+textstat  # Readability analysis
+pyspellchecker  # Spell checking
+language-tool-python  # Grammar checking
+
+# Validation and Serialization
+marshmallow>=3.20.0
+jsonschema>=4.0.0
+
+# HTTP and CORS
+fastapi-cors
+python-multipart  # For file uploads
+
+# Utilities
+python-dateutil>=2.8.0
+pytz>=2023.3
+click>=8.0.0
+rich>=13.0.0  # Pretty printing
+structlog>=23.0.0  # Structured logging
+
+# Security
+cryptography>=41.0.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Development tools (existing)
+black  # Code formatting (existing)
+flake8  # Linting (existing)
+ipython  # Interactive Python (existing)
+
+# Testing (existing)
+pytest  # Testing framework (existing)
+pytest-asyncio  # Async testing
+pytest-mock  # Mocking for tests
+
+# Email notifications (optional)
+sendgrid>=6.10.0
+
+# File Processing for exports
+openpyxl>=3.1.0  # Excel export
+python-docx>=0.8.11  # Word document export
+reportlab>=4.0.0  # PDF generation
