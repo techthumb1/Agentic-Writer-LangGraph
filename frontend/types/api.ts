@@ -9,7 +9,7 @@ export interface APIResponse<T = unknown> {
     details?: string;
   };
   timestamp?: string;
-  request_id?: string;
+  requestId?: string;
   fallback?: boolean;
 }
 
@@ -92,7 +92,7 @@ export interface GenerationRequest {
 }
 
 export interface GenerationResponse {
-  request_id: string;
+  requestId: string;
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress?: number;
   current_step?: string;

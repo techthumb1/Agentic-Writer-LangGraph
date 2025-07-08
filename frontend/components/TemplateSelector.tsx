@@ -99,7 +99,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                 ) : validTemplates.length > 0 ? (
                   validTemplates.map((template) => (
                     <SelectItem 
-                      key={`template-${template.id}`} 
+                      key={`template-selector-${template.id}`} 
                       value={template.id}
                     >
                       {prettyName(template.title || template.id)}
@@ -142,9 +142,9 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                     Loading styles...
                   </div>
                 ) : validStyleProfiles.length > 0 ? (
-                  validStyleProfiles.map((profile) => (
+                  validStyleProfiles.map((profile, index) => (
                     <SelectItem 
-                      key={`profile-${profile.id}`} 
+                      key={`template-selector-profile-${profile.id}-${index}`}
                       value={profile.id}
                     >
                       {profile.name || profile.id}
@@ -169,3 +169,8 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
 };
 
 export default TemplateSelector;
+
+
+
+
+

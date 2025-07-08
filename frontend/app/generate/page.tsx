@@ -85,6 +85,8 @@ interface GenerationResult {
 // ----------------------
 // Enhanced Generation Hook with Async Polling
 // ----------------------
+// Fixed useEnhancedGeneration hook - replace the entire hook in your page.tsx
+
 function useEnhancedGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
@@ -178,17 +180,26 @@ function useEnhancedGeneration() {
       console.log('📄 Initial response:', initialResponse);
 
       // Check if we got the content immediately (synchronous response)
-      if (initialResponse.data && initialResponse.status !== 'pending') {
-        return initialResponse.data;
+      if (initialResponse.content) {
+        // Transform backend response to expected format
+        return {
+          contentHtml: initialResponse.content,
+          content: initialResponse.content,
+          metadata: initialResponse.metadata || {},
+          id: initialResponse.generation_id,
+          title: "Generated Content",
+          saved_path: initialResponse.saved_path
+        };
       }
 
-      // If we have a request_id, poll for completion (asynchronous response)
-      if (initialResponse.request_id) {
-        setRequestId(initialResponse.request_id);
-        return await pollGenerationStatus(initialResponse.request_id);
+      // If we have a requestId, poll for completion (asynchronous response)
+      if (initialResponse.requestId) {
+        setRequestId(initialResponse.requestId);
+        return await pollGenerationStatus(initialResponse.requestId);
       }
 
       // If neither, something's wrong
+      console.error("❌ Unexpected response structure:", initialResponse);
       throw new Error("No content or request ID returned from API");
     },
     onSuccess: (data: GeneratedContent) => {
@@ -200,7 +211,7 @@ function useEnhancedGeneration() {
       });
       console.log('✅ Generation completed successfully');
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       setIsGenerating(false);
       const message = error instanceof Error ? error.message : "An unknown error occurred during generation.";
       setError(message);

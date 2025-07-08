@@ -135,9 +135,9 @@ export default function StyleProfileSelector({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {styleProfiles.map((profile) => (
+          {styleProfiles.map((profile, index) => (
             <SelectItem 
-              key={profile.id} 
+              key={`profile-selector-${profile.id}-${index}`}
               value={profile.id || `profile-${profile.name}`}
               className="flex flex-col items-start"
             >
@@ -191,8 +191,8 @@ export default function StyleProfileSelector({
 
               {selectedProfile.settings && Object.keys(selectedProfile.settings).length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {Object.entries(selectedProfile.settings).slice(0, 3).map(([key, value]) => (
-                    <Badge key={key} variant="outline" className="text-xs">
+                  {Object.entries(selectedProfile.settings).slice(0, 3).map(([key, value], settingIndex) => (
+                    <Badge key={`setting-${selectedProfile.id}-${key}-${settingIndex}`} variant="outline" className="text-xs">
                       {key}: {String(value)}
                     </Badge>
                   ))}

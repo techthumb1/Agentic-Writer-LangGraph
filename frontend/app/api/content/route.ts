@@ -3,8 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from "fs/promises";
 import path from "path";
 
-const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL || 'http://localhost:8000';
-const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY || 'your-api-key-here';
+const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL;
+const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
+if (!FASTAPI_BASE_URL || !FASTAPI_API_KEY) {
+  throw new Error('FASTAPI_BASE_URL and FASTAPI_API_KEY must be set in environment variables');
+}
 
 // Enterprise interfaces
 interface ContentSummary {

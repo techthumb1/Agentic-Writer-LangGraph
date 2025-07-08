@@ -1,13 +1,28 @@
 // app/api/templates/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL || 'http://localhost:8000';
-const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY || 'your-api-key-here';
-
+const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL;
+const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
+if (!FASTAPI_BASE_URL || !FASTAPI_API_KEY) {
+  throw new Error('FASTAPI_BASE_URL and FASTAPI_API_KEY must be set in environment variables');
+}
+console.log('🔑 [TEMPLATES] Environment check:', {
+  hasBaseUrl: !!FASTAPI_BASE_URL,
+  hasApiKey: !!FASTAPI_API_KEY,
+  baseUrl: FASTAPI_BASE_URL,
+  keyPreview: FASTAPI_API_KEY ? `${FASTAPI_API_KEY.substring(0, 10)}...` : 'MISSING'
+});
 interface BackendTemplate {
   id: string;
+  name: string;           // Backend uses 'name'
+  description: string;    // Backend uses 'description'  
+  category: string;       // Backend uses 'category'
+  sections?: unknown[];
+  metadata?: Record<string, unknown>;
+  filename: string;
+  // Legacy fields for fallback
   platform?: string;
-  title: string;
+  title?: string;
   audience?: string;
   tone?: string;
   length?: string;
@@ -51,13 +66,17 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category') || '';
 
     console.log(`🔍 [TEMPLATES] Fetching templates - page: ${page}, limit: ${limit}, search: "${search}", category: "${category}"`);
-
     // Build query parameters for backend
     const params = new URLSearchParams({
       page,
       limit,
       ...(search && { search }),
       ...(category && { category }),
+    });
+    console.log('🔍 [TEMPLATES] Making request with headers:', {
+      url: `${FASTAPI_BASE_URL}/api/templates?${params}`,
+      hasAuth: !!FASTAPI_API_KEY,
+      authHeader: FASTAPI_API_KEY ? `Bearer ${FASTAPI_API_KEY.substring(0, 10)}...` : 'MISSING'
     });
 
     const response = await fetch(`${FASTAPI_BASE_URL}/api/templates?${params}`, {
@@ -75,6 +94,11 @@ export async function GET(request: NextRequest) {
     }
 
     const data: BackendResponse = await response.json();
+    
+    console.log('🔍 [TEMPLATES] Raw backend response:', JSON.stringify(data, null, 2));
+    console.log('🔍 [TEMPLATES] Response type:', typeof data);
+    console.log('🔍 [TEMPLATES] Response keys:', data ? Object.keys(data) : 'null/undefined');
+
     console.log(`📊 [TEMPLATES] Backend response structure:`, {
       hasData: !!data.data,
       hasItems: !!(data.data?.items || data.items || data.templates),
@@ -110,26 +134,26 @@ export async function GET(request: NextRequest) {
     // Transform backend templates to frontend format
     const transformedTemplates = templates.map((template) => ({
       id: template.id,
-      title: template.title || 'Untitled Template',
-      description: template.system_prompt || `Template for ${template.audience || 'general'} audience`,
-      category: template.platform || 'general',
+      title: template.name || template.title || 'Untitled Template',  // Use 'name' from backend
+      description: template.description || template.system_prompt || `Template for ${template.category || 'general'}`,  // Use 'description' from backend
+      category: template.category || template.platform || 'general',  // Use 'category' from backend
       difficulty: template.tone || null,
-      estimatedLength: template.length || null,
-      targetAudience: template.audience || null,
-      icon: null,
-      tags: template.tags || [],
-      parameters: [],
-      templateData: {
-        parameters: template.parameters || {},
-        system_prompt: template.system_prompt,
-        code: template.code,
-        originalData: template,
-      },
-      isBuiltIn: true,
-      isPublic: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }));
+    estimatedLength: template.length || null,
+    targetAudience: template.audience || null,
+    icon: null,
+    tags: template.tags || [],
+    parameters: [],
+    templateData: {
+      parameters: template.parameters || {},
+      system_prompt: template.system_prompt,
+      code: template.code,
+      originalData: template,
+    },
+    isBuiltIn: true,
+    isPublic: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }));
 
     console.log(`✅ [TEMPLATES] Successfully transformed ${transformedTemplates.length} templates`);
 

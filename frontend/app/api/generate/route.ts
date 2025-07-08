@@ -2,8 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 
-const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL || process.env.NEXT_PUBLIC_FASTAPI_BASE_URL || 'http://127.0.0.1:8000';
-const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY || process.env.LANGGRAPH_API_KEY || '';
+const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL;
+const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
 
 // Security validation
 if (!FASTAPI_API_KEY) {
@@ -12,7 +12,7 @@ if (!FASTAPI_API_KEY) {
 
 // Enterprise request tracking interface
 interface GenerationRequest {
-  request_id: string;
+  requestId: string; // Frontend requestId that backend will use
   template: string;
   style_profile: string;
   topic: string;
@@ -49,7 +49,7 @@ const logError = (context: string, error: unknown, requestId?: string) => {
   const logData = {
     timestamp,
     context,
-    request_id: requestId,
+    frontend_request_id: requestId,
     error: {
       message: errorObj.message || 'Unknown error',
       stack: errorObj.stack,
@@ -66,10 +66,139 @@ const logSuccess = (context: string, data: unknown, requestId?: string) => {
   const logData = {
     timestamp,
     context,
-    request_id: requestId,
+    frontend_request_id: requestId,
     data: typeof data === 'object' ? data : { result: data }
   };
   console.log(`✅ [ENTERPRISE] ${context}:`, JSON.stringify(logData, null, 2));
+};
+
+// NEW: Enhanced fetch headers configuration
+const createFetchHeaders = (requestId: string, generationMode: string): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Request-ID': requestId || '',
+    'X-Client-Version': '2.0.0',
+    'X-Generation-Mode': generationMode
+  };
+
+  // Only add Authorization header if API key exists
+  if (FASTAPI_API_KEY) {
+    headers['Authorization'] = `Bearer ${FASTAPI_API_KEY}`;
+  }
+
+  return headers;
+};
+
+// NEW: Error categorization helper
+const categorizeFetchError = (error: Error): string => {
+  const errorName = error.name.toLowerCase();
+  const errorMessage = error.message.toLowerCase();
+  
+  // Timeout/Abort errors
+  if (errorName === 'aborterror' || errorMessage.includes('abort')) {
+    return 'ABORT';
+  }
+  
+  if (errorMessage.includes('timeout')) {
+    return 'TIMEOUT';
+  }
+  
+  // Network connectivity errors
+  if (errorMessage.includes('network') || 
+      errorMessage.includes('fetch') ||
+      errorMessage.includes('econnrefused') ||
+      errorMessage.includes('enotfound') ||
+      errorMessage.includes('etimedout')) {
+    return 'NETWORK';
+  }
+  
+  // SSL/TLS errors
+  if (errorMessage.includes('ssl') || 
+      errorMessage.includes('tls') ||
+      errorMessage.includes('certificate')) {
+    return 'SSL';
+  }
+  
+  // DNS errors
+  if (errorMessage.includes('dns') || 
+      errorMessage.includes('resolve') ||
+      errorMessage.includes('enotfound')) {
+    return 'DNS';
+  }
+  
+  return 'UNKNOWN';
+};
+
+// NEW: Enhanced fetch with comprehensive error handling
+const performFetchWithRetry = async (
+  url: string,
+  payload: GenerationRequest,
+  maxAttempts: number = 3
+): Promise<Response> => {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      // Create AbortController for timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), payload.timeout_seconds * 1000);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: createFetchHeaders(payload.requestId, payload.generation_mode),
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+        // Additional fetch options for reliability
+        keepalive: true,
+        cache: 'no-cache',
+        redirect: 'follow'
+      });
+
+      // Clear timeout on successful response
+      clearTimeout(timeoutId);
+      
+      // Log successful connection
+      console.log(`✅ [FETCH] Connected to backend (attempt ${attempt}/${maxAttempts})`);
+      
+      return response;
+      
+    } catch (fetchError: unknown) {
+      const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+      lastError = error;
+      
+      // Enhanced error categorization
+      const errorCategory = categorizeFetchError(error);
+      
+      console.error(`❌ [FETCH] Attempt ${attempt}/${maxAttempts} failed:`, {
+        category: errorCategory,
+        message: error.message,
+        name: error.name,
+        stack: error.stack?.split('\n').slice(0, 3).join('\n') // First 3 lines only
+      });
+      
+      // Don't retry on certain errors
+      if (errorCategory === 'TIMEOUT' || errorCategory === 'ABORT') {
+        console.warn(`⚠️ [FETCH] ${errorCategory} error - not retrying`);
+        break;
+      }
+      
+      // Exponential backoff for retryable errors
+      if (attempt < maxAttempts && errorCategory === 'NETWORK') {
+        const backoffMs = Math.pow(2, attempt) * 1000;
+        console.log(`⏳ [FETCH] Retrying in ${backoffMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        continue;
+      }
+    }
+  }
+  
+  // All attempts failed
+  if (lastError) {
+    throw lastError;
+  }
+  
+  throw new Error('Fetch failed after all attempts');
 };
 
 // Enhanced content extraction for multiple backend patterns
@@ -200,7 +329,7 @@ function extractContentFromBackendResponse(data: unknown): string {
 }
 
 export async function POST(request: NextRequest) {
-  const requestId = randomUUID();
+  const requestId = randomUUID(); // Only for frontend logging
   const startTime = Date.now();
   
   try {
@@ -231,7 +360,8 @@ export async function POST(request: NextRequest) {
     
     // Enterprise payload transformation - Enhanced for backend planning agent
     const enterprisePayload: GenerationRequest = {
-      request_id: requestId,
+      // ✅ ADD THIS BACK: Include requestId for backend
+      requestId: requestId, // Frontend requestId that backend will use
       template: body.templateId || body.template,
       style_profile: body.styleProfileId || body.style_profile,
       // Add ALL fields that the planning agent expects
@@ -251,145 +381,174 @@ export async function POST(request: NextRequest) {
       user_id: body.user_id // Enterprise user tracking
     };
     
-    logSuccess('Generation Request Initiated', {
-      request_id: requestId,
-      template: enterprisePayload.template,
-      style_profile: enterprisePayload.style_profile,
-      generation_mode: enterprisePayload.generation_mode,
-      priority: enterprisePayload.priority
-    }, requestId);
-    
-    // Enterprise backend request with retry logic
-    let attempts = 0;
-    const maxAttempts = 3;
-    let lastError: Error | null = null;
-
-    while (attempts < maxAttempts) {
-      attempts++;
-      
-      try {
-        const response = await fetch(`${FASTAPI_BASE_URL}/api/generate`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${FASTAPI_API_KEY}`,
-            'Content-Type': 'application/json',
-            'X-Request-ID': requestId || '',
-            'X-Client-Version': '2.0.0',
-            'X-Generation-Mode': enterprisePayload.generation_mode
-          },
-          body: JSON.stringify(enterprisePayload),
-          signal: AbortSignal.timeout(enterprisePayload.timeout_seconds * 1000),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ detail: 'Unknown backend error' }));
-          
-          if (response.status >= 500 && attempts < maxAttempts) {
-            logError(`Backend Error - Attempt ${attempts}`, errorData, requestId);
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000)); // Exponential backoff
-            continue;
-          }
-          
-          logError('Backend Request Failed', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorData,
-            attempts
-          }, requestId);
-          
-          return NextResponse.json(
-            { 
-              success: false, 
-              error: errorData.detail || 'Content generation failed',
-              request_id: requestId,
-              status_code: response.status,
-              attempts,
-              details: errorData
-            }, 
-            { status: response.status }
-          );
-        }
-
-        const data = await response.json();
-        const processingTime = Date.now() - startTime;
-        
-        // ENHANCED CONTENT EXTRACTION
-        const extractedContent = extractContentFromBackendResponse(data);
-        
-        // Enterprise response formatting
-        const enterpriseResponse: GenerationResponse = {
-          success: true,
-          generation_id: data.generation_id || requestId,
-          request_id: requestId,
-          status: data.status || (extractedContent ? 'completed' : 'processing'),
-          content: extractedContent, // Use extracted content instead of data.content
-          metadata: {
-            ...data.metadata,
-            processing_time_ms: processingTime,
-            attempts,
-            backend_generation_id: data.generation_id,
-            template_used: enterprisePayload.template,
-            style_profile_used: enterprisePayload.style_profile,
-            generation_mode: enterprisePayload.generation_mode,
-            // Enhanced metadata
-            innovation_report: data.innovation_report || data.metadata?.innovation_report,
-            content_quality: data.metadata?.content_quality,
-            word_count: extractedContent ? extractedContent.split(' ').length : 0,
-            content_extraction_method: extractedContent ? 'enhanced' : 'fallback'
-          },
-          estimated_completion: data.estimated_completion,
-          progress: data.progress || 100
-        };
-        
-        logSuccess('Generation Completed Successfully', {
-          generation_id: enterpriseResponse.generation_id,
-          processing_time_ms: processingTime,
-          content_length: extractedContent ? extractedContent.length : 0,
-          attempts,
-          content_found: !!extractedContent
-        }, requestId);
-        
-        return NextResponse.json(enterpriseResponse);
-        
-      } catch (fetchError: unknown) {
-        const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
-        lastError = error;
-        
-        if (typeof fetchError === 'object' && fetchError !== null && 'name' in fetchError && (fetchError as { name: string }).name === 'AbortError') {
-          logError('Generation Timeout', { timeout_seconds: enterprisePayload.timeout_seconds }, requestId);
-          break;
-        }
-        
-        if (attempts < maxAttempts) {
-          logError(`Request Failed - Attempt ${attempts}`, fetchError, requestId);
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000));
-          continue;
-        }
-      }
-    }
-    
-    // All attempts failed
-    const processingTime = Date.now() - startTime;
-    
-    if (lastError?.name === 'AbortError') {
+    // Validate backend URL
+    if (!FASTAPI_BASE_URL) {
+      console.error('🚨 [CONFIG] FASTAPI_BASE_URL not configured');
       return NextResponse.json(
         { 
-          success: false,
-          error: 'Generation timeout', 
-          message: `Content generation exceeded ${enterprisePayload.timeout_seconds} seconds`,
-          request_id: requestId,
-          processing_time_ms: processingTime
-        }, 
-        { status: 504 }
+          success: false, 
+          error: 'Backend service not configured',
+          request_id: requestId
+        },
+        { status: 503 }
       );
     }
     
-    // Type guard for error with 'code' property
-    function hasErrorCode(obj: unknown): obj is { code: string } {
-      return typeof obj === 'object' && obj !== null && 'code' in obj && typeof (obj as { code: unknown }).code === 'string';
-    }
+    logSuccess('Generation Request Initiated', {
+      frontend_request_id: requestId,
+      template: enterprisePayload.template,
+      style_profile: enterprisePayload.style_profile,
+      generation_mode: enterprisePayload.generation_mode,
+      priority: enterprisePayload.priority,
+      backend_url: FASTAPI_BASE_URL,
+      has_api_key: !!FASTAPI_API_KEY
+    }, requestId);
     
-        if (lastError && hasErrorCode(lastError) && lastError.code === 'ECONNREFUSED') {
+    // UPDATED: Use enhanced fetch with comprehensive error handling
+    try {
+      const response = await performFetchWithRetry(
+        `${FASTAPI_BASE_URL}/api/generate`,
+        enterprisePayload,
+        3 // maxAttempts
+      );
+      
+      // Handle non-200 responses
+      if (!response.ok) {
+        let errorData: { detail?: string; message?: string; error?: string } = { detail: 'Unknown backend error' };
+        
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType?.includes('application/json')) {
+            errorData = await response.json();
+          } else {
+            // Handle non-JSON error responses
+            const textData = await response.text();
+            errorData = { detail: `Backend returned non-JSON response: ${textData.substring(0, 200)}` };
+          }
+        } catch (parseError) {
+          console.warn('⚠️ [PARSE] Failed to parse error response:', parseError);
+          errorData = { detail: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
+        logError('Backend HTTP Error', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          content_type: response.headers.get('content-type'),
+          content_length: response.headers.get('content-length')
+        }, requestId);
+        
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: errorData.detail || errorData.message || errorData.error || 'Content generation failed',
+            request_id: requestId,
+            status_code: response.status,
+            details: errorData
+          }, 
+          { status: response.status }
+        );
+      }
+      
+      // Handle successful response
+      let data: unknown;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const textData = await response.text();
+          console.warn('⚠️ [RESPONSE] Non-JSON response received:', textData.substring(0, 200));
+          data = { content: textData };
+        }
+      } catch (parseError) {
+        console.error('❌ [PARSE] Failed to parse successful response:', parseError);
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Failed to parse backend response',
+            request_id: requestId
+          },
+          { status: 502 }
+        );
+      }
+      
+      const processingTime = Date.now() - startTime;
+      
+      // ✅ Extract backend's request_id
+      const backendRequestId = (data as { request_id?: string; generation_id?: string })?.request_id || 
+                              (data as { request_id?: string; generation_id?: string })?.generation_id || 
+                              requestId;
+      
+      // ENHANCED CONTENT EXTRACTION
+      const extractedContent = extractContentFromBackendResponse(data);
+      
+      // Enterprise response formatting
+      const enterpriseResponse: GenerationResponse = {
+        success: true,
+        generation_id: (data as { generation_id?: string })?.generation_id || backendRequestId,
+        request_id: backendRequestId, // ✅ Use backend's request_id for status tracking
+        status: (data as { status?: string })?.status || (extractedContent ? 'completed' : 'processing'),
+        content: extractedContent, // Use extracted content instead of data.content
+        metadata: {
+          ...(data as { metadata?: Record<string, unknown> })?.metadata,
+          frontend_request_id: requestId, // Keep frontend ID for logging
+          processing_time_ms: processingTime,
+          backend_generation_id: (data as { generation_id?: string })?.generation_id,
+          template_used: enterprisePayload.template,
+          style_profile_used: enterprisePayload.style_profile,
+          generation_mode: enterprisePayload.generation_mode,
+          // Enhanced metadata
+          innovation_report: (data as { innovation_report?: unknown })?.innovation_report || (data as { metadata?: { innovation_report?: unknown } })?.metadata?.innovation_report,
+          content_quality: (data as { metadata?: { content_quality?: unknown } })?.metadata?.content_quality,
+          word_count: extractedContent ? extractedContent.split(' ').length : 0,
+          content_extraction_method: extractedContent ? 'enhanced' : 'fallback'
+        },
+        estimated_completion: (data as { estimated_completion?: string })?.estimated_completion,
+        progress: (data as { progress?: number })?.progress || 100
+      };
+      
+      logSuccess('Generation Completed Successfully', {
+        generation_id: enterpriseResponse.generation_id,
+        backend_request_id: backendRequestId,
+        processing_time_ms: processingTime,
+        content_length: extractedContent ? extractedContent.length : 0,
+        content_found: !!extractedContent
+      }, requestId);
+      
+      return NextResponse.json(enterpriseResponse);
+      
+    } catch (fetchError: unknown) {
+      const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+      const processingTime = Date.now() - startTime;
+      const errorCategory = categorizeFetchError(error);
+      
+      logError('Fetch Operation Failed', {
+        error_category: errorCategory,
+        error_name: error.name,
+        error_message: error.message,
+        processing_time_ms: processingTime,
+        backend_url: FASTAPI_BASE_URL,
+        timeout_seconds: enterprisePayload.timeout_seconds
+      }, requestId);
+      
+      // Return appropriate error based on category
+      switch (errorCategory) {
+        case 'TIMEOUT':
+        case 'ABORT':
+          return NextResponse.json(
+            { 
+              success: false,
+              error: 'Generation timeout', 
+              message: `Content generation exceeded ${enterprisePayload.timeout_seconds} seconds`,
+              request_id: requestId,
+              processing_time_ms: processingTime
+            }, 
+            { status: 504 }
+          );
+          
+        case 'NETWORK':
+        case 'DNS':
           return NextResponse.json(
             { 
               success: false,
@@ -397,23 +556,40 @@ export async function POST(request: NextRequest) {
               message: 'Cannot connect to generation service',
               request_id: requestId,
               processing_time_ms: processingTime,
-              attempts
+              details: {
+                backend_url: FASTAPI_BASE_URL,
+                error_type: errorCategory,
+                error_message: error.message
+              }
             }, 
             { status: 503 }
           );
-        }
-    
-    return NextResponse.json(
-      { 
-        success: false,
-        error: 'Generation failed after multiple attempts', 
-        message: lastError?.message || 'Unknown error',
-        request_id: requestId,
-        processing_time_ms: processingTime,
-        attempts
-      }, 
-      { status: 500 }
-    );
+          
+        case 'SSL':
+          return NextResponse.json(
+            { 
+              success: false,
+              error: 'SSL connection failed', 
+              message: 'Secure connection to backend failed',
+              request_id: requestId,
+              processing_time_ms: processingTime
+            }, 
+            { status: 502 }
+          );
+          
+        default:
+          return NextResponse.json(
+            { 
+              success: false,
+              error: 'Generation failed', 
+              message: error.message || 'Unknown error occurred',
+              request_id: requestId,
+              processing_time_ms: processingTime
+            }, 
+            { status: 500 }
+          );
+      }
+    }
     
   } catch (error: unknown) {
     const errorObj = error instanceof Error ? error : new Error(String(error));
@@ -454,139 +630,95 @@ export async function GET(request: NextRequest) {
     
     logSuccess('Status Check Initiated', { tracking_id: trackingId }, trackingId);
     
-    // Try multiple possible backend endpoints
-    let response;
-    let backendError: unknown = null;
+    // Enhanced status check with proper headers
+    const statusHeaders = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'X-Request-ID': trackingId,
+      ...(FASTAPI_API_KEY ? { 'Authorization': `Bearer ${FASTAPI_API_KEY}` } : {})
+    };
     
-    // Try primary status endpoint
-    try {
-      response = await fetch(`${FASTAPI_BASE_URL}/api/status/${trackingId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${FASTAPI_API_KEY}`,
-          'Content-Type': 'application/json',
-          'X-Request-ID': trackingId,
-        },
-      });
-    } catch (error) {
-      backendError = error;
-    }
+    const statusEndpoints = [
+      `${FASTAPI_BASE_URL}/api/status/${trackingId}`,
+      `${FASTAPI_BASE_URL}/api/generation/${trackingId}`,
+      `${FASTAPI_BASE_URL}/status`
+    ];
     
-    // If first endpoint fails, try alternative endpoint
-    if (!response || !response.ok) {
+    for (const endpoint of statusEndpoints) {
       try {
-        response = await fetch(`${FASTAPI_BASE_URL}/api/generation/${trackingId}`, {
+        const response = await fetch(endpoint, {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${FASTAPI_API_KEY}`,
-            'Content-Type': 'application/json',
-            'X-Request-ID': trackingId,
-          },
-        });
-      } catch (error) {
-        backendError = error;
-      }
-    }
-    
-    // If both specific endpoints fail, try simple status check
-    if (!response || !response.ok) {
-      try {
-        response = await fetch(`${FASTAPI_BASE_URL}/status`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${FASTAPI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
+          headers: statusHeaders,
+          cache: 'no-cache'
         });
         
         if (response.ok) {
-          // Return mock status for now since backend endpoint might not exist
-          const mockStatus = {
+          const contentType = response.headers.get('content-type');
+          let data: unknown;
+          
+          if (contentType?.includes('application/json')) {
+            data = await response.json();
+          } else {
+            const textData = await response.text();
+            data = { message: textData };
+          }
+          
+          // Handle successful response for the last endpoint (general status)
+          if (endpoint.endsWith('/status')) {
+            // Return mock status for now since backend endpoint might not exist
+            const mockStatus = {
+              success: true,
+              request_id: requestId,
+              generation_id: generationId,
+              status: "completed",
+              progress: 100,
+              message: "Generation completed (status endpoint not implemented)",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              metadata: { mock: true, note: "Backend status endpoint not available" }
+            };
+            
+            logSuccess('Status Check Completed (Mock)', mockStatus, trackingId);
+            return NextResponse.json(mockStatus);
+          }
+          
+          // Type-safe response construction for specific endpoints
+          const statusResponse = {
             success: true,
             request_id: requestId,
-            generation_id: generationId,
-            status: "completed",
-            progress: 100,
-            message: "Generation completed (status endpoint not implemented)",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            metadata: { mock: true, note: "Backend status endpoint not available" }
+            generation_id: (data as { generation_id?: string })?.generation_id || generationId || '',
+            status: (data as { status?: string })?.status || 'unknown',
+            progress: (data as { progress?: number })?.progress || 0,
+            message: (data as { message?: string })?.message || '',
+            created_at: (data as { created_at?: string })?.created_at || new Date().toISOString(),
+            updated_at: (data as { updated_at?: string })?.updated_at || new Date().toISOString(),
+            metadata: (data as { metadata?: Record<string, unknown> })?.metadata || {},
+            ...((data as { content?: string })?.content ? { content: (data as { content: string }).content } : {}),
+            ...((data as { error?: string })?.error ? { error: (data as { error: string }).error } : {})
           };
           
-          logSuccess('Status Check Completed (Mock)', mockStatus, trackingId);
-          return NextResponse.json(mockStatus);
+          logSuccess('Status Check Completed', statusResponse, trackingId);
+          return NextResponse.json(statusResponse);
         }
-      } catch (error) {
-        backendError = error;
+      } catch (fetchError) {
+        console.warn(`⚠️ [STATUS] Endpoint ${endpoint} failed:`, fetchError);
+        continue;
       }
     }
-
-    if (!response || !response.ok) {
-      // FIXED: Proper error data typing and message extraction
-      const errorData = await response?.json().catch(() => ({ detail: 'Status check failed' })) as {
-        detail?: string;
-        message?: string;
-        error?: string;
-      };
-      
-      // Extract error message with proper fallbacks
-      const errorMessage = errorData?.detail || 
-                          errorData?.message || 
-                          errorData?.error ||
-                          (backendError instanceof Error ? backendError.message : 
-                           typeof backendError === 'string' ? backendError : 
-                           'Failed to get generation status');
-      
-      logError('Status Check Failed', {
-        error: errorData,
-        backend_error: backendError instanceof Error ? backendError.message : String(backendError),
-        status: response?.status,
-        statusText: response?.statusText
-      }, trackingId);
-      
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: errorMessage,
-          request_id: trackingId,
-          backend_available: false
-        },
-        { status: response?.status || 503 }
-      );
-    }
-
-    // FIXED: Proper response data typing
-    const data = await response.json() as {
-      generation_id?: string;
-      status?: string;
-      progress?: number;
-      message?: string;
-      created_at?: string;
-      updated_at?: string;
-      metadata?: Record<string, unknown>;
-      content?: string;
-      error?: string;
-    };
     
-    // Type-safe property access with proper defaults
-    const statusResponse = {
-      success: true,
-      request_id: requestId,
-      generation_id: data.generation_id || generationId || '',
-      status: data.status || 'unknown',
-      progress: data.progress || 0,
-      message: data.message || '',
-      created_at: data.created_at || new Date().toISOString(),
-      updated_at: data.updated_at || new Date().toISOString(),
-      metadata: data.metadata || {},
-      // FIXED: Safe conditional object spreading
-      ...(data.content ? { content: data.content } : {}),
-      ...(data.error ? { error: data.error } : {})
-    };
+    // All endpoints failed
+    logError('All Status Endpoints Failed', { endpoints: statusEndpoints }, trackingId);
     
-    logSuccess('Status Check Completed', statusResponse, trackingId);
-    
-    return NextResponse.json(statusResponse);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Status check failed',
+        message: 'All status endpoints are unavailable',
+        request_id: trackingId,
+        backend_available: false
+      },
+      { status: 503 }
+    );
     
   } catch (error: unknown) {
     logError('Status Check Error', error);

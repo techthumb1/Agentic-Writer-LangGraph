@@ -1,8 +1,11 @@
 // frontend/app/api/style-profiles/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL || 'http://localhost:8000';
-const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY || 'your-api-key-here';
+const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL;
+const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
+if (!FASTAPI_BASE_URL || !FASTAPI_API_KEY) {
+  throw new Error('FASTAPI_BASE_URL and FASTAPI_API_KEY must be set in environment variables');
+}
 
 export async function GET(request: NextRequest) {
   try {

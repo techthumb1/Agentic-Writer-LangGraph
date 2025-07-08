@@ -91,23 +91,29 @@ interface GenerationResult {
 
 interface GenerationResponse {
   success: boolean;
-  content?: string;
-  metadata?: GenerationResult['metadata'];
+  data?: {
+    requestId?: string;
+    status?: string;
+    content?: string;
+    metadata?: GenerationResult['metadata'];
+  };
   quality_score?: GenerationResult['quality_score'];
-  generation_id?: string;
   error?: string;
   errors?: string[];
 }
 
 interface GenerationStatusResponse {
-  generation_id: string;
-  status: 'queued' | 'running' | 'completed' | 'failed';
-  progress: number;
-  current_agent?: string;
-  estimated_completion?: string;
-  content?: string;
-  error?: string;
-  metadata?: Record<string, unknown>;
+  success: boolean;
+  data: {
+    requestId: string;
+    status: 'queued' | 'pending' | 'running' | 'completed' | 'failed';
+    progress?: number;
+    current_agent?: string;
+    estimated_completion?: string;
+    content?: string;
+    error?: string;
+    metadata?: Record<string, unknown>;
+  };
 }
 
 interface GenerationState {
@@ -117,7 +123,7 @@ interface GenerationState {
   currentAgent: string;
   error: string | null;
   result: GenerationResult | null;
-  generationId: string | null;
+  requestId: string | null;
   qualityScore: GenerationResult['quality_score'] | null;
 }
 
@@ -129,7 +135,7 @@ export function useEnhancedGeneration() {
     currentAgent: '',
     error: null,
     result: null,
-    generationId: null,
+    requestId: null,
     qualityScore: null,
   });
 
@@ -212,9 +218,10 @@ export function useEnhancedGeneration() {
     return await response.json();
   };
 
-  // Check generation status using enterprise endpoint
-  const checkStatus = async (generationId: string): Promise<GenerationStatusResponse> => {
-    const response = await fetch(`/api/generation/${generationId}`, {
+  // FIXED: Check generation status using correct endpoint
+  const checkStatus = async (requestId: string): Promise<GenerationStatusResponse> => {
+    const response = await fetch(`/api/generate/status/${requestId}`, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${process.env.NEXT_PUBLIC_LANGGRAPH_API_KEY || 'dev-key'}`,
       },
@@ -228,18 +235,21 @@ export function useEnhancedGeneration() {
   };
 
   // Enhanced polling with agent tracking
-  const pollStatus = useCallback(async (generationId: string) => {
+  const pollStatus = useCallback(async (requestId: string) => {
     try {
-      const status = await checkStatus(generationId);
+      const statusResponse = await checkStatus(requestId);
+      
+      // FIXED: Access data from correct nested structure
+      const { status, progress = 0, current_agent, content, error, metadata } = statusResponse.data;
       
       setState(prev => ({
         ...prev,
-        progress: status.progress,
-        currentAgent: status.current_agent || '',
-        currentStep: getStepFromAgent(status.current_agent || ''),
+        progress,
+        currentAgent: current_agent || '',
+        currentStep: getStepFromAgent(current_agent || ''),
       }));
 
-      if (status.status === 'completed' && status.content) {
+      if (status === 'completed' && content) {
         setState(prev => ({
           ...prev,
           isGenerating: false,
@@ -247,28 +257,30 @@ export function useEnhancedGeneration() {
           currentStep: 'Complete',
           currentAgent: 'completed',
           result: {
-            content: status.content!,
-            metadata: status.metadata as GenerationResult['metadata'] || {} as GenerationResult['metadata'],
+            content: content as string, // Explicit type assertion since we check content exists
+            metadata: metadata as GenerationResult['metadata'] || {} as GenerationResult['metadata'],
             quality_score: {} as GenerationResult['quality_score'], // Would come from metadata
           },
         }));
         setIsPolling(false);
-      } else if (status.status === 'failed') {
+      } else if (status === 'failed') {
         setState(prev => ({
           ...prev,
           isGenerating: false,
-          error: status.error || 'Generation failed',
+          error: error || 'Generation failed',
         }));
         setIsPolling(false);
       }
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        isGenerating: false,
-        error: error instanceof Error ? error.message : 'Failed to check status',
-      }));
-      setIsPolling(false);
-    }
+} catch (error) {
+  setState(prev => ({
+    ...prev,
+    isGenerating: false,
+    error: error instanceof Error ? error.message : 'Failed to check status',
+  }));
+  setIsPolling(false);
+  // Log the error for debugging
+  console.log('Poll error:', error);
+}
   }, []);
 
   // Convert agent name to user-friendly step
@@ -292,14 +304,14 @@ export function useEnhancedGeneration() {
 
   // Polling effect with enterprise intervals
   useEffect(() => {
-    if (isPolling && state.generationId) {
+    if (isPolling && state.requestId) {
       const interval = setInterval(() => {
-        pollStatus(state.generationId!);
+        pollStatus(state.requestId!);
       }, 1500); // Poll every 1.5 seconds for better UX
 
       return () => clearInterval(interval);
     }
-  }, [isPolling, state.generationId, pollStatus]);
+  }, [isPolling, state.requestId, pollStatus]);
 
   const mutation = useMutation({
     mutationFn: startGeneration,
@@ -312,14 +324,15 @@ export function useEnhancedGeneration() {
         currentAgent: 'initialize',
         error: null,
         result: null,
-        generationId: null,
+        requestId: null,
         qualityScore: null,
       }));
     },
     onSuccess: (data) => {
-      if (data.success) {
-        if (data.content) {
-          // Immediate completion
+      if (data.success && data.data) {
+        // FIXED: Check for immediate completion in correct nested structure
+        if (data.data?.content) {
+          // Immediate completion - sync path
           setState(prev => ({
             ...prev,
             isGenerating: false,
@@ -327,18 +340,19 @@ export function useEnhancedGeneration() {
             currentStep: 'Complete',
             currentAgent: 'completed',
             result: {
-              content: data.content!,
-              metadata: data.metadata || {} as GenerationResult['metadata'],
+              content: data.data?.content as string, // Explicit type assertion
+              metadata: data.data?.metadata || {} as GenerationResult['metadata'],
               quality_score: data.quality_score || {} as GenerationResult['quality_score'],
             },
             qualityScore: data.quality_score || null,
-            generationId: data.generation_id || null,
+            requestId: data.data?.requestId || null,
           }));
-        } else if (data.generation_id) {
+        } else if (data.data?.requestId) {
+          // FIXED: Use correct field for requestId
           // Async processing - start polling
           setState(prev => ({
             ...prev,
-            generationId: data.generation_id!,
+            requestId: data.data?.requestId || null,
             currentStep: 'Queued for processing...',
             currentAgent: 'queued',
           }));
@@ -385,7 +399,7 @@ export function useEnhancedGeneration() {
       currentAgent: '',
       error: null,
       result: null,
-      generationId: null,
+      requestId: null,
       qualityScore: null,
     });
   }, []);
@@ -403,3 +417,4 @@ export function useEnhancedGeneration() {
     innovationReport: state.result?.metadata?.innovation_report,
   };
 }
+
