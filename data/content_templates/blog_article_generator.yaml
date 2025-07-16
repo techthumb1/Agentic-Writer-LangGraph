@@ -1,0 +1,82 @@
+id: blog_article_generator
+name: Blog Article Generator
+description: Create engaging blog posts with SEO optimization and compelling headlines
+category: Content Marketing
+difficulty: beginner
+estimatedLength: 5-10 min
+targetAudience: Content creators and marketers
+icon: "📝"
+tags:
+  - blog
+  - seo
+  - content-marketing
+
+suggested_sections:
+  - name: headline
+    description: Compelling, SEO-optimized headline
+  - name: introduction
+    description: Hook and overview that draws readers in
+  - name: main_content
+    description: Core value and information with subheadings
+  - name: conclusion
+    description: Summary and clear call-to-action
+
+parameters:
+  - name: topic
+    type: text
+    label: Blog Topic
+    description: "Main subject or keyword focus"
+    commonly_used: true
+  - name: target_audience
+    type: text
+    label: Target Audience
+    description: "Who should this content serve?"
+    commonly_used: true
+  - name: tone
+    type: select
+    label: Writing Tone
+    description: "Overall voice and style"
+    options:
+      - professional
+      - casual
+      - friendly
+      - authoritative
+      - conversational
+    commonly_used: true
+  - name: word_count
+    type: number
+    label: Target Word Count
+    description: "Approximate length goal"
+    commonly_used: false
+  - name: seo_keywords
+    type: text
+    label: SEO Keywords
+    description: "Primary keywords to optimize for"
+    commonly_used: false
+  - name: call_to_action
+    type: text
+    label: Desired Action
+    description: "What should readers do next?"
+    commonly_used: false
+  - name: expertise_level
+    type: select
+    label: Content Depth
+    description: "How technical or detailed should this be?"
+    options:
+      - beginner_friendly
+      - intermediate
+      - advanced
+      - expert_level
+    commonly_used: false
+
+instructions: |
+  Generate blog content using the provided parameters as guidance.
+  Users may add custom parameters or modify suggested ones.
+  Adapt structure and approach based on all provided inputs.
+  Focus on providing value and engaging the specified audience.
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-07-10"
+  parameter_flexibility: "high"

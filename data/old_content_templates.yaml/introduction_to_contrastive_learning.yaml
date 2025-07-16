@@ -1,0 +1,62 @@
+# data/content_templates/introduction_to_contrastive_learning.yaml
+id: introduction_to_contrastive_learning
+name: Introduction to Contrastive Learning
+description: Educational introduction to contrastive learning methods in ML
+category: educational
+slug: introduction-to-contrastive-learning
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  difficulty: "intermediate"
+  estimated_time: "25-30 minutes"
+
+defaults:
+  platform: medium
+  title: "Contrastive Learning: Learning from Comparisons"
+  audience: "ML practitioners, researchers, advanced students"
+  tone: educational_technical
+  length: long
+  code: true
+  tags: ["contrastive learning", "self-supervised learning", "representation learning"]
+
+system_prompt: >
+  Explain contrastive learning clearly with intuitive explanations followed by
+  technical depth. Use analogies to help readers understand the core concepts.
+  Include code examples and practical applications. Build from simple concepts
+  to more advanced techniques.
+
+structure:
+  sections:
+    - name: "intuitive_explanation"
+      description: "What contrastive learning is in simple terms"
+      word_target: 200
+    - name: "technical_details"
+      description: "How the algorithms work"
+      word_target: 400
+    - name: "practical_implementation"
+      description: "Code examples and implementation"
+      word_target: 400
+    - name: "applications_future"
+      description: "Use cases and future directions"
+      word_target: 200
+
+parameters:
+  - name: math_level
+    label: Mathematical Detail Level
+    type: select
+    options: ["minimal", "moderate", "comprehensive"]
+    default: "moderate"
+    required: false
+  - name: code_framework
+    label: Code Framework
+    type: select
+    options: ["pytorch", "tensorflow", "pseudocode"]
+    default: "pytorch"
+    required: false
+
+research:
+  topics: ["contrastive learning papers", "self-supervised learning", "representation learning"]
+  depth: "comprehensive"
+  sources: ["academic papers", "implementation guides", "tutorials"]

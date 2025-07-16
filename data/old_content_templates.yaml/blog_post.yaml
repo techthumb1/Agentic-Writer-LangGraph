@@ -1,0 +1,91 @@
+# data/content_templates/blog_post.yaml
+# General Blog Post Template
+
+id: blog_post
+name: General Blog Post
+description: Flexible blog post template for various topics
+category: general
+slug: blog-post
+
+# Template metadata
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-06-20"
+  difficulty: "beginner"
+  estimated_time: "10-15 minutes"
+
+# Default content settings
+defaults:
+  platform: medium
+  title: "Blog Post Title"
+  audience: "general readers"
+  tone: conversational
+  length: medium
+  code: false
+  tags: ["blog", "content"]
+
+# Template-specific instructions
+system_prompt: >
+  Write an engaging blog post on the given topic. Start with a compelling hook,
+  provide valuable insights or information, and conclude with a clear takeaway.
+  Keep the writing conversational and accessible to your target audience.
+
+# Content structure guide
+structure:
+  sections:
+    - name: "introduction"
+      description: "Hook and topic introduction"
+      word_target: 100
+    - name: "main_content"
+      description: "Core content and key points"
+      word_target: 500
+    - name: "conclusion"
+      description: "Summary and call to action"
+      word_target: 100
+
+# Dynamic parameters
+parameters:
+  - name: topic
+    label: Blog Post Topic
+    type: string
+    description: "The main topic for your blog post"
+    placeholder: "e.g., Getting Started with Machine Learning"
+    required: true
+    
+  - name: audience
+    label: Target Audience
+    type: select
+    description: "Who is this blog post for?"
+    options: ["beginners", "intermediate", "advanced", "general public"]
+    default: "general public"
+    required: false
+    
+  - name: tone
+    label: Writing Tone
+    type: select
+    description: "Tone of the blog post"
+    options: ["conversational", "professional", "casual", "authoritative"]
+    default: "conversational"
+    required: false
+    
+  - name: length
+    label: Content Length
+    type: select
+    description: "Target length for the blog post"
+    options: ["short", "medium", "long"]
+    default: "medium"
+    required: false
+    
+  - name: include_examples
+    label: Include Examples
+    type: boolean
+    description: "Include practical examples in the content"
+    default: true
+    required: false
+
+# Research requirements
+research:
+  topics: ["topic background", "current trends", "practical applications"]
+  depth: "basic"
+  sources: ["web articles", "blog posts", "industry reports"]

@@ -1,0 +1,907 @@
+# langgraph_app/utils.py
+
+import os
+import yaml
+import json
+import hashlib
+import time
+import asyncio
+import logging
+from typing import Dict, Any, Optional, List, Tuple, Union
+from datetime import datetime, timedelta
+from dataclasses import dataclass, field, asdict
+from pathlib import Path
+import re
+import sqlite3
+import aiofiles
+from textstat import flesch_reading_ease, flesch_kincaid_grade, automated_readability_index
+from collections import Counter, defaultdict
+import statistics
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@dataclass
+class PerformanceMetrics:
+    """System-wide performance metrics"""
+    timestamp: datetime = field(default_factory=datetime.now)
+    endpoint: str = ""
+    duration_ms: int = 0
+    memory_usage_mb: float = 0.0
+    cpu_usage_percent: float = 0.0
+    cache_hit_rate: float = 0.0
+    error_count: int = 0
+    success_count: int = 0
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+
+@dataclass
+class ContentAnalytics:
+    """Content generation analytics"""
+    content_id: str
+    template_id: str
+    style_profile: str
+    word_count: int = 0
+    generation_time_ms: int = 0
+    quality_score: float = 0.0
+    engagement_score: float = 0.0
+    readability_score: float = 0.0
+    seo_score: float = 0.0
+    user_rating: Optional[int] = None
+    conversion_metrics: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=datetime.now)
+
+class DatabaseManager:
+    """Centralized database management"""
+    
+    def __init__(self, db_path: str = "data/analytics.db"):
+        self.db_path = db_path
+        self._ensure_db_exists()
+    
+    def _ensure_db_exists(self):
+        """Ensure database and tables exist"""
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        
+        with sqlite3.connect(self.db_path) as conn:
+            # Performance metrics table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS performance_metrics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    endpoint TEXT NOT NULL,
+                    duration_ms INTEGER NOT NULL,
+                    memory_usage_mb REAL,
+                    cpu_usage_percent REAL,
+                    cache_hit_rate REAL,
+                    error_count INTEGER DEFAULT 0,
+                    success_count INTEGER DEFAULT 0,
+                    user_id TEXT,
+                    session_id TEXT
+                )
+            """)
+            
+            # Content analytics table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS content_analytics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    content_id TEXT UNIQUE NOT NULL,
+                    template_id TEXT NOT NULL,
+                    style_profile TEXT NOT NULL,
+                    word_count INTEGER,
+                    generation_time_ms INTEGER,
+                    quality_score REAL,
+                    engagement_score REAL,
+                    readability_score REAL,
+                    seo_score REAL,
+                    user_rating INTEGER,
+                    conversion_metrics TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            
+            # Usage analytics table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS usage_analytics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT,
+                    session_id TEXT,
+                    action TEXT NOT NULL,
+                    details TEXT,
+                    timestamp TEXT NOT NULL
+                )
+            """)
+            
+            conn.commit()
+    
+    def log_performance(self, metrics: PerformanceMetrics):
+        """Log performance metrics"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("""
+                    INSERT INTO performance_metrics 
+                    (timestamp, endpoint, duration_ms, memory_usage_mb, cpu_usage_percent, 
+                     cache_hit_rate, error_count, success_count, user_id, session_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    metrics.timestamp.isoformat(),
+                    metrics.endpoint,
+                    metrics.duration_ms,
+                    metrics.memory_usage_mb,
+                    metrics.cpu_usage_percent,
+                    metrics.cache_hit_rate,
+                    metrics.error_count,
+                    metrics.success_count,
+                    metrics.user_id,
+                    metrics.session_id
+                ))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to log performance metrics: {e}")
+    
+    def log_content_analytics(self, analytics: ContentAnalytics):
+        """Log content generation analytics"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("""
+                    INSERT OR REPLACE INTO content_analytics 
+                    (content_id, template_id, style_profile, word_count, generation_time_ms,
+                     quality_score, engagement_score, readability_score, seo_score, 
+                     user_rating, conversion_metrics, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    analytics.content_id,
+                    analytics.template_id,
+                    analytics.style_profile,
+                    analytics.word_count,
+                    analytics.generation_time_ms,
+                    analytics.quality_score,
+                    analytics.engagement_score,
+                    analytics.readability_score,
+                    analytics.seo_score,
+                    analytics.user_rating,
+                    json.dumps(analytics.conversion_metrics),
+                    analytics.created_at.isoformat()
+                ))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to log content analytics: {e}")
+    
+    def get_performance_stats(self, hours: int = 24) -> Dict[str, Any]:
+        """Get performance statistics for the last N hours"""
+        try:
+            cutoff_time = datetime.now() - timedelta(hours=hours)
+            
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute("""
+                    SELECT 
+                        AVG(duration_ms) as avg_duration,
+                        MAX(duration_ms) as max_duration,
+                        MIN(duration_ms) as min_duration,
+                        AVG(cache_hit_rate) as avg_cache_hit_rate,
+                        SUM(error_count) as total_errors,
+                        SUM(success_count) as total_successes,
+                        COUNT(*) as total_requests
+                    FROM performance_metrics 
+                    WHERE timestamp > ?
+                """, (cutoff_time.isoformat(),))
+                
+                result = cursor.fetchone()
+                
+                if result:
+                    return {
+                        "avg_duration_ms": result[0] or 0,
+                        "max_duration_ms": result[1] or 0,
+                        "min_duration_ms": result[2] or 0,
+                        "avg_cache_hit_rate": result[3] or 0,
+                        "total_errors": result[4] or 0,
+                        "total_successes": result[5] or 0,
+                        "total_requests": result[6] or 0,
+                        "error_rate": (result[4] / max(result[6], 1)) * 100 if result[6] else 0
+                    }
+        except Exception as e:
+            logger.error(f"Failed to get performance stats: {e}")
+        
+        return {}
+    
+    def get_content_insights(self, days: int = 7) -> Dict[str, Any]:
+        """Get content generation insights"""
+        try:
+            cutoff_time = datetime.now() - timedelta(days=days)
+            
+            with sqlite3.connect(self.db_path) as conn:
+                # Overall content stats
+                cursor = conn.execute("""
+                    SELECT 
+                        COUNT(*) as total_content,
+                        AVG(quality_score) as avg_quality,
+                        AVG(engagement_score) as avg_engagement,
+                        AVG(readability_score) as avg_readability,
+                        AVG(word_count) as avg_word_count,
+                        AVG(generation_time_ms) as avg_generation_time
+                    FROM content_analytics 
+                    WHERE created_at > ?
+                """, (cutoff_time.isoformat(),))
+                
+                overall_stats = cursor.fetchone()
+                
+                # Top performing templates
+                cursor = conn.execute("""
+                    SELECT template_id, COUNT(*) as usage_count, AVG(quality_score) as avg_quality
+                    FROM content_analytics 
+                    WHERE created_at > ?
+                    GROUP BY template_id
+                    ORDER BY usage_count DESC
+                    LIMIT 10
+                """, (cutoff_time.isoformat(),))
+                
+                top_templates = cursor.fetchall()
+                
+                # Style profile performance
+                cursor = conn.execute("""
+                    SELECT style_profile, COUNT(*) as usage_count, AVG(quality_score) as avg_quality
+                    FROM content_analytics 
+                    WHERE created_at > ?
+                    GROUP BY style_profile
+                    ORDER BY avg_quality DESC
+                    LIMIT 10
+                """, (cutoff_time.isoformat(),))
+                
+                style_performance = cursor.fetchall()
+                
+                return {
+                    "overall_stats": {
+                        "total_content": overall_stats[0] if overall_stats else 0,
+                        "avg_quality": overall_stats[1] if overall_stats else 0,
+                        "avg_engagement": overall_stats[2] if overall_stats else 0,
+                        "avg_readability": overall_stats[3] if overall_stats else 0,
+                        "avg_word_count": overall_stats[4] if overall_stats else 0,
+                        "avg_generation_time_ms": overall_stats[5] if overall_stats else 0
+                    },
+                    "top_templates": [
+                        {"template_id": row[0], "usage_count": row[1], "avg_quality": row[2]}
+                        for row in top_templates
+                    ],
+                    "style_performance": [
+                        {"style_profile": row[0], "usage_count": row[1], "avg_quality": row[2]}
+                        for row in style_performance
+                    ]
+                }
+        except Exception as e:
+            logger.error(f"Failed to get content insights: {e}")
+        
+        return {}
+
+# Global database manager
+db_manager = DatabaseManager()
+
+class AdvancedCache:
+    """Advanced caching system with TTL and analytics"""
+    
+    def __init__(self, max_size: int = 1000, default_ttl: int = 3600):
+        self.cache = {}
+        self.access_times = {}
+        self.ttl_times = {}
+        self.hit_count = 0
+        self.miss_count = 0
+        self.max_size = max_size
+        self.default_ttl = default_ttl
+    
+    def _generate_key(self, *args, **kwargs) -> str:
+        """Generate a cache key from arguments"""
+        key_data = str(args) + str(sorted(kwargs.items()))
+        return hashlib.md5(key_data.encode()).hexdigest()
+    
+    def get(self, key: str) -> Optional[Any]:
+        """Get item from cache"""
+        current_time = time.time()
+        
+        if key in self.cache:
+            # Check if expired
+            if current_time > self.ttl_times.get(key, 0):
+                self._remove_key(key)
+                self.miss_count += 1
+                return None
+            
+            # Update access time
+            self.access_times[key] = current_time
+            self.hit_count += 1
+            return self.cache[key]
+        
+        self.miss_count += 1
+        return None
+    
+    def set(self, key: str, value: Any, ttl: Optional[int] = None):
+        """Set item in cache"""
+        current_time = time.time()
+        ttl = ttl or self.default_ttl
+        
+        # Remove old item if exists
+        if key in self.cache:
+            self._remove_key(key)
+        
+        # Check size limit
+        if len(self.cache) >= self.max_size:
+            self._evict_lru()
+        
+        # Add new item
+        self.cache[key] = value
+        self.access_times[key] = current_time
+        self.ttl_times[key] = current_time + ttl
+    
+    def _remove_key(self, key: str):
+        """Remove key from all cache structures"""
+        self.cache.pop(key, None)
+        self.access_times.pop(key, None)
+        self.ttl_times.pop(key, None)
+    
+    def _evict_lru(self):
+        """Evict least recently used item"""
+        if self.access_times:
+            lru_key = min(self.access_times.keys(), key=lambda k: self.access_times[k])
+            self._remove_key(lru_key)
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get cache statistics"""
+        total_requests = self.hit_count + self.miss_count
+        hit_rate = (self.hit_count / total_requests * 100) if total_requests > 0 else 0
+        
+        return {
+            "hit_count": self.hit_count,
+            "miss_count": self.miss_count,
+            "hit_rate": hit_rate,
+            "cache_size": len(self.cache),
+            "max_size": self.max_size
+        }
+    
+    def clear(self):
+        """Clear all cache"""
+        self.cache.clear()
+        self.access_times.clear()
+        self.ttl_times.clear()
+
+# Global cache instance
+global_cache = AdvancedCache()
+
+def calculate_readability_score(content: str) -> Dict[str, float]:
+    """Calculate comprehensive readability scores"""
+    try:
+        if not content or len(content.strip()) < 10:
+            return {"flesch_score": 0, "grade_level": 0, "readability_score": 0}
+        
+        flesch_score = flesch_reading_ease(content)
+        grade_level = flesch_kincaid_grade(content)
+        ari_score = automated_readability_index(content)
+        
+        # Normalize to 0-100 scale
+        readability_score = max(0, min(100, flesch_score))
+        
+        return {
+            "flesch_score": flesch_score,
+            "grade_level": grade_level,
+            "ari_score": ari_score,
+            "readability_score": readability_score
+        }
+    except Exception as e:
+        logger.warning(f"Readability calculation failed: {e}")
+        return {"flesch_score": 50, "grade_level": 10, "readability_score": 50}
+
+def calculate_seo_score(content: str, target_keywords: List[str] = None) -> Dict[str, Any]:
+    """Calculate SEO optimization score"""
+    try:
+        if not content:
+            return {"seo_score": 0, "keyword_density": {}, "issues": []}
+        
+        target_keywords = target_keywords or []
+        word_count = len(content.split())
+        issues = []
+        
+        # Basic SEO factors
+        has_title = bool(re.search(r'^#\s+.+', content, re.MULTILINE))
+        has_headings = len(re.findall(r'^#{2,6}\s', content, re.MULTILINE)) > 0
+        has_meta_description = 'meta' in content.lower() or len(content.split('\n')[0]) < 160
+        
+        # Word count optimization
+        optimal_length = 300 <= word_count <= 2000
+        
+        # Keyword analysis
+        keyword_density = {}
+        keyword_score = 0
+        
+        if target_keywords:
+            for keyword in target_keywords:
+                occurrences = len(re.findall(rf'\b{re.escape(keyword)}\b', content, re.IGNORECASE))
+                density = (occurrences / word_count * 100) if word_count > 0 else 0
+                keyword_density[keyword] = density
+                
+                # Optimal keyword density: 1-3%
+                if 1 <= density <= 3:
+                    keyword_score += 20
+                elif 0.5 <= density < 1 or 3 < density <= 5:
+                    keyword_score += 10
+                elif density > 5:
+                    issues.append(f"Keyword '{keyword}' appears too frequently ({density:.1f}%)")
+                else:
+                    issues.append(f"Keyword '{keyword}' not found or too rare")
+        
+        # Calculate overall SEO score
+        seo_factors = {
+            'title': 20 if has_title else 0,
+            'headings': 15 if has_headings else 0,
+            'length': 20 if optimal_length else 10,
+            'keywords': min(30, keyword_score),
+            'structure': 15 if has_headings and has_title else 5
+        }
+        
+        seo_score = sum(seo_factors.values())
+        
+        # Add issues
+        if not has_title:
+            issues.append("Missing title (H1 heading)")
+        if not has_headings:
+            issues.append("No subheadings found")
+        if word_count < 300:
+            issues.append("Content too short for SEO")
+        if word_count > 2000:
+            issues.append("Content might be too long")
+        
+        return {
+            "seo_score": seo_score,
+            "keyword_density": keyword_density,
+            "factors": seo_factors,
+            "issues": issues,
+            "has_title": has_title,
+            "has_headings": has_headings,
+            "optimal_length": optimal_length,
+            "word_count": word_count
+        }
+        
+    except Exception as e:
+        logger.warning(f"SEO calculation failed: {e}")
+        return {"seo_score": 50, "keyword_density": {}, "issues": ["Calculation error"]}
+
+def assess_content_quality(content: str, target_keywords: List[str] = None) -> Dict[str, Any]:
+    """Comprehensive content quality assessment"""
+    try:
+        if not content or not content.strip():
+            return {"overall_score": 0, "issues": ["No content provided"]}
+        
+        # Get readability scores
+        readability = calculate_readability_score(content)
+        
+        # Get SEO scores
+        seo_data = calculate_seo_score(content, target_keywords)
+        
+        # Calculate engagement metrics
+        engagement_score = calculate_engagement_score(content)
+        
+        # Calculate coherence score
+        coherence_score = calculate_coherence_score(content)
+        
+        # Overall quality calculation (weighted average)
+        weights = {
+            'readability': 0.25,
+            'engagement': 0.25,
+            'seo': 0.20,
+            'coherence': 0.20,
+            'length': 0.10
+        }
+        
+        # Length score
+        word_count = len(content.split())
+        if 300 <= word_count <= 2000:
+            length_score = 100
+        elif word_count < 300:
+            length_score = (word_count / 300) * 80
+        else:
+            length_score = max(60, 100 - ((word_count - 2000) / 100))
+        
+        overall_score = (
+            readability["readability_score"] * weights['readability'] +
+            engagement_score * weights['engagement'] +
+            seo_data["seo_score"] * weights['seo'] +
+            coherence_score * weights['coherence'] +
+            length_score * weights['length']
+        )
+        
+        # Compile issues
+        issues = seo_data.get("issues", [])
+        
+        if readability["readability_score"] < 60:
+            issues.append("Low readability score - consider simplifying language")
+        if engagement_score < 50:
+            issues.append("Low engagement - add more questions, examples, or interactivity")
+        if coherence_score < 60:
+            issues.append("Poor coherence - improve transitions and flow")
+        
+        return {
+            "overall_score": overall_score,
+            "readability": readability,
+            "engagement_score": engagement_score,
+            "seo_data": seo_data,
+            "coherence_score": coherence_score,
+            "length_score": length_score,
+            "word_count": word_count,
+            "issues": issues,
+            "assessment_timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Content quality assessment failed: {e}")
+        return {"overall_score": 0, "issues": [f"Assessment error: {str(e)}"]}
+
+def calculate_engagement_score(content: str) -> float:
+    """Calculate content engagement potential"""
+    try:
+        if not content:
+            return 0.0
+        
+        word_count = len(content.split())
+        if word_count == 0:
+            return 0.0
+        
+        engagement_indicators = {
+            'questions': len(re.findall(r'\?', content)),
+            'exclamations': len(re.findall(r'!', content)),
+            'personal_pronouns': len(re.findall(r'\b(you|your|we|our|us)\b', content, re.IGNORECASE)),
+            'action_words': len(re.findall(r'\b(discover|learn|find|explore|create|build|solve|achieve|master)\b', content, re.IGNORECASE)),
+            'emotional_words': len(re.findall(r'\b(amazing|incredible|powerful|innovative|breakthrough|exciting|remarkable)\b', content, re.IGNORECASE)),
+            'lists_and_bullets': len(re.findall(r'(?:^\s*[-*+]|\d+\.)', content, re.MULTILINE)),
+            'headings': len(re.findall(r'^#+\s', content, re.MULTILINE)),
+            'examples': len(re.findall(r'\b(example|for instance|such as|like|including)\b', content, re.IGNORECASE))
+        }
+        
+        # Calculate engagement density
+        total_indicators = sum(engagement_indicators.values())
+        engagement_density = total_indicators / word_count * 100
+        
+        # Normalize to 0-100 scale with optimal range
+        engagement_score = min(100, engagement_density * 15)
+        
+        return engagement_score
+        
+    except Exception as e:
+        logger.warning(f"Engagement calculation failed: {e}")
+        return 50.0
+
+def calculate_coherence_score(content: str) -> float:
+    """Calculate content coherence and flow"""
+    try:
+        if not content:
+            return 0.0
+        
+        paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+        
+        if len(paragraphs) < 2:
+            return 75.0  # Single paragraph gets average score
+        
+        # Check for transition words and phrases
+        transition_words = [
+            'however', 'therefore', 'furthermore', 'moreover', 'additionally',
+            'consequently', 'meanwhile', 'subsequently', 'nevertheless',
+            'first', 'second', 'third', 'finally', 'in conclusion', 'as a result',
+            'on the other hand', 'in contrast', 'similarly', 'likewise',
+            'for example', 'for instance', 'in fact', 'indeed'
+        ]
+        
+        transition_count = 0
+        for word in transition_words:
+            transition_count += len(re.findall(rf'\b{word}\b', content, re.IGNORECASE))
+        
+        # Check for consistent theme/topic
+        sentences = re.split(r'[.!?]+', content)
+        sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
+        
+        # Simple coherence calculation
+        transition_density = transition_count / len(paragraphs)
+        coherence_score = min(100, 50 + (transition_density * 25))
+        
+        return coherence_score
+        
+    except Exception as e:
+        logger.warning(f"Coherence calculation failed: {e}")
+        return 70.0
+
+def load_system_prompt(prompt_name: str) -> str:
+    """Load system prompt with enhanced error handling and caching"""
+    cache_key = f"system_prompt_{prompt_name}"
+    cached_prompt = global_cache.get(cache_key)
+    
+    if cached_prompt:
+        return cached_prompt
+    
+    prompt_path = os.path.join("prompts", "writer", prompt_name)
+    try:
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            prompt = f.read()
+        
+        # Cache for 1 hour
+        global_cache.set(cache_key, prompt, ttl=3600)
+        return prompt
+        
+    except FileNotFoundError:
+        logger.warning(f"System prompt not found: {prompt_name}, using default")
+        default_prompt = "You are a helpful, high-level technical writing assistant."
+        global_cache.set(cache_key, default_prompt, ttl=3600)
+        return default_prompt
+    except Exception as e:
+        logger.error(f"Error loading system prompt {prompt_name}: {e}")
+        return "You are a helpful assistant."
+
+def load_style_profile(name: str) -> Dict[str, Any]:
+    """Load style profile with enhanced validation and caching"""
+    cache_key = f"style_profile_{name}"
+    cached_profile = global_cache.get(cache_key)
+    
+    if cached_profile:
+        return cached_profile
+    
+    try:
+        with open(f"data/style_profiles/{name}.yaml", "r", encoding="utf-8") as f:
+            profile = yaml.safe_load(f)
+        
+        # Validate and enhance profile
+        profile = validate_style_profile(profile, name)
+        
+        # Cache for 30 minutes
+        global_cache.set(cache_key, profile, ttl=1800)
+        return profile
+        
+    except FileNotFoundError:
+        logger.warning(f"Style profile not found: {name}.yaml, using default")
+        default_profile = get_default_style_profile()
+        global_cache.set(cache_key, default_profile, ttl=1800)
+        return default_profile
+    except Exception as e:
+        logger.error(f"Error loading style profile {name}: {e}")
+        return get_default_style_profile()
+
+def validate_style_profile(profile: Dict[str, Any], name: str) -> Dict[str, Any]:
+    """Validate and enhance style profile with defaults"""
+    required_fields = {
+        "structure": "hook → explanation → example → summary",
+        "voice": "experienced and conversational",
+        "tone": "educational",
+        "system_prompt": "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience.",
+        "target_audience": "general",
+        "expertise_level": "intermediate",
+        "personality_traits": ["helpful", "knowledgeable", "engaging"]
+    }
+    
+    for field, default_value in required_fields.items():
+        if field not in profile:
+            profile[field] = default_value
+            logger.info(f"Added missing field '{field}' to style profile {name}")
+    
+    return profile
+
+def get_default_style_profile() -> Dict[str, Any]:
+    """Get default style profile"""
+    return {
+        "structure": "hook → explanation → example → summary",
+        "voice": "experienced and conversational",
+        "tone": "educational",
+        "system_prompt": "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience.",
+        "target_audience": "general",
+        "expertise_level": "intermediate",
+        "personality_traits": ["helpful", "knowledgeable", "engaging"]
+    }
+
+def load_content_template(name: str) -> Dict[str, Any]:
+    """Load content template with enhanced validation and caching"""
+    cache_key = f"content_template_{name}"
+    cached_template = global_cache.get(cache_key)
+    
+    if cached_template:
+        return cached_template
+    
+    try:
+        with open(f"data/content_templates/{name}.yaml", "r", encoding="utf-8") as f:
+            template = yaml.safe_load(f)
+        
+        # Validate template
+        template = validate_content_template(template, name)
+        
+        # Cache for 30 minutes
+        global_cache.set(cache_key, template, ttl=1800)
+        return template
+        
+    except FileNotFoundError:
+        logger.warning(f"Template not found: {name}.yaml")
+        default_template = get_default_content_template()
+        global_cache.set(cache_key, default_template, ttl=1800)
+        return default_template
+    except Exception as e:
+        logger.error(f"Error loading template {name}: {e}")
+        return get_default_content_template()
+
+def validate_content_template(template: Dict[str, Any], name: str) -> Dict[str, Any]:
+    """Validate and enhance content template"""
+    required_fields = {
+        "title": "Generated Content",
+        "audience": "General audience",
+        "tags": [],
+        "platform": "substack",
+        "tone": "educational"
+    }
+    
+    for field, default_value in required_fields.items():
+        if field not in template:
+            template[field] = default_value
+            logger.info(f"Added missing field '{field}' to template {name}")
+    
+    return template
+
+def get_default_content_template() -> Dict[str, Any]:
+    """Get default content template"""
+    return {
+        "title": "Generated Content",
+        "audience": "General audience",
+        "tags": [],
+        "platform": "substack",
+        "tone": "educational",
+        "length": "medium"
+    }
+
+def list_style_profiles() -> List[str]:
+    """List all available style profiles with caching"""
+    cache_key = "available_style_profiles"
+    cached_profiles = global_cache.get(cache_key)
+    
+    if cached_profiles:
+        return cached_profiles
+    
+    try:
+        profiles_dir = "data/style_profiles"
+        if os.path.exists(profiles_dir):
+            profiles = [f.replace('.yaml', '') for f in os.listdir(profiles_dir) if f.endswith('.yaml')]
+            # Cache for 5 minutes
+            global_cache.set(cache_key, profiles, ttl=300)
+            return profiles
+        return []
+    except Exception as e:
+        logger.error(f"Error listing style profiles: {e}")
+        return []
+
+def list_content_templates() -> List[str]:
+    """List all available content templates with caching"""
+    cache_key = "available_content_templates"
+    cached_templates = global_cache.get(cache_key)
+    
+    if cached_templates:
+        return cached_templates
+    
+    try:
+        templates_dir = "data/content_templates"
+        if os.path.exists(templates_dir):
+            templates = [f.replace('.yaml', '') for f in os.listdir(templates_dir) if f.endswith('.yaml')]
+            # Cache for 5 minutes
+            global_cache.set(cache_key, templates, ttl=300)
+            return templates
+        return []
+    except Exception as e:
+        logger.error(f"Error listing templates: {e}")
+        return []
+
+def validate_file_exists(file_path: str) -> bool:
+    """Check if a file exists"""
+    return os.path.exists(file_path)
+
+def get_file_path(file_type: str, name: str) -> str:
+    """Get the full path for a given file type and name"""
+    path_mappings = {
+        "style_profile": f"data/style_profiles/{name}.yaml",
+        "content_template": f"data/content_templates/{name}.yaml",
+        "system_prompt": f"prompts/writer/{name}"
+    }
+    
+    if file_type not in path_mappings:
+        raise ValueError(f"Unknown file type: {file_type}")
+    
+    return path_mappings[file_type]
+
+def generate_content_id(template_id: str, style_profile: str) -> str:
+    """Generate unique content ID"""
+    timestamp = datetime.now().isoformat()
+    content_data = f"{template_id}_{style_profile}_{timestamp}"
+    return hashlib.md5(content_data.encode()).hexdigest()[:12]
+
+def sanitize_filename(filename: str) -> str:
+    """Sanitize filename for safe file system usage"""
+    # Remove/replace problematic characters
+    sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    # Remove extra spaces and dots
+    sanitized = re.sub(r'\.+', '.', sanitized)
+    sanitized = re.sub(r'\s+', '_', sanitized)
+    # Limit length
+    return sanitized[:100]
+
+async def save_content_async(content: str, file_path: str):
+    """Asynchronously save content to file"""
+    try:
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
+            await f.write(content)
+        
+        logger.info(f"Content saved to {file_path}")
+    except Exception as e:
+        logger.error(f"Failed to save content to {file_path}: {e}")
+        raise
+
+def get_system_stats() -> Dict[str, Any]:
+    """Get comprehensive system statistics"""
+    try:
+        cache_stats = global_cache.get_stats()
+        db_stats = db_manager.get_performance_stats(hours=24)
+        content_insights = db_manager.get_content_insights(days=7)
+        
+        return {
+            "cache_stats": cache_stats,
+            "performance_stats": db_stats,
+            "content_insights": content_insights,
+            "system_info": {
+                "available_style_profiles": len(list_style_profiles()),
+                "available_templates": len(list_content_templates()),
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+    except Exception as e:
+        logger.error(f"Failed to get system stats: {e}")
+        return {"error": str(e)}
+
+# Decorator for performance monitoring
+def monitor_performance(endpoint: str):
+    """Decorator to monitor function performance"""
+    def decorator(func):
+        async def async_wrapper(*args, **kwargs):
+            start_time = time.time()
+            success = False
+            error_count = 0
+            
+            try:
+                result = await func(*args, **kwargs)
+                success = True
+                return result
+            except Exception as e:
+                error_count = 1
+                raise
+            finally:
+                duration_ms = int((time.time() - start_time) * 1000)
+                
+                metrics = PerformanceMetrics(
+                    endpoint=endpoint,
+                    duration_ms=duration_ms,
+                    error_count=error_count,
+                    success_count=1 if success else 0
+                )
+                
+                db_manager.log_performance(metrics)
+        
+        def sync_wrapper(*args, **kwargs):
+            start_time = time.time()
+            success = False
+            error_count = 0
+            
+            try:
+                result = func(*args, **kwargs)
+                success = True
+                return result
+            except Exception as e:
+                error_count = 1
+                raise
+            finally:
+                duration_ms = int((time.time() - start_time) * 1000)
+                
+                metrics = PerformanceMetrics(
+                    endpoint=endpoint,
+                    duration_ms=duration_ms,
+                    error_count=error_count,
+                    success_count=1 if success else 0
+                )
+                
+                db_manager.log_performance(metrics)
+        
+        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+    return decorator
