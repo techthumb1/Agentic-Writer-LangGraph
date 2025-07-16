@@ -1,7 +1,9 @@
+//frontend/app/templates/page.tsx
+
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -16,82 +18,14 @@ import {
   Briefcase,
   Newspaper,
   Mail,
-  Plus
+  Plus,
+  Eye,
+  AlertCircle,
+  Loader2,
+  X
 } from 'lucide-react';
-
-type Template = {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  estimatedTime: string;
-  popularity: number;
-  icon: string;
-};
-
-const mockTemplates: Template[] = [
-  {
-    id: '1',
-    name: 'Blog Article Generator',
-    description: 'Create engaging blog posts with SEO optimization and compelling headlines.',
-    category: 'Content Marketing',
-    difficulty: 'beginner',
-    estimatedTime: '5-10 min',
-    popularity: 95,
-    icon: 'FileText'
-  },
-  {
-    id: '2',
-    name: 'Social Media Campaign',
-    description: 'Generate cohesive social media content across multiple platforms.',
-    category: 'Social Media',
-    difficulty: 'intermediate',
-    estimatedTime: '10-15 min',
-    popularity: 87,
-    icon: 'TrendingUp'
-  },
-  {
-    id: '3',
-    name: 'Technical Documentation',
-    description: 'Create clear, comprehensive technical guides and API documentation.',
-    category: 'Technical Writing',
-    difficulty: 'advanced',
-    estimatedTime: '15-25 min',
-    popularity: 78,
-    icon: 'BookOpen'
-  },
-  {
-    id: '4',
-    name: 'Email Newsletter',
-    description: 'Craft engaging newsletters that drive engagement and conversions.',
-    category: 'Email Marketing',
-    difficulty: 'beginner',
-    estimatedTime: '5-8 min',
-    popularity: 92,
-    icon: 'Mail'
-  },
-  {
-    id: '5',
-    name: 'Business Proposal',
-    description: 'Generate professional business proposals and executive summaries.',
-    category: 'Business',
-    difficulty: 'intermediate',
-    estimatedTime: '20-30 min',
-    popularity: 83,
-    icon: 'Briefcase'
-  },
-  {
-    id: '6',
-    name: 'Press Release',
-    description: 'Create compelling press releases for product launches and company news.',
-    category: 'Public Relations',
-    difficulty: 'intermediate',
-    estimatedTime: '10-15 min',
-    popularity: 75,
-    icon: 'Newspaper'
-  }
-];
+import { useTemplates } from '@/hooks/useTemplates';
+import { Template } from '@/types/template';
 
 const categories = [
   'All Categories',
@@ -103,20 +37,19 @@ const categories = [
   'Public Relations'
 ];
 
-const getIcon = (iconName: string) => {
+const getIcon = (category: string) => {
   const icons = {
-    FileText,
-    TrendingUp,
-    BookOpen,
-    Mail,
-    Briefcase,
-    Newspaper,
-    Zap
+    'Content Marketing': FileText,
+    'Social Media': TrendingUp,
+    'Technical Writing': BookOpen,
+    'Email Marketing': Mail,
+    'Business': Briefcase,
+    'Public Relations': Newspaper,
   };
-  return icons[iconName as keyof typeof icons] || FileText;
+  return icons[category as keyof typeof icons] || FileText;
 };
 
-const getDifficultyColor = (difficulty: string) => {
+const getDifficultyColor = (difficulty?: string) => {
   switch (difficulty) {
     case 'beginner': return 'text-green-400';
     case 'intermediate': return 'text-yellow-400';
@@ -125,28 +58,169 @@ const getDifficultyColor = (difficulty: string) => {
   }
 };
 
+// Extended Template interface for this page
+interface ExtendedTemplate extends Template {
+  difficulty?: string;
+  estimatedLength?: string;
+  instructions?: string;
+}
+
+// Template preview modal component
+const TemplatePreviewModal = ({ 
+  template, 
+  isOpen, 
+  onClose 
+}: { 
+  template: ExtendedTemplate | null;
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  if (!isOpen || !template) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">{template.name}</h2>
+            <Button variant="outline" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        
+        <div className="p-6 space-y-6">
+          {/* Template Overview */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
+            <p className="text-gray-700">{template.description}</p>
+          </div>
+
+          {/* Template Details */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 mb-1">Category</h4>
+              <p className="text-blue-700">{template.category}</p>
+            </div>
+            {template.difficulty && (
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-medium text-green-900 mb-1">Difficulty</h4>
+                <p className={`font-medium ${getDifficultyColor(template.difficulty)}`}>
+                  {template.difficulty}
+                </p>
+              </div>
+            )}
+            {template.estimatedLength && (
+              <div className="bg-purple-50 rounded-lg p-4">
+                <h4 className="font-medium text-purple-900 mb-1">Time Required</h4>
+                <p className="text-purple-700">{template.estimatedLength}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Parameters Preview */}
+          {template.parameters && Array.isArray(template.parameters) && template.parameters.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Template Parameters</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {template.parameters.map((param: {
+                  label: string;
+                  required?: boolean;
+                  description?: string;
+                  type?: string;
+                  default?: string;
+                }, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-gray-900">{param.label}</span>
+                      {param.required && (
+                        <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                          Required
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{param.description}</p>
+                    <div className="text-xs text-gray-500">
+                      Type: {param.type}
+                      {param.default && ` • Default: ${param.default}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Instructions */}
+          {template.instructions && (
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Instructions</h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-gray-700 whitespace-pre-line">{template.instructions}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function TemplatesPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
+  const [previewTemplate, setPreviewTemplate] = useState<ExtendedTemplate | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
-  const { data: templates = mockTemplates, isLoading } = useQuery({
-    queryKey: ['templates'],
-    queryFn: async () => {
-      // Mock API call - replace with real implementation
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return mockTemplates;
-    },
-  });
+  const { data: templates, isLoading, error } = useTemplates();
 
-  const filteredTemplates = templates.filter(template => {
-    const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         template.description.toLowerCase().includes(searchQuery.toLowerCase());
+  const handleUseTemplate = (templateId: string) => {
+    router.push(`/generate?template=${templateId}`);
+  };
+
+  const handlePreviewTemplate = (template: ExtendedTemplate) => {
+    setPreviewTemplate(template);
+    setShowPreview(true);
+  };
+
+  // Cast templates to ExtendedTemplate for this page
+  const extendedTemplates = (templates as ExtendedTemplate[]) || [];
+
+  const filteredTemplates = extendedTemplates.filter(template => {
+    const matchesSearch = template?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                     template?.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'All Categories' || template.category === selectedCategory;
     const matchesDifficulty = selectedDifficulty === 'all' || template.difficulty === selectedDifficulty;
     
     return matchesSearch && matchesCategory && matchesDifficulty;
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-purple-400" />
+          <p className="text-xl">Loading templates...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
+        <div className="text-center text-white max-w-md">
+          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-400" />
+          <h2 className="text-xl font-semibold mb-2">Failed to Load Templates</h2>
+          <p className="text-gray-300 mb-4">Could not connect to the backend API</p>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
@@ -209,7 +283,7 @@ export default function TemplatesPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 text-center">
               <FileText className="h-6 w-6 text-purple-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{templates.length}</div>
+              <div className="text-2xl font-bold text-white">{extendedTemplates?.length || 0}</div>
               <div className="text-xs text-gray-400">Templates Available</div>
             </div>
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 text-center">
@@ -230,106 +304,105 @@ export default function TemplatesPage() {
           </div>
 
           {/* Templates Grid */}
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
+          <>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-white">
+                {filteredTemplates.length} Templates Found
+              </h2>
+              <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
+                <Plus className="h-4 w-4 mr-2" />
+                Request Template
+              </Button>
             </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold text-white">
-                  {filteredTemplates.length} Templates Found
-                </h2>
-                <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Request Template
-                </Button>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredTemplates.map((template) => {
-                  const IconComponent = getIcon(template.icon);
-                  return (
-                    <div
-                      key={template.id}
-                      className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6 hover:bg-white/15 transition-all duration-300 transform hover:scale-105 cursor-pointer group"
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="bg-purple-600 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-purple-500 transition-colors">
-                            <IconComponent className="h-6 w-6 text-white" />
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="flex items-center">
-                              <Star className="h-4 w-4 text-yellow-400 mr-1" />
-                              <span className="text-sm text-gray-300">{template.popularity}%</span>
-                            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTemplates.map((template) => {
+                const IconComponent = getIcon(template.category);
+                return (
+                  <div
+                    key={template.id}
+                    className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6 hover:bg-white/15 transition-all duration-300 transform hover:scale-105 cursor-pointer group"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-purple-600 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-purple-500 transition-colors">
+                          <IconComponent className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="flex items-center">
+                            <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                            <span className="text-sm text-gray-300">95%</span>
                           </div>
                         </div>
+                      </div>
+                      {template.difficulty && (
                         <div className={`px-2 py-1 rounded text-xs font-medium ${getDifficultyColor(template.difficulty)} bg-white/10`}>
                           {template.difficulty}
                         </div>
-                      </div>
-
-                      <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-purple-300 transition-colors">
-                        {template.name}
-                      </h3>
-                      
-                      <p className="text-gray-300 text-sm mb-4 leading-relaxed">
-                        {template.description}
-                      </p>
-
-                      <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
-                        <div className="flex items-center">
-                          <Clock className="h-4 w-4 mr-1" />
-                          <span>{template.estimatedTime}</span>
-                        </div>
-                        <span className="bg-purple-600/20 text-purple-300 px-2 py-1 rounded text-xs">
-                          {template.category}
-                        </span>
-                      </div>
-
-                      <div className="flex space-x-2">
-                        <Button 
-                          className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm"
-                          size="sm"
-                        >
-                          <Zap className="h-4 w-4 mr-1" />
-                          Use Template
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="border-purple-400 text-purple-300 hover:bg-purple-900/20"
-                        >
-                          Preview
-                        </Button>
-                      </div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
 
-              {filteredTemplates.length === 0 && (
-                <div className="text-center py-12">
-                  <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">No templates found</h3>
-                  <p className="text-gray-400 mb-4">Try adjusting your search or filter criteria</p>
-                  <Button 
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedCategory('All Categories');
-                      setSelectedDifficulty('all');
-                    }}
-                    variant="outline"
-                    className="border-purple-400 text-purple-300 hover:bg-purple-900/20"
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
+                    <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-purple-300 transition-colors">
+                      {template.name}
+                    </h3>
+                    
+                    <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                      {template.description}
+                    </p>
+
+                    <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        <span>{template.estimatedLength || '5-10 min'}</span>
+                      </div>
+                      <span className="bg-purple-600/20 text-purple-300 px-2 py-1 rounded text-xs">
+                        {template.category}
+                      </span>
+                    </div>
+
+                    <div className="flex space-x-2">
+                      <Button 
+                        onClick={() => handleUseTemplate(template.id)}
+                        className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm"
+                        size="sm"
+                      >
+                        <Zap className="h-4 w-4 mr-1" />
+                        Use Template
+                      </Button>
+                      <Button 
+                        onClick={() => handlePreviewTemplate(template)}
+                        variant="outline" 
+                        size="sm"
+                        className="border-purple-400 text-purple-300 hover:bg-purple-900/20"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Preview
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {filteredTemplates.length === 0 && (
+              <div className="text-center py-12">
+                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No templates found</h3>
+                <p className="text-gray-400 mb-4">Try adjusting your search or filter criteria</p>
+                <Button 
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('All Categories');
+                    setSelectedDifficulty('all');
+                  }}
+                  variant="outline"
+                  className="border-purple-400 text-purple-300 hover:bg-purple-900/20"
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            )}
+          </>
 
           {/* Popular Categories */}
           <div className="mt-16">
@@ -380,6 +453,13 @@ export default function TemplatesPage() {
           </div>
         </div>
       </div>
+
+      {/* Template Preview Modal */}
+      <TemplatePreviewModal 
+        template={previewTemplate}
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+      />
     </div>
   );
 }

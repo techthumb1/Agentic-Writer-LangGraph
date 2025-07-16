@@ -173,17 +173,17 @@ export default function GeneratingDialog({
             )}
           </div>
           
-          <DialogDescription id="generation-description" className="text-center space-y-2">
-            <div>Our AI agents are working together to create your content.</div>
+          <DialogDescription id="generation-description" className="text-muted-foreground text-sm text-center">
+            <span className="block mb-2">Our AI agents are working together to create your content.</span>
             {templateName && styleProfile && (
-              <div className="flex justify-center gap-2 flex-wrap">
+              <span className="flex justify-center gap-2 flex-wrap">
                 <Badge variant="outline" className="text-xs">
                   {templateName}
                 </Badge>
                 <Badge variant="outline" className="text-xs">
                   {styleProfile}
                 </Badge>
-              </div>
+              </span>
             )}
           </DialogDescription>
         </DialogHeader>

@@ -328,15 +328,34 @@ function extractContentFromBackendResponse(data: unknown): string {
   return '';
 }
 
+// Add this interface before the POST function
+interface BackendResponse {
+  data?: {
+    requestId?: string;
+    status?: string;
+    metadata?: Record<string, unknown>;
+    content?: string;
+  };
+  requestId?: string;
+  generation_id?: string;
+  status?: string;
+  metadata?: Record<string, unknown>;
+  innovation_report?: unknown;
+  content_quality?: unknown;
+  estimated_completion?: string;
+  progress?: number;
+  content?: string;
+}
+
 export async function POST(request: NextRequest) {
-  const requestId = randomUUID(); // Only for frontend logging
+  const requestId = randomUUID();
   const startTime = Date.now();
   
   try {
     const body = await request.json();
     
     // Enterprise request validation
-    if (!body.templateId && !body.template) {
+    if (!body.template) {
       return NextResponse.json(
         { 
           success: false, 
@@ -346,8 +365,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    if (!body.styleProfileId && !body.style_profile) {
+    
+    if (!body.style_profile) {
       return NextResponse.json(
         { 
           success: false, 
@@ -362,8 +381,8 @@ export async function POST(request: NextRequest) {
     const enterprisePayload: GenerationRequest = {
       // ✅ ADD THIS BACK: Include requestId for backend
       requestId: requestId, // Frontend requestId that backend will use
-      template: body.templateId || body.template,
-      style_profile: body.styleProfileId || body.style_profile,
+      template: body.template,
+      style_profile: body.style_profile,
       // Add ALL fields that the planning agent expects
       topic: body.topic || body.dynamic_parameters?.topic || body.templateId || 'Future of LLMs',
       audience: body.audience || body.dynamic_parameters?.audience || 'general',
@@ -425,8 +444,7 @@ export async function POST(request: NextRequest) {
             const textData = await response.text();
             errorData = { detail: `Backend returned non-JSON response: ${textData.substring(0, 200)}` };
           }
-        } catch (parseError) {
-          console.warn('⚠️ [PARSE] Failed to parse error response:', parseError);
+        } catch {
           errorData = { detail: `HTTP ${response.status}: ${response.statusText}` };
         }
         
@@ -451,7 +469,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Handle successful response
-      let data: unknown;
+      let data: BackendResponse;
       try {
         const contentType = response.headers.get('content-type');
         if (contentType?.includes('application/json')) {
@@ -459,10 +477,9 @@ export async function POST(request: NextRequest) {
         } else {
           const textData = await response.text();
           console.warn('⚠️ [RESPONSE] Non-JSON response received:', textData.substring(0, 200));
-          data = { content: textData };
+          data = { content: textData } as BackendResponse;
         }
-      } catch (parseError) {
-        console.error('❌ [PARSE] Failed to parse successful response:', parseError);
+      } catch {
         return NextResponse.json(
           { 
             success: false, 
@@ -473,39 +490,77 @@ export async function POST(request: NextRequest) {
         );
       }
       
+      // ✅ Extract backend's request_id
+      const backendRequestId = data?.data?.requestId || data?.requestId || data?.generation_id || requestId;
+      
+      // **FIX: Poll for completion if status is pending**
+      let finalData: BackendResponse = data;
+      if (data?.data?.status === 'pending' || data?.status === 'pending') {
+        console.log(`⏳ [POLLING] Generation ${backendRequestId} is pending, polling for completion...`);
+        
+        const maxPolls = 60; // 5 minutes max
+        const pollInterval = 5000; // 5 seconds
+        
+        for (let poll = 0; poll < maxPolls; poll++) {
+          await new Promise(resolve => setTimeout(resolve, pollInterval));
+          
+          try {
+            const statusResponse = await fetch(`${FASTAPI_BASE_URL}/api/generate/${backendRequestId}`, {
+              headers: createFetchHeaders(requestId, enterprisePayload.generation_mode),
+              cache: 'no-cache'
+            });
+            
+            if (statusResponse.ok) {
+              const statusData: BackendResponse = await statusResponse.json();
+              
+              // Check if completed
+              if (statusData?.status === 'completed' || statusData?.data?.status === 'completed') {
+                console.log(`✅ [POLLING] Generation ${backendRequestId} completed after ${poll + 1} polls`);
+                finalData = statusData;
+                break;
+              } else if (statusData?.status === 'failed' || statusData?.data?.status === 'failed') {
+                console.log(`❌ [POLLING] Generation ${backendRequestId} failed`);
+                finalData = statusData;
+                break;
+              }
+              
+              console.log(`⏳ [POLLING] Poll ${poll + 1}/${maxPolls}: Status = ${statusData?.status || statusData?.data?.status || 'unknown'}`);
+            }
+          } catch (pollError) {
+            console.warn(`⚠️ [POLLING] Poll ${poll + 1} failed:`, pollError);
+          }
+        }
+      }
+      
       const processingTime = Date.now() - startTime;
       
-      // ✅ Extract backend's request_id
-      const backendRequestId = (data as { request_id?: string; generation_id?: string })?.request_id || 
-                              (data as { request_id?: string; generation_id?: string })?.generation_id || 
-                              requestId;
-      
       // ENHANCED CONTENT EXTRACTION
-      const extractedContent = extractContentFromBackendResponse(data);
+      const extractedContent = extractContentFromBackendResponse(finalData);
       
       // Enterprise response formatting
       const enterpriseResponse: GenerationResponse = {
         success: true,
-        generation_id: (data as { generation_id?: string })?.generation_id || backendRequestId,
+        generation_id: finalData?.data?.requestId || finalData?.generation_id || backendRequestId,
         request_id: backendRequestId, // ✅ Use backend's request_id for status tracking
-        status: (data as { status?: string })?.status || (extractedContent ? 'completed' : 'processing'),
+        status: finalData?.data?.status || finalData?.status || (extractedContent ? 'completed' : 'processing'),
         content: extractedContent, // Use extracted content instead of data.content
         metadata: {
-          ...(data as { metadata?: Record<string, unknown> })?.metadata,
+          ...(finalData?.data?.metadata || {}),
+          ...(finalData?.metadata || {}),
           frontend_request_id: requestId, // Keep frontend ID for logging
           processing_time_ms: processingTime,
-          backend_generation_id: (data as { generation_id?: string })?.generation_id,
+          backend_generation_id: finalData?.data?.requestId || finalData?.generation_id,
           template_used: enterprisePayload.template,
           style_profile_used: enterprisePayload.style_profile,
           generation_mode: enterprisePayload.generation_mode,
           // Enhanced metadata
-          innovation_report: (data as { innovation_report?: unknown })?.innovation_report || (data as { metadata?: { innovation_report?: unknown } })?.metadata?.innovation_report,
-          content_quality: (data as { metadata?: { content_quality?: unknown } })?.metadata?.content_quality,
+          innovation_report: finalData?.innovation_report || finalData?.metadata?.innovation_report,
+          content_quality: finalData?.metadata?.content_quality,
           word_count: extractedContent ? extractedContent.split(' ').length : 0,
           content_extraction_method: extractedContent ? 'enhanced' : 'fallback'
         },
-        estimated_completion: (data as { estimated_completion?: string })?.estimated_completion,
-        progress: (data as { progress?: number })?.progress || 100
+        estimated_completion: finalData?.estimated_completion,
+        progress: (finalData?.progress as number) || 100
       };
       
       logSuccess('Generation Completed Successfully', {

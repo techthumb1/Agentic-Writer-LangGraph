@@ -2266,5 +2266,257 @@
       "word_count": 626,
       "model_used": "gpt-4o"
     }
+  },
+  {
+    "timestamp": "2025-07-08T22:10:08.715174",
+    "context": {
+      "topic_category": "general",
+      "audience": "General",
+      "intent": "inform",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "technical",
+      "structure": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Untitled",
+      "audience": "General",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "technical",
+      "structure_pattern": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-08T22:10:08.715056",
+      "word_count": 757,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-13T22:46:11.334476",
+    "context": {
+      "topic_category": "technology",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "technical",
+      "structure": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "ai",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "technical",
+      "structure_pattern": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-13T22:46:11.333927",
+      "word_count": 798,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-13T23:08:27.944112",
+    "context": {
+      "topic_category": "general",
+      "audience": "general",
+      "intent": "teach",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "analytical",
+      "structure": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Data Science ",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "teach",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "analytical",
+      "structure_pattern": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-13T23:08:27.943987",
+      "word_count": 735,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-14T19:18:53.898926",
+    "context": {
+      "topic_category": "general",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "technical",
+      "structure": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "gif",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "technical",
+      "structure_pattern": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-14T19:18:53.898434",
+      "word_count": 728,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-14T20:21:07.364495",
+    "context": {
+      "topic_category": "technology",
+      "audience": "general",
+      "intent": "teach",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "analytical",
+      "structure": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Last Week in AI",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "teach",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "analytical",
+      "structure_pattern": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-14T20:21:07.364371",
+      "word_count": 755,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-14T20:30:56.359160",
+    "context": {
+      "topic_category": "technology",
+      "audience": "general",
+      "intent": "teach",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "analytical",
+      "structure": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "AI Today",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "teach",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "analytical",
+      "structure_pattern": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-14T20:30:56.359015",
+      "word_count": 704,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-15T21:42:10.023623",
+    "context": {
+      "topic_category": "general",
+      "audience": "general",
+      "intent": "teach",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "analytical",
+      "structure": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Large Language Models",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "teach",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "analytical",
+      "structure_pattern": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-15T21:42:10.023506",
+      "word_count": 734,
+      "model_used": "gpt-4o"
+    }
   }
 ]

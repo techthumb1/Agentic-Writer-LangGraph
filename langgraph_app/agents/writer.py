@@ -103,7 +103,7 @@ class InnovativeWriterAgent:
     def analyze_context(self, state: Dict) -> WritingContext:
         """Extract and enrich context from state"""
         params = state.get("dynamic_parameters", {})
-        
+
         # Determine intent from various clues
         intent = "inform"  # default
         if any(word in str(params).lower() for word in ["persuade", "convince", "argue"]):

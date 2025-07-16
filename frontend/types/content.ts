@@ -26,6 +26,24 @@ export interface TemplateParameter {
   };
 }
 
+export interface SuggestedSection {
+  name: string;
+  description: string;
+  word_target?: number;
+}
+
+export interface SuggestedParameter {
+  name: string;
+  type: "text" | "textarea" | "number" | "select" | "checkbox" | "multiselect" | "range" | "date";
+  label: string;
+  description: string;
+  commonly_used: boolean;
+  options?: string[];
+  default?: string | number | boolean;
+  required?: boolean;
+  placeholder?: string;
+}
+
 export interface ContentTemplate {
   id: string;
   title: string;
@@ -47,6 +65,13 @@ export interface ContentTemplate {
   createdBy?: string;
   createdAt: Date;
   updatedAt: Date;
+  suggested_sections?: SuggestedSection[];
+  suggested_parameters?: SuggestedParameter[];
+  instructions: string;
+  metadata: {
+    parameter_flexibility: string;
+    [key: string]: unknown;
+  };
 }
 
 export interface StyleProfile {

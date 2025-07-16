@@ -26,7 +26,6 @@ interface GenerateContentFormValues {
   styleProfileId: string;
   dynamic_parameters: Record<string, string | number | boolean>;
   platform: string;
-  use_mock: boolean;
 }
 
 interface TemplateSelectorProps {
@@ -44,34 +43,99 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
   isLoadingTemplates,
   isLoadingStyleProfiles,
 }) => {
-  // Safely filter and validate templates
+  // Safely filter and validate templates with enhanced checking
   const validTemplates = React.useMemo(() => {
-    if (!Array.isArray(templates)) return [];
+    if (!Array.isArray(templates)) {
+      console.warn('TemplateSelector: templates is not an array:', templates);
+      return [];
+    }
     
     return templates.filter((template): template is ContentTemplate => {
-      return (
-        template &&
-        typeof template === 'object' &&
-        typeof template.id === 'string' &&
-        template.id.length > 0
-      );
+      if (!template || typeof template !== 'object') {
+        console.warn('TemplateSelector: Invalid template object:', template);
+        return false;
+      }
+      
+      // Check for required fields - using title since your adapter maps name -> title
+      const hasId = typeof template.id === 'string' && template.id.length > 0;
+      const hasTitle = typeof template.title === 'string' && template.title.length > 0;
+      
+      if (!hasId) {
+        console.warn('TemplateSelector: Template missing ID:', template);
+        return false;
+      }
+      
+      if (!hasTitle) {
+        console.warn('TemplateSelector: Template missing title:', template);
+        return false;
+      }
+      
+      return true;
     });
   }, [templates]);
 
-  // Safely filter and validate style profiles
+  // Safely filter and validate style profiles with enhanced checking
   const validStyleProfiles = React.useMemo(() => {
-    if (!Array.isArray(styleProfiles)) return [];
+    if (!Array.isArray(styleProfiles)) {
+      console.warn('TemplateSelector: styleProfiles is not an array:', styleProfiles);
+      return [];
+    }
     
     return styleProfiles.filter((profile): profile is StyleProfile => {
-      return (
-        profile &&
-        typeof profile === 'object' &&
-        typeof profile.id === 'string' &&
-        profile.id.length > 0 &&
-        !!(profile.name || profile.id)
-      );
+      if (!profile || typeof profile !== 'object') {
+        console.warn('TemplateSelector: Invalid profile object:', profile);
+        return false;
+      }
+      
+      // Check for required fields
+      const hasId = typeof profile.id === 'string' && profile.id.length > 0;
+      const hasName = typeof profile.name === 'string' && profile.name.length > 0;
+      
+      if (!hasId) {
+        console.warn('TemplateSelector: Profile missing ID:', profile);
+        return false;
+      }
+      
+      if (!hasName) {
+        console.warn('TemplateSelector: Profile missing name:', profile);
+        return false;
+      }
+      
+      return true;
     });
   }, [styleProfiles]);
+
+  // Helper function to get display name for template
+  const getTemplateDisplayName = (template: ContentTemplate): string => {
+    // Use title (which comes from your adapter's name -> title mapping)
+    const displayName = template.title || template.id;
+    return prettyName(displayName);
+  };
+
+  // Helper function to get display name for style profile
+  const getProfileDisplayName = (profile: StyleProfile): string => {
+    return profile.name || profile.id;
+  };
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('TemplateSelector: Rendered with data:', {
+      templatesCount: templates?.length || 0,
+      validTemplatesCount: validTemplates.length,
+      profilesCount: styleProfiles?.length || 0,
+      validProfilesCount: validStyleProfiles.length,
+      isLoadingTemplates,
+      isLoadingStyleProfiles,
+      sampleTemplate: validTemplates[0] ? {
+        id: validTemplates[0].id,
+        title: validTemplates[0].title
+      } : null,
+      sampleProfile: validStyleProfiles[0] ? {
+        id: validStyleProfiles[0].id,
+        name: validStyleProfiles[0].name
+      } : null
+    });
+  }, [templates, styleProfiles, validTemplates, validStyleProfiles, isLoadingTemplates, isLoadingStyleProfiles]);
 
   return (
     <>
@@ -102,7 +166,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                       key={`template-selector-${template.id}`} 
                       value={template.id}
                     >
-                      {prettyName(template.title || template.id)}
+                      {getTemplateDisplayName(template)}
                     </SelectItem>
                   ))
                 ) : (
@@ -147,7 +211,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                       key={`template-selector-profile-${profile.id}-${index}`}
                       value={profile.id}
                     >
-                      {profile.name || profile.id}
+                      {getProfileDisplayName(profile)}
                     </SelectItem>
                   ))
                 ) : (
@@ -169,8 +233,3 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
 };
 
 export default TemplateSelector;
-
-
-
-
-

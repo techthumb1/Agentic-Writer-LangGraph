@@ -1,5 +1,6 @@
 // frontend/app/dashboard/page.tsx
-import { auth } from '@/auth'
+'use client';
+
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,62 +12,176 @@ import {
   TrendingUp,
   BookOpen,
   Settings,
-  ChevronRight
+  ChevronRight,
+  Loader2,
+  AlertCircle
 } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect, useState, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 
 interface DashboardStats {
   totalContent: number
   drafts: number
   published: number
   views: number
+  recentContent: RecentContentItem[]
+  recentActivity: ActivityItem[]
 }
 
-// Mock data - replace with real data fetching
-const mockStats: DashboardStats = {
-  totalContent: 24,
-  drafts: 8,
-  published: 16,
-  views: 1247
+interface RecentContentItem {
+  id: string
+  title: string
+  status: 'published' | 'draft'
+  updatedAt: string
+  type: string
 }
 
-const recentContent = [
-  {
-    id: '1',
-    title: 'Introduction to Contrastive Learning',
-    status: 'published',
-    updatedAt: '2 hours ago',
-    type: 'article'
-  },
-  {
-    id: '2',
-    title: 'Federated Learning 101',
-    status: 'draft',
-    updatedAt: '1 day ago',
-    type: 'guide'
-  },
-  {
-    id: '3',
-    title: 'Future of LLMs',
-    status: 'published',
-    updatedAt: '3 days ago',
-    type: 'analysis'
-  },
-  {
-    id: '4',
-    title: 'Startup Use Cases',
-    status: 'draft',
-    updatedAt: '5 days ago',
-    type: 'report'
-  }
-]
+interface ActivityItem {
+  id: string
+  type: 'published' | 'created' | 'updated' | 'generated'
+  description: string
+  timestamp: string
+}
 
-export default async function DashboardPage() {
-  const session = await auth()
-  
+interface ContentResponse {
+  content?: RecentContentItem[]
+  totalViews?: number
+}
+
+interface ActivityResponse {
+  activities?: ActivityItem[]
+}
+
+// Custom hook for dashboard data
+function useDashboardData() {
+  const [data, setData] = useState<DashboardStats | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      // Fetch dashboard stats from your backend
+      const statsResponse = await fetch('/api/dashboard/stats', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!statsResponse.ok) {
+        if (statsResponse.status === 404) {
+          // If dashboard stats endpoint doesn't exist yet, fall back to individual endpoints
+          const [contentResponse, activityResponse] = await Promise.all([
+            fetch('/api/content').catch(() => null),
+            fetch('/api/dashboard/activity').catch(() => null)
+          ])
+
+          // Parse responses if available
+          const contentData: ContentResponse | null = contentResponse?.ok ? await contentResponse.json() : null
+          const activityData: ActivityResponse | null = activityResponse?.ok ? await activityResponse.json() : null
+
+          // Build stats from available data
+          const stats: DashboardStats = {
+            totalContent: contentData?.content?.length || 0,
+            drafts: contentData?.content?.filter((item: RecentContentItem) => item.status === 'draft').length || 0,
+            published: contentData?.content?.filter((item: RecentContentItem) => item.status === 'published').length || 0,
+            views: contentData?.totalViews || 0,
+            recentContent: contentData?.content?.slice(0, 4) || [],
+            recentActivity: activityData?.activities?.slice(0, 4) || []
+          }
+
+          setData(stats)
+          return
+        }
+        throw new Error(`Failed to fetch dashboard data: ${statsResponse.status}`)
+      }
+
+      const statsData = await statsResponse.json()
+      setData(statsData)
+
+    } catch (err) {
+      console.error('Dashboard data fetch error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
+      
+      // Set fallback data to prevent complete UI failure
+      setData({
+        totalContent: 0,
+        drafts: 0,
+        published: 0,
+        views: 0,
+        recentContent: [],
+        recentActivity: []
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [fetchDashboardData])
+
+  return { data, isLoading, error, refresh: fetchDashboardData }
+}
+
+export default function DashboardPage() {
+  const { data: session } = useSession()
+  const { data: dashboardData, isLoading, error } = useDashboardData()
+
+  // Redirect to auth if not authenticated
+  useEffect(() => {
+    if (!session?.user) {
+      redirect('/auth/signin')
+    }
+  }, [session])
+
   if (!session?.user) {
-    redirect('/auth/signin')
+    return null // Will redirect
   }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-400 mx-auto mb-4" />
+          <p className="text-gray-300">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 max-w-md">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 text-red-700 dark:text-red-300">
+                <AlertCircle className="h-5 w-5" />
+                <div>
+                  <h3 className="font-medium">Failed to load dashboard</h3>
+                  <p className="text-sm mt-1">{error}</p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                className="mt-4 w-full" 
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  const stats = dashboardData!
 
   return (
     <div className="container mx-auto p-6 space-y-8 text-white">
@@ -108,9 +223,9 @@ export default async function DashboardPage() {
             <FileText className="h-4 w-4 text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{mockStats.totalContent}</div>
+            <div className="text-2xl font-bold text-white">{stats.totalContent}</div>
             <p className="text-xs text-gray-300">
-              +2 from last month
+              All generated content
             </p>
           </CardContent>
         </Card>
@@ -121,9 +236,9 @@ export default async function DashboardPage() {
             <Clock className="h-4 w-4 text-yellow-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{mockStats.drafts}</div>
+            <div className="text-2xl font-bold text-white">{stats.drafts}</div>
             <p className="text-xs text-gray-300">
-              +1 from last week
+              Work in progress
             </p>
           </CardContent>
         </Card>
@@ -134,9 +249,9 @@ export default async function DashboardPage() {
             <BookOpen className="h-4 w-4 text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{mockStats.published}</div>
+            <div className="text-2xl font-bold text-white">{stats.published}</div>
             <p className="text-xs text-gray-300">
-              +3 from last month
+              Live content
             </p>
           </CardContent>
         </Card>
@@ -147,9 +262,9 @@ export default async function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-pink-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{mockStats.views.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">{stats.views.toLocaleString()}</div>
             <p className="text-xs text-gray-300">
-              +12% from last month
+              Content engagement
             </p>
           </CardContent>
         </Card>
@@ -177,40 +292,56 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentContent.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
-                      <FileText className="h-5 w-5 text-purple-400" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-white">{item.title}</h4>
-                      <div className="flex items-center gap-2 text-sm text-gray-300">
-                        <span className="capitalize">{item.type}</span>
-                        <span>•</span>
-                        <span>{item.updatedAt}</span>
+              {stats.recentContent.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+                  <p className="text-gray-400 mb-2">No content yet</p>
+                  <p className="text-sm text-gray-500 mb-4">Start generating amazing content with AI</p>
+                  <Button asChild size="sm" className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+                    <Link href="/generate">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Content
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                stats.recentContent.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0">
+                        <FileText className="h-5 w-5 text-purple-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-white">{item.title}</h4>
+                        <div className="flex items-center gap-2 text-sm text-gray-300">
+                          <span className="capitalize">{item.type}</span>
+                          <span>•</span>
+                          <span>{new Date(item.updatedAt).toLocaleDateString()}</span>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-1 text-xs rounded-full ${
+                          item.status === 'published'
+                            ? 'bg-green-600/20 text-green-300 border border-green-600/30'
+                            : 'bg-yellow-600/20 text-yellow-300 border border-yellow-600/30'
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                      <Button variant="ghost" size="sm" asChild className="text-gray-300 hover:text-white hover:bg-white/10">
+                        <Link href={`/content/${item.id}`}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        item.status === 'published'
-                          ? 'bg-green-600/20 text-green-300 border border-green-600/30'
-                          : 'bg-yellow-600/20 text-yellow-300 border border-yellow-600/30'
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                    <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-white/10">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -264,28 +395,28 @@ export default async function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-sm">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-gray-400">2 hours ago</span>
-              <span className="text-gray-200">Published &quot;Introduction to Contrastive Learning&quot;</span>
+          {stats.recentActivity.length === 0 ? (
+            <div className="text-center py-8">
+              <Clock className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+              <p className="text-gray-400">No recent activity</p>
+              <p className="text-sm text-gray-500">Activity will appear here as you use the platform</p>
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-gray-400">1 day ago</span>
-              <span className="text-gray-200">Created draft &quot;Federated Learning 101&quot;</span>
+          ) : (
+            <div className="space-y-3">
+              {stats.recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-center gap-3 text-sm">
+                  <div className={`w-2 h-2 rounded-full ${
+                    activity.type === 'published' ? 'bg-green-500' :
+                    activity.type === 'created' ? 'bg-blue-500' :
+                    activity.type === 'updated' ? 'bg-yellow-500' :
+                    'bg-purple-500'
+                  }`}></div>
+                  <span className="text-gray-400">{new Date(activity.timestamp).toLocaleString()}</span>
+                  <span className="text-gray-200">{activity.description}</span>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <span className="text-gray-400">3 days ago</span>
-              <span className="text-gray-200">Updated settings and preferences</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span className="text-gray-400">5 days ago</span>
-              <span className="text-gray-200">Generated content using AI writer</span>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

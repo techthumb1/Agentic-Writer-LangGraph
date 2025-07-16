@@ -88,9 +88,6 @@ const NavigationClient = () => {
     setIsClient(true);
   }, []);
 
-
-  // Your existing click handler logic
-  // (removed unused handleMainNavClick)
   // Check if user is on app pages (dashboard, generate, etc.)
   const isAppPage = mainNavigationItems.some(item => pathname === item.href);
 
@@ -103,6 +100,7 @@ const NavigationClient = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
+          {/* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */}
           <Link href="/" className="flex items-center space-x-3">
             <div className="flex-shrink-0">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -111,7 +109,7 @@ const NavigationClient = () => {
             </div>
             <div className="hidden md:block">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                ContentForge AI
+                WriterzRoom
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Multi-Agent Content Creation
@@ -128,6 +126,7 @@ const NavigationClient = () => {
                 const isActive = pathname === href;
 
                 return (
+                  /* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */
                   <Link
                     key={href}
                     href={href}
@@ -172,6 +171,7 @@ const NavigationClient = () => {
                           (item.name === 'Solutions' && isSolutionsOpen)) && (
                           <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
                             {item.items?.map((dropdownItem) => (
+                              /* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */
                               <Link
                                 key={dropdownItem.name}
                                 href={dropdownItem.href}
@@ -191,6 +191,7 @@ const NavigationClient = () => {
                         )}
                       </div>
                     ) : (
+                      /* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */
                       <Link
                         href={item.href || '#'}
                         className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
@@ -208,16 +209,17 @@ const NavigationClient = () => {
           <div className="flex items-center space-x-4">
             {/* Dark mode toggle */}
             <button
-            onClick={() => setTheme(theme === 'light' ? 'agentwrite-pro' : 'light')}
-            className="p-2 rounded-lg bg-accent text-accent-foreground hover:bg-accent/80 transition-all duration-200"
-            aria-label="Toggle theme"
-          >
-            {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-          </button>
+              onClick={() => setTheme(theme === 'light' ? 'agentwrite-pro' : 'light')}
+              className="p-2 rounded-lg bg-accent text-accent-foreground hover:bg-accent/80 transition-all duration-200"
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </button>
 
             {/* Auth buttons - only show on public pages */}
             {!isAppPage && (
               <div className="hidden md:flex items-center space-x-3">
+                {/* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */}
                 <Link 
                   href="/auth/signin"
                   className="flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
@@ -225,6 +227,7 @@ const NavigationClient = () => {
                   <LogIn className="mr-2 h-4 w-4" />
                   Sign In
                 </Link>
+                {/* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */}
                 <Link 
                   href="/generate"
                   className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
@@ -260,6 +263,7 @@ const NavigationClient = () => {
                     const isActive = pathname === href;
                     
                     return (
+                      /* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */
                       <Link
                         key={href}
                         href={href}
@@ -306,6 +310,7 @@ const NavigationClient = () => {
                             (item.name === 'Solutions' && isSolutionsOpen)) && (
                             <div className="pl-6 mt-1 space-y-1">
                               {item.items?.map((dropdownItem) => (
+                                /* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */
                                 <Link
                                   key={dropdownItem.name}
                                   href={dropdownItem.href}
@@ -322,6 +327,7 @@ const NavigationClient = () => {
                           )}
                         </div>
                       ) : (
+                        /* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */
                         <Link
                           href={item.href || '#'}
                           className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
@@ -335,6 +341,7 @@ const NavigationClient = () => {
                   
                   {/* Mobile auth buttons for public pages */}
                   <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                    {/* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */}
                     <Link 
                       href="/auth/signin"
                       className="flex items-center w-full px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
@@ -343,6 +350,7 @@ const NavigationClient = () => {
                       <LogIn className="mr-3 h-5 w-5" />
                       Sign In
                     </Link>
+                    {/* @ts-expect-error - React 19 + Next.js 15 Link compatibility issue */}
                     <Link 
                       href="/generate"
                       className="flex items-center w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-base font-medium rounded-lg transition-colors duration-200"

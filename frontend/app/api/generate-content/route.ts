@@ -35,23 +35,38 @@ interface GenerationResult {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    // Changed templateId to template and styleProfileId to styleProfile
-    const { template, styleProfile, parameters, userPreferences } = body;
+    // ✅ FIXED: Accept both old and new field names
+    const { 
+      template, 
+      templateId,
+      styleProfile, 
+      styleProfileId,
+      topic,
+      audience,
+      dynamic_parameters,
+      parameters, 
+      userPreferences 
+    } = body;
+
+    // ✅ Support both naming conventions
+    const finalTemplate = template || templateId;
+    const finalStyleProfile = styleProfile || styleProfileId;
 
     // Validate required fields
-    if (!template || !styleProfile) {
+    if (!finalTemplate || !finalStyleProfile) {
       return NextResponse.json(
         { error: 'Template and Style Profile are required' },
         { status: 400 }
       );
     }
 
-    // Generate content using the engine with corrected parameter names
+    // ✅ FIXED: Pass topic and audience to generation engine
     const generationResult: GenerationResult = await contentGenerationEngine.generateContent({
-      template, // Changed from templateId
-      style_profile: styleProfile, // Changed from styleProfileId and fixed property name
-      // Removed 'userPreferences' property to match SimpleGenerationRequest type
-      // Removed 'parameters' property to match SimpleGenerationRequest type
+      template: finalTemplate,
+      style_profile: finalStyleProfile,
+      topic: topic || dynamic_parameters?.topic || "Untitled",
+      audience: audience || dynamic_parameters?.target_audience || "General audience",
+      dynamic_parameters: dynamic_parameters || parameters || {},
     });
 
     if (generationResult.status === 'error') {

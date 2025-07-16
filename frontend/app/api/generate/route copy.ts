@@ -46,13 +46,13 @@ interface GenerationResponse {
 }
 
 // Enterprise error logging
-const logError = (context: string, error: unknown, frontendRequestId?: string) => {
+const logError = (context: string, error: unknown, requestId?: string) => {
   const timestamp = new Date().toISOString();
   const errorObj = error instanceof Error ? error : new Error(String(error));
   const logData = {
     timestamp,
     context,
-    request_id: frontendRequestId,
+    request_id: requestId,
     error: {
       message: errorObj.message || 'Unknown error',
       stack: errorObj.stack,
@@ -64,12 +64,12 @@ const logError = (context: string, error: unknown, frontendRequestId?: string) =
 };
 
 // Enterprise success logging
-const logSuccess = (context: string, data: unknown, frontendRequestId?: string) => {
+const logSuccess = (context: string, data: unknown, requestId?: string) => {
   const timestamp = new Date().toISOString();
   const logData = {
     timestamp,
     context,
-    request_id: frontendRequestId,
+    request_id: requestId,
     data: typeof data === 'object' ? data : { result: data }
   };
   console.log(`✅ [ENTERPRISE] ${context}:`, JSON.stringify(logData, null, 2));
@@ -203,7 +203,7 @@ function extractContentFromBackendResponse(data: unknown): string {
 }
 
 export async function POST(request: NextRequest) {
-  const frontendRequestId = randomUUID();
+  const requestId = randomUUID();
   const startTime = Date.now();
   
   try {
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
         { 
           success: false, 
           error: 'Template ID is required',
-          request_id: frontendRequestId
+          request_id: requestId
         },
         { status: 400 }
       );
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
         { 
           success: false, 
           error: 'Style Profile ID is required',
-          request_id: frontendRequestId
+          request_id: requestId
         },
         { status: 400 }
       );
@@ -254,12 +254,12 @@ export async function POST(request: NextRequest) {
     };
     
     logSuccess('Generation Request Initiated', {
-      request_id: frontendRequestId,
+      request_id: requestId,
       template: enterprisePayload.template,
       style_profile: enterprisePayload.style_profile,
       generation_mode: enterprisePayload.generation_mode,
       priority: enterprisePayload.priority
-    }, frontendRequestId);
+    }, requestId);
     
     // Enterprise backend request with retry logic
     let attempts = 0;
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
           headers: {
             'Authorization': `Bearer ${FASTAPI_API_KEY}`,
             'Content-Type': 'application/json',
-            'X-Request-ID': frontendRequestId || '',
+            'X-Request-ID': requestId || '',
             'X-Client-Version': '2.0.0',
             'X-Generation-Mode': enterprisePayload.generation_mode
           },
@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
           const errorData = await response.json().catch(() => ({ detail: 'Unknown backend error' }));
           
           if (response.status >= 500 && attempts < maxAttempts) {
-            logError(`Backend Error - Attempt ${attempts}`, errorData, frontendRequestId);
+            logError(`Backend Error - Attempt ${attempts}`, errorData, requestId);
             await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000)); // Exponential backoff
             continue;
           }
@@ -297,13 +297,13 @@ export async function POST(request: NextRequest) {
             statusText: response.statusText,
             error: errorData,
             attempts
-          }, frontendRequestId);
+          }, requestId);
           
           return NextResponse.json(
             { 
               success: false, 
               error: errorData.detail || 'Content generation failed',
-              request_id: frontendRequestId,
+              request_id: requestId,
               status_code: response.status,
               attempts,
               details: errorData
@@ -321,8 +321,8 @@ export async function POST(request: NextRequest) {
         // Enterprise response formatting
         const enterpriseResponse: GenerationResponse = {
           success: true,
-          generation_id: data.generation_id || data.frontendRequestId,
-          request_id: data.request_id || frontendRequestId,
+          generation_id: data.generation_id || data.requestId,
+          request_id: data.request_id || requestId,
           status: data.status || (extractedContent ? 'completed' : 'processing'),
           content: extractedContent, // Use extracted content instead of data.content
           metadata: {
@@ -349,7 +349,7 @@ export async function POST(request: NextRequest) {
           content_length: extractedContent ? extractedContent.length : 0,
           attempts,
           content_found: !!extractedContent
-        }, frontendRequestId);
+        }, requestId);
         
         return NextResponse.json(enterpriseResponse);
         
@@ -358,12 +358,12 @@ export async function POST(request: NextRequest) {
         lastError = error;
         
         if (typeof fetchError === 'object' && fetchError !== null && 'name' in fetchError && (fetchError as { name: string }).name === 'AbortError') {
-          logError('Generation Timeout', { timeout_seconds: enterprisePayload.timeout_seconds }, frontendRequestId);
+          logError('Generation Timeout', { timeout_seconds: enterprisePayload.timeout_seconds }, requestId);
           break;
         }
         
         if (attempts < maxAttempts) {
-          logError(`Request Failed - Attempt ${attempts}`, fetchError, frontendRequestId);
+          logError(`Request Failed - Attempt ${attempts}`, fetchError, requestId);
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000));
           continue;
         }
@@ -379,7 +379,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Generation timeout', 
           message: `Content generation exceeded ${enterprisePayload.timeout_seconds} seconds`,
-          request_id: frontendRequestId,
+          request_id: requestId,
           processing_time_ms: processingTime
         }, 
         { status: 504 }
@@ -397,7 +397,7 @@ export async function POST(request: NextRequest) {
               success: false,
               error: 'Backend service unavailable', 
               message: 'Cannot connect to generation service',
-              request_id: frontendRequestId,
+              request_id: requestId,
               processing_time_ms: processingTime,
               attempts
             }, 
@@ -410,7 +410,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'Generation failed after multiple attempts', 
         message: lastError?.message || 'Unknown error',
-        request_id: frontendRequestId,
+        request_id: requestId,
         processing_time_ms: processingTime,
         attempts
       }, 
@@ -420,14 +420,14 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const errorObj = error instanceof Error ? error : new Error(String(error));
     const processingTime = Date.now() - startTime;
-    logError('Critical Generation Error', error, frontendRequestId);
+    logError('Critical Generation Error', error, requestId);
     
     return NextResponse.json(
       { 
         success: false,
         error: 'Critical generation failure', 
         message: errorObj.message,
-        request_id: frontendRequestId,
+        request_id: requestId,
         processing_time_ms: processingTime
       }, 
       { status: 500 }
@@ -439,10 +439,10 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const frontendRequestId = searchParams.get('request_id');
+    const requestId = searchParams.get('request_id');
     const generationId = searchParams.get('generation_id') || searchParams.get('id');
     
-    if (!frontendRequestId && !generationId) {
+    if (!requestId && !generationId) {
       return NextResponse.json(
         { 
           success: false, 
@@ -452,7 +452,7 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    const trackingId = frontendRequestId || generationId || '';
+    const trackingId = requestId || generationId || '';
     
     logSuccess('Status Check Initiated', { tracking_id: trackingId }, trackingId);
     
@@ -505,7 +505,7 @@ export async function GET(request: NextRequest) {
           // Return mock status for now since backend endpoint might not exist
           const mockStatus = {
             success: true,
-            request_id: frontendRequestId,
+            request_id: requestId,
             generation_id: generationId,
             status: "completed",
             progress: 100,
@@ -573,7 +573,7 @@ export async function GET(request: NextRequest) {
     // Type-safe property access with proper defaults
     const statusResponse = {
       success: true,
-      request_id: frontendRequestId,
+      request_id: requestId,
       generation_id: data.generation_id || generationId || '',
       status: data.status || 'unknown',
       progress: data.progress || 0,
@@ -603,10 +603,10 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const frontendRequestId = searchParams.get('request_id');
+    const requestId = searchParams.get('request_id');
     const generationId = searchParams.get('generation_id') || searchParams.get('id');
     
-    if (!frontendRequestId && !generationId) {
+    if (!requestId && !generationId) {
       return NextResponse.json(
         { 
           success: false, 
@@ -616,7 +616,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    const trackingId = frontendRequestId || generationId || '';
+    const trackingId = requestId || generationId || '';
     
     logSuccess('Cancellation Requested', { tracking_id: trackingId });
     
@@ -624,7 +624,7 @@ export async function DELETE(request: NextRequest) {
     const cancellationResponse = {
       success: true,
       message: 'Generation cancellation requested',
-      request_id: frontendRequestId,
+      request_id: requestId,
       generation_id: generationId,
       cancelled_at: new Date().toISOString(),
       status: 'cancelled'

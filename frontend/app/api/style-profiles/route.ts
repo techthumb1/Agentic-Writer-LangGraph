@@ -1,10 +1,29 @@
-// frontend/app/api/style-profiles/route.ts
+// app/api/style-profiles/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL;
 const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
-if (!FASTAPI_BASE_URL || !FASTAPI_API_KEY) {
-  throw new Error('FASTAPI_BASE_URL and FASTAPI_API_KEY must be set in environment variables');
+
+console.log('🔑 [STYLE-PROFILES] Environment check:', {
+  hasBaseUrl: !!FASTAPI_BASE_URL,
+  hasApiKey: !!FASTAPI_API_KEY,
+  baseUrl: FASTAPI_BASE_URL,
+  keyPreview: FASTAPI_API_KEY ? `${FASTAPI_API_KEY.substring(0, 10)}...` : 'MISSING'
+});
+
+interface BackendStyleProfile {
+  id: string;
+  name: string;
+  description: string;
+  category?: string;
+  tone?: string;
+  voice?: string;
+  structure?: string;
+  system_prompt?: string;
+  settings?: Record<string, unknown>;
+  filename?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export async function GET(request: NextRequest) {
@@ -15,54 +34,136 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
 
-    // Build query parameters
-    const queryParams = new URLSearchParams({
+    console.log(`🔍 [STYLE-PROFILES] Fetching profiles - page: ${page}, limit: ${limit}, search: "${search}", category: "${category}"`);
+
+    // Build query parameters for backend
+    const params = new URLSearchParams({
       page,
       limit,
-      search,
-      category
+      ...(search && { search }),
+      ...(category && { category }),
     });
 
-    // Call FastAPI backend
-    const response = await fetch(`${FASTAPI_BASE_URL}/api/style-profiles?${queryParams}`, {
+    console.log('🔍 [STYLE-PROFILES] Making request to:', `${FASTAPI_BASE_URL}/api/style-profiles?${params}`);
+
+    const response = await fetch(`${FASTAPI_BASE_URL}/api/style-profiles?${params}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${FASTAPI_API_KEY}`,
+        ...(FASTAPI_API_KEY && { 'Authorization': `Bearer ${FASTAPI_API_KEY}` }),
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
+      signal: AbortSignal.timeout(10000), // 10 second timeout
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      console.error('FastAPI error:', errorData);
-      
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: errorData.detail || 'Failed to fetch style profiles',
-          status: response.status 
-        },
-        { status: response.status }
-      );
+      console.error(`❌ [STYLE-PROFILES] Backend error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ [STYLE-PROFILES] Error details:`, errorText);
+      throw new Error(`Backend responded with ${response.status}: ${response.statusText}`);
     }
 
     const data = await response.json();
     
-    console.log(`✅ Style profiles fetched successfully: ${data.data?.items?.length || 0} items`);
+    console.log('🔍 [STYLE-PROFILES] Raw backend response type:', typeof data);
+    console.log('🔍 [STYLE-PROFILES] Is array:', Array.isArray(data));
+    console.log('🔍 [STYLE-PROFILES] Response keys:', data && typeof data === 'object' ? Object.keys(data) : 'primitive type');
+
+    // ✅ FIX: Backend returns style profiles directly as an array
+    let profiles: BackendStyleProfile[] = [];
     
-    return NextResponse.json({
-  style_profiles: data.data.items,
-  total: data.data.pagination.total
-});
+    if (Array.isArray(data)) {
+      // Backend returns profiles directly as an array
+      profiles = data;
+      console.log('✅ [STYLE-PROFILES] Using direct array response');
+    } else if (data.data?.items) {
+      profiles = data.data.items;
+      console.log('✅ [STYLE-PROFILES] Using data.data.items');
+    } else if (data.items) {
+      profiles = data.items;
+      console.log('✅ [STYLE-PROFILES] Using data.items');
+    } else if (data.profiles || data.style_profiles) {
+      profiles = data.profiles || data.style_profiles;
+      console.log('✅ [STYLE-PROFILES] Using data.profiles/style_profiles');
+    } else {
+      console.warn(`⚠️ [STYLE-PROFILES] Unexpected response structure:`, Object.keys(data || {}));
+      profiles = [];
+    }
+
+    console.log(`📊 [STYLE-PROFILES] Extracted ${profiles.length} profiles`);
+
+    // Transform backend profiles to frontend format
+    const transformedProfiles = profiles.map((profile) => {
+      console.log('🔄 [STYLE-PROFILES] Transforming profile:', profile.id, profile.name);
+      
+      return {
+        id: profile.id,
+        name: profile.name || 'Untitled Profile',
+        description: profile.description || `Style profile for ${profile.category || 'general'}`,
+        category: profile.category || 'general',
+        tone: profile.tone || null,
+        voice: profile.voice || null,
+        structure: profile.structure || null,
+        system_prompt: profile.system_prompt || '',
+        settings: profile.settings || {},
+        filename: profile.filename || null,
+        metadata: profile.metadata || {},
+        isBuiltIn: true,
+        isPublic: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    console.log(`✅ [STYLE-PROFILES] Successfully transformed ${transformedProfiles.length} profiles`);
+    console.log('🔍 [STYLE-PROFILES] First transformed profile:', transformedProfiles[0]);
+
+    // Extract pagination info
+    const total = Array.isArray(data) ? data.length : 
+                 data.data?.total || data.total || profiles.length;
+    const currentPage = parseInt(page);
+    const pageLimit = parseInt(limit);
+    const totalPages = Math.ceil(total / pageLimit);
+
+    const response_data = {
+      profiles: transformedProfiles,
+      total,
+      pagination: {
+        page: currentPage,
+        limit: pageLimit,
+        total,
+        totalPages,
+      },
+      success: true,
+    };
+
+    console.log(`🎯 [STYLE-PROFILES] Final response:`, {
+      profilesCount: response_data.profiles.length,
+      total: response_data.total,
+      success: response_data.success
+    });
+
+    return NextResponse.json(response_data);
 
   } catch (error) {
-    console.error('Frontend API error:', error);
-    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('❌ [STYLE-PROFILES] API Error:', errorMessage);
+    console.error('❌ [STYLE-PROFILES] Error stack:', error instanceof Error ? error.stack : 'No stack');
+
+    // Return error response with fallback empty data
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error',
-        details: 'Failed to connect to FastAPI backend'
+      {
+        error: 'Failed to fetch style profiles',
+        message: errorMessage,
+        profiles: [],
+        total: 0,
+        pagination: {
+          page: 1,
+          limit: parseInt(request.nextUrl.searchParams.get('limit') || '100'),
+          total: 0,
+          totalPages: 0,
+        },
+        success: false,
       },
       { status: 500 }
     );
@@ -72,125 +173,41 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    // Forward POST request to FastAPI backend
+    console.log(`📝 [STYLE-PROFILES] Creating new profile:`, body.name);
+
     const response = await fetch(`${FASTAPI_BASE_URL}/api/style-profiles`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${FASTAPI_API_KEY}`,
+        ...(FASTAPI_API_KEY && { 'Authorization': `Bearer ${FASTAPI_API_KEY}` }),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      return NextResponse.json(
-        { success: false, error: errorData.detail || 'Failed to create style profile' },
-        { status: response.status }
-      );
+      const errorText = await response.text();
+      console.error(`❌ [STYLE-PROFILES] Create error:`, errorText);
+      throw new Error(`Backend responded with ${response.status}: ${response.statusText}`);
     }
 
     const data = await response.json();
+    console.log(`✅ [STYLE-PROFILES] Profile created successfully:`, data.id);
+
     return NextResponse.json({
-  style_profiles: data.data.items,
-  total: data.data.pagination.total
-});
-
-  } catch (error) {
-    console.error('Style profile creation error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create style profile' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: 'Style profile ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Forward PUT request to FastAPI backend
-    const response = await fetch(`${FASTAPI_BASE_URL}/api/style-profiles/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${FASTAPI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
+      success: true,
+      profile: data,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      return NextResponse.json(
-        { success: false, error: errorData.detail || 'Failed to update style profile' },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    return NextResponse.json({
-  style_profiles: data.data.items,
-  total: data.data.pagination.total
-});
-
   } catch (error) {
-    console.error('Style profile update error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('❌ [STYLE-PROFILES] Create Error:', errorMessage);
+
     return NextResponse.json(
-      { success: false, error: 'Failed to update style profile' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: 'Style profile ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Forward DELETE request to FastAPI backend
-    const response = await fetch(`${FASTAPI_BASE_URL}/api/style-profiles/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${FASTAPI_API_KEY}`,
-        'Content-Type': 'application/json',
+      {
+        error: 'Failed to create style profile',
+        message: errorMessage,
+        success: false,
       },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      return NextResponse.json(
-        { success: false, error: errorData.detail || 'Failed to delete style profile' },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    return NextResponse.json({
-  style_profiles: data.data.items,
-  total: data.data.pagination.total
-});
-
-  } catch (error) {
-    console.error('Style profile deletion error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete style profile' },
       { status: 500 }
     );
   }

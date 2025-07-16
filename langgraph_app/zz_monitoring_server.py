@@ -392,7 +392,14 @@ async def websocket_endpoint(websocket: WebSocket):
 async def record_generation(generation_data: Dict[str, Any]):
     """Record a generation for analytics"""
     await monitoring_service.record_generation(generation_data)
-    return {"success": True, "message": "Generation recorded"}
+    final_state = None  # inserted for safety
+    if final_state:
+        if final_state:
+            return {**final_state, "success": True, "message": "Generation recorded"}
+        else:
+            return {"error": "final_state undefined", "status": "failed"}
+    else:
+        return {"error": "final_state undefined", "status": "failed"}
 
 @app.get("/api/metrics")
 async def get_metrics():

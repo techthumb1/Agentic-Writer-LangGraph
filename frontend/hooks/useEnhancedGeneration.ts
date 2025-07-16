@@ -11,55 +11,11 @@ interface GenerationParams {
   priority?: number;
   timeout_seconds?: number;
   generation_mode?: 'standard' | 'premium' | 'enterprise';
-}
-
-interface GenerationPreferences {
-  maxTokens?: number;
-  temperature?: number; 
-  model?: string;
-}
-
-interface EnterpriseGenerationRequest {
-  prompt: {
-    content_requirements: {
-      title: string;
-      sections: string[];
-      category: string;
-      difficulty?: string;
-      target_audience?: string;
-    };
-    style_requirements: {
-      tone: string;
-      voice: string;
-      formality: string;
-      perspective: string;
-      technical_level: string;
-    };
-    structure_requirements: {
-      introduction_style: string;
-      paragraph_length: string;
-      use_headings: boolean;
-      use_bullet_points: boolean;
-      include_examples: boolean;
-      include_analogies: boolean;
-    };
-    language_requirements: {
-      vocabulary_level: string;
-      sentence_complexity: string;
-      use_jargon: boolean;
-      preferred_phrases?: string[];
-      avoid_phrases?: string[];
-    };
-    formatting_requirements: {
-      markdown_enabled: boolean;
-      emoji_usage: string;
-      code_block_style?: string;
-      quote_style?: string;
-    };
-    user_parameters: Record<string, unknown>;
-  };
-  preferences: GenerationPreferences;
-  workflow: string;
+  topic?: string;
+  audience?: string;
+  tags?: string[];
+  platform?: string;
+  use_mock?: boolean;
 }
 
 interface GenerationResult {
@@ -89,8 +45,13 @@ interface GenerationResult {
   };
 }
 
+// Replace the GenerationResponse interface in useEnhancedGeneration.ts:
 interface GenerationResponse {
   success: boolean;
+  content?: string;  // ✅ Add missing content field
+  generation_id?: string;  // ✅ Add missing generation_id field
+  request_id?: string;  // ✅ Add missing request_id field
+  metadata?: Record<string, unknown>;  // ✅ Add missing metadata field
   data?: {
     requestId?: string;
     status?: string;
@@ -141,82 +102,37 @@ export function useEnhancedGeneration() {
 
   const [isPolling, setIsPolling] = useState(false);
 
-  // Convert frontend params to enterprise backend format
-  const convertToEnterpriseRequest = (params: GenerationParams): EnterpriseGenerationRequest => {
-    const dynamicParams = params.dynamic_parameters || {};
-    
-    return {
-      prompt: {
-        content_requirements: {
-          title: (dynamicParams.topic as string) || 'Untitled Content',
-          sections: (dynamicParams.sections as string[]) || [],
-          category: (dynamicParams.category as string) || 'general',
-          difficulty: (dynamicParams.difficulty as string) || 'intermediate',
-          target_audience: (dynamicParams.audience as string) || 'general',
-        },
-        style_requirements: {
-          tone: (dynamicParams.tone as string) || 'professional',
-          voice: (dynamicParams.voice as string) || 'authoritative',
-          formality: (dynamicParams.formality as string) || 'formal',
-          perspective: (dynamicParams.perspective as string) || 'third-person',
-          technical_level: (dynamicParams.technical_level as string) || 'intermediate',
-        },
-        structure_requirements: {
-          introduction_style: (dynamicParams.introduction_style as string) || 'hook',
-          paragraph_length: (dynamicParams.paragraph_length as string) || 'medium',
-          use_headings: (dynamicParams.use_headings as boolean) ?? true,
-          use_bullet_points: (dynamicParams.use_bullet_points as boolean) ?? true,
-          include_examples: (dynamicParams.include_examples as boolean) ?? true,
-          include_analogies: (dynamicParams.include_analogies as boolean) ?? false,
-        },
-        language_requirements: {
-          vocabulary_level: (dynamicParams.vocabulary_level as string) || 'intermediate',
-          sentence_complexity: (dynamicParams.sentence_complexity as string) || 'mixed',
-          use_jargon: (dynamicParams.use_jargon as boolean) ?? false,
-          preferred_phrases: (dynamicParams.preferred_phrases as string[]) || [],
-          avoid_phrases: (dynamicParams.avoid_phrases as string[]) || [],
-        },
-        formatting_requirements: {
-          markdown_enabled: (dynamicParams.markdown_enabled as boolean) ?? true,
-          emoji_usage: (dynamicParams.emoji_usage as string) || 'none',
-          code_block_style: (dynamicParams.code_block_style as string),
-          quote_style: (dynamicParams.quote_style as string),
-        },
-        user_parameters: {
-          template: params.template,
-          style_profile: params.style_profile,
-          ...dynamicParams,
-        },
-      },
-      preferences: {
-        maxTokens: (dynamicParams.max_tokens as number) || 2000,
-        temperature: (dynamicParams.temperature as number) || 0.7,
-        model: (dynamicParams.model as string) || 'gpt-4-turbo',
-      },
-      workflow: 'content_generation',
-    };
-  };
-
+  
   // Start generation with enterprise backend
-  const startGeneration = async (params: GenerationParams): Promise<GenerationResponse> => {
-    const enterpriseRequest = convertToEnterpriseRequest(params);
-    
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_LANGGRAPH_API_KEY || 'dev-key'}`,
-      },
-      body: JSON.stringify(enterpriseRequest),
-    });
+// Start generation with correct backend format
+const startGeneration = async (params: GenerationParams): Promise<GenerationResponse> => {
+  // Use Next.js API route instead of calling backend directly
+  const response = await fetch('/api/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      template: params.template,
+      style_profile: params.style_profile,
+      dynamic_parameters: params.dynamic_parameters || {},
+      priority: params.priority || 1,
+      timeout_seconds: params.timeout_seconds || 300,
+      generation_mode: params.generation_mode || 'standard',
+      topic: params.topic,
+      audience: params.audience,
+      tags: params.tags,
+      platform: params.platform,
+    }),
+  });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || errorData.error || `Generation failed: ${response.statusText}`);
-    }
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || `Generation failed: ${response.statusText}`);
+  }
 
-    return await response.json();
-  };
+  return await response.json();
+};
 
   // FIXED: Check generation status using correct endpoint
   const checkStatus = async (requestId: string): Promise<GenerationStatusResponse> => {
@@ -328,44 +244,67 @@ export function useEnhancedGeneration() {
         qualityScore: null,
       }));
     },
-    onSuccess: (data) => {
-      if (data.success && data.data) {
-        // FIXED: Check for immediate completion in correct nested structure
-        if (data.data?.content) {
-          // Immediate completion - sync path
-          setState(prev => ({
-            ...prev,
-            isGenerating: false,
-            progress: 100,
-            currentStep: 'Complete',
-            currentAgent: 'completed',
-            result: {
-              content: data.data?.content as string, // Explicit type assertion
-              metadata: data.data?.metadata || {} as GenerationResult['metadata'],
-              quality_score: data.quality_score || {} as GenerationResult['quality_score'],
-            },
-            qualityScore: data.quality_score || null,
-            requestId: data.data?.requestId || null,
-          }));
-        } else if (data.data?.requestId) {
-          // FIXED: Use correct field for requestId
-          // Async processing - start polling
-          setState(prev => ({
-            ...prev,
-            requestId: data.data?.requestId || null,
-            currentStep: 'Queued for processing...',
-            currentAgent: 'queued',
-          }));
-          setIsPolling(true);
-        }
-      } else {
-        setState(prev => ({
-          ...prev,
-          isGenerating: false,
-          error: data.error || 'Generation failed',
-        }));
-      }
-    },
+// In useEnhancedGeneration.ts, replace the onSuccess handler around line 180:
+
+// In useEnhancedGeneration.ts, replace the onSuccess handler around line 180:
+
+onSuccess: (data) => {
+  console.log('🔍 [HOOK] Generation API Response:', data);
+  
+  if (data.success) {
+    // ✅ FIXED: Check for content in the correct location
+    const content = data.content || data.data?.content;
+    
+    if (content) {
+      // ✅ FIXED: Content found - mark as completed
+      setState(prev => ({
+        ...prev,
+        isGenerating: false,
+        progress: 100,
+        currentStep: 'Complete',
+        currentAgent: 'completed',
+        result: {
+          content: content,
+          metadata: (data.metadata || data.data?.metadata || {}) as GenerationResult['metadata'],
+          quality_score: data.quality_score || {} as GenerationResult['quality_score'],
+        },
+        qualityScore: data.quality_score || null,
+        requestId: data.generation_id || data.request_id || data.data?.requestId || null,
+      }));
+      
+      console.log('✅ [HOOK] Content generation completed successfully:', content.length, 'characters');
+      
+    } else if (data.generation_id || data.request_id || data.data?.requestId) {
+      // Async processing - start polling
+      const requestId = data.generation_id || data.request_id || data.data?.requestId;
+      setState(prev => ({
+        ...prev,
+        requestId: requestId ?? null,
+        currentStep: 'Queued for processing...',
+        currentAgent: 'queued',
+      }));
+      setIsPolling(true);
+      
+      console.log('🔄 [HOOK] Starting polling for request:', requestId);
+    } else {
+      // ❌ No content and no request ID
+      console.error('❌ [HOOK] No content or request ID found in response:', data);
+      setState(prev => ({
+        ...prev,
+        isGenerating: false,
+        error: 'No content generated',
+      }));
+    }
+  } else {
+    // ❌ API returned success: false
+    console.error('❌ [HOOK] API returned success: false:', data);
+    setState(prev => ({
+      ...prev,
+      isGenerating: false,
+      error: data.error || 'Generation failed',
+    }));
+  }
+},
     onError: (error) => {
       setState(prev => ({
         ...prev,

@@ -184,70 +184,6 @@ async def debug_templates():
         "available_templates": list(template_loader.templates_cache.keys())
     }
 
-@app.get("/api/templates")
-async def get_templates(
-    page: int = 1,
-    limit: int = 100,
-    search: str = "",
-    category: str = "",
-    api_key: str = Depends(validate_api_key)
-):
-    """Get available content templates from YAML files"""
-    try:
-        from .template_loader import template_loader
-
-        # Build templates list directly from template_loader
-        templates = []
-        for template_id, template_data in template_loader.templates_cache.items():
-            template_info = {
-                "id": template_id,
-                "name": template_data.get("name", template_id.replace("_", " ").title()),
-                "description": template_data.get("description", f"Template for {template_id}"),
-                "category": template_data.get("category", "general"),
-                "sections": template_data.get("structure", {}).get("sections", []),  # Fix: structure.sections
-                "metadata": template_data.get("metadata", {}),
-                "filename": f"{template_id}.yaml"
-            }
-            templates.append(template_info)
-
-        # Apply search filter
-        if search:
-            search_lower = search.lower()
-            templates = [
-                t for t in templates 
-                if search_lower in t["name"].lower() or search_lower in t.get("description", "").lower()
-            ]
-        
-        # Apply category filter
-        if category:
-            templates = [t for t in templates if t.get("category") == category]
-        
-        # Apply pagination
-        total = len(templates)
-        start_index = (page - 1) * limit
-        paginated_templates = templates[start_index:start_index + limit]
-        
-        logger.info(f"Returning {len(paginated_templates)} templates out of {total} total")
-        
-        return {
-            "success": True,
-            "data": {
-                "items": paginated_templates,
-                "pagination": {
-                    "page": page,
-                    "limit": limit,
-                    "total": total,
-                    "totalPages": (total + limit - 1) // limit,
-                    "hasNext": start_index + limit < total,
-                    "hasPrev": page > 1
-                }
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to get templates: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve templates")
-
     # Rest of the pagination logic stays the same...
 # API Endpoints
 @app.get("/api/health", response_model=HealthResponse)
@@ -300,6 +236,8 @@ async def generate_content(
             "template": request.template,
             "style_profile": request.style_profile,
             "dynamic_parameters": request.dynamic_parameters,
+            "topic": request.dynamic_parameters.get("topic", "Untitled"),
+            "audience": request.dynamic_parameters.get("target_audience", "General audience"),
             "generation_id": generation_id,
             "template_data": template_data,
             "style_data": style_data
@@ -538,3 +476,5 @@ async def debug_style_profiles():
         "profiles_loaded": loader._profiles_loaded,
         "get_all_sync_result": get_all_style_profiles_sync()[:2]  # Show first 2
     }
+
+print(f"DEBUG: Expected API key: {os.getenv('LANGGRAPH_API_KEY')}")

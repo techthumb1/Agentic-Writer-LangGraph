@@ -120,6 +120,8 @@ export type StyleProfileInfo = z.infer<typeof StyleProfileInfoSchema>;
 interface SimpleGenerationRequest {
   template: string;
   style_profile: string;
+  topic: string;                    // ✅ FIXED: Required topic field
+  audience: string;                 // ✅ FIXED: Required audience field
   dynamic_parameters?: Record<string, unknown>;
   priority?: number;
   timeout_seconds?: number;
@@ -154,8 +156,9 @@ export class EnterpriseContentGenerationEngine {
   private isInitialized = false;
 
   constructor(baseUrl = '', apiKey = '') {
-    this.baseUrl = baseUrl;
+    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
     this.apiKey = apiKey || process.env.NEXT_PUBLIC_LANGGRAPH_API_KEY || 'dev-key';
+    console.log('🔧 ContentEngine initialized with baseUrl:', this.baseUrl);
     this.initialize();
   }
 
@@ -172,7 +175,7 @@ export class EnterpriseContentGenerationEngine {
 
   private async loadTemplatesFromBackend() {
     try {
-      const response = await fetch(`${this.baseUrl}/api/templates`, {
+      const response = await fetch(`${this.baseUrl}/api/templates`, {  // ✅ FIXED: Correct endpoint
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
         },
@@ -228,11 +231,11 @@ export class EnterpriseContentGenerationEngine {
     return {
       prompt: {
         content_requirements: {
-          title: (params.topic as string) || 'Untitled Content',
+          title: request.topic || (params.topic as string) || 'Untitled Content',  // ✅ Use request.topic first
           sections: (params.sections as string[]) || [],
           category: (params.category as string) || 'general',
           difficulty: (params.difficulty as string) || 'intermediate',
-          target_audience: (params.audience as string) || 'general',
+          target_audience: request.audience || (params.audience as string) || 'general',  // ✅ Use request.audience first
         },
         style_requirements: {
           tone: (params.tone as string) || 'professional',
@@ -265,6 +268,8 @@ export class EnterpriseContentGenerationEngine {
         user_parameters: {
           template: request.template,
           style_profile: request.style_profile,
+          topic: request.topic,           // ✅ Include topic
+          audience: request.audience,     // ✅ Include audience
           priority: request.priority || 1,
           timeout_seconds: request.timeout_seconds || 300,
           generation_mode: request.generation_mode || 'standard',
@@ -297,17 +302,24 @@ export class EnterpriseContentGenerationEngine {
         throw new Error(`Style profile '${request.style_profile}' not found`);
       }
 
-      // Convert to enterprise request format
-      const enterpriseRequest = this.convertToEnterpriseRequest(request);
-
-      // Call enterprise backend
+      // ✅ FIXED: Call enterprise backend with proper payload structure
       const response = await fetch(`${this.baseUrl}/api/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`,
         },
-        body: JSON.stringify(enterpriseRequest),
+        body: JSON.stringify({
+          // ✅ Include top-level fields for backend compatibility
+          template: request.template,
+          style_profile: request.style_profile,
+          topic: request.topic,
+          audience: request.audience,
+          dynamic_parameters: request.dynamic_parameters || {},
+          priority: request.priority || 1,
+          timeout_seconds: request.timeout_seconds || 300,
+          generation_mode: request.generation_mode || 'standard',
+        }),
       });
 
       if (!response.ok) {

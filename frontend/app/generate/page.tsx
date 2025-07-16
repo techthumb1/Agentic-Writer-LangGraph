@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
 import { Form } from "@/components/ui/form";
+import { SubmitHandler } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { useEnhancedGeneration } from "@/hooks/useEnhancedGeneration";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -14,46 +15,45 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Sparkles, Settings, Zap } from "lucide-react";
+import { 
+  Check, 
+  Copy, 
+  Download, 
+  Save, 
+  Eye, 
+  FileText, 
+  Loader2, 
+  Sparkles, 
+  Settings, 
+  Zap, 
+  AlertCircle 
+} from "lucide-react";
+
 import TemplateSelector from "@/components/TemplateSelector";
-import StyleProfilesSelector from "@/components/StyleProfilesSelector";
 import DynamicParameters from "@/components/DynamicParameters";
+import { useQueryClient } from "@tanstack/react-query";
 import GeneratingDialog from "@/components/GeneratingDialog";
-import { GenerationPreview } from "@/components/GenerationPreview";
-import { GenerateContentFormValues, generateContentSchema } from "@/schemas/generateContentSchema";
 import { useTemplates } from "@/hooks/useTemplates";
+import { Template } from "@/types/template";
 import { useStyleProfiles } from "@/hooks/useStyleProfiles";
 import { 
   adaptTemplateCollection, 
   adaptStyleProfileCollection 
 } from "@/utils/typeAdapters";
+import { z } from "zod";
 
-// ----------------------
-// Enhanced Interfaces
-// ----------------------
-interface TemplateParameter {
-  name: string;
-  label: string;
-  type: "text" | "textarea" | "number" | "select" | "checkbox";
-  placeholder?: string;
-  default?: string | number | boolean;
-  options?: string[];
-  required?: boolean;
-}
+// Schema Definition
+const generateContentSchema = z.object({
+  templateId: z.string().min(1),
+  styleProfileId: z.string().min(1),
+  dynamic_parameters: z.record(z.union([z.string(), z.number(), z.boolean()])),
+  platform: z.string(),
+}).refine(data => data.dynamic_parameters.topic && data.dynamic_parameters.target_audience, {
+  message: "Topic and audience are required inside dynamic parameters",
+});
 
-// Extended template interface that includes parameters
-interface ExtendedTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  category?: string;
-  sections?: string[];
-  metadata?: Record<string, unknown>;
-  filename?: string;
-  parameters?: TemplateParameter[]; // Make parameters optional since API templates might not have them
-}
+type GenerateContentFormValues = z.infer<typeof generateContentSchema>;
 
-// Extended style profile interface
 interface ExtendedStyleProfile {
   id: string;
   name: string;
@@ -67,196 +67,403 @@ interface ExtendedStyleProfile {
   filename?: string;
 }
 
-interface GeneratedContent {
-  id?: string;
-  title: string;
-  contentHtml: string;
-  content?: string;
-  metadata?: Record<string, unknown>;
-  saved_path?: string;
-}
+// Environment configuration
+const USE_BACKEND_API = process.env.NEXT_PUBLIC_USE_BACKEND_API === 'true';
 
-interface GenerationResult {
-  content: string;
-  metadata?: Record<string, unknown>;
-  saved_path?: string;
-}
+// Enhanced Generation Preview Component
+const EnhancedGenerationPreview = ({ 
+  isGenerating, 
+  generatedContent, 
+  onCancel, 
+  onSave, 
+  templateName, 
+  styleProfile 
+}: {
+  isGenerating: boolean;
+  generatedContent?: string;
+  onCancel: () => void;
+  onSave: () => void;
+  templateName?: string;
+  styleProfile?: string;
+}) => {
+  const [isPreview, setIsPreview] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
-// ----------------------
-// Enhanced Generation Hook with Async Polling
-// ----------------------
-// Fixed useEnhancedGeneration hook - replace the entire hook in your page.tsx
+  const handleCopy = async () => {
+    if (!generatedContent) return;
+    
+    try {
+      await navigator.clipboard.writeText(generatedContent);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
-function useEnhancedGeneration() {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [result, setResult] = useState<GenerationResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [requestId, setRequestId] = useState<string | null>(null);
+  const handleExport = (format: 'markdown' | 'html' | 'pdf') => {
+    if (!generatedContent) return;
 
-  // Polling function to check generation status
-  const pollGenerationStatus = async (requestId: string): Promise<GeneratedContent> => {
-    const maxAttempts = 60; // Poll for up to 5 minutes (60 * 5s intervals)
-    let attempts = 0;
+    let exportContent = generatedContent;
+    let fileName = `generated-content-${new Date().toISOString().split('T')[0]}.${format}`;
+    let mimeType = 'text/plain';
 
-    while (attempts < maxAttempts) {
-      try {
-        const statusRes = await fetch(`/api/generate/status/${requestId}`);
+    switch (format) {
+      case 'html':
+        exportContent = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Generated Content</title>
+  <meta charset="UTF-8">
+  <style>
+    body { 
+      font-family: Georgia, 'Times New Roman', serif;
+      max-width: 800px; 
+      margin: 0 auto; 
+      padding: 3rem 2rem; 
+      line-height: 1.8; 
+      color: #2d3748;
+      background: #ffffff;
+    }
+    h1 { 
+      color: #1a202c; 
+      font-size: 2.5rem; 
+      margin-bottom: 1.5rem; 
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 0.5rem;
+    }
+    h2 { 
+      color: #2d3748; 
+      font-size: 1.875rem; 
+      margin-top: 2.5rem; 
+      margin-bottom: 1rem;
+    }
+    h3 { 
+      color: #4a5568; 
+      font-size: 1.5rem; 
+      margin-top: 2rem; 
+      margin-bottom: 0.75rem;
+    }
+    p { 
+      margin-bottom: 1.25rem; 
+      text-align: justify;
+      text-indent: 1.5rem;
+    }
+    strong { color: #1a202c; }
+    em { color: #4a5568; }
+    blockquote {
+      border-left: 4px solid #667eea;
+      padding-left: 1.5rem;
+      margin: 1.5rem 0;
+      font-style: italic;
+      color: #4a5568;
+    }
+    .metadata {
+      background: #f7fafc;
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin: 2rem 0;
+      border: 1px solid #e2e8f0;
+    }
+    .export-note {
+      font-size: 0.875rem;
+      color: #718096;
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="metadata">
+    <strong>Generated with:</strong> ${templateName || 'Unknown Template'}<br>
+    <strong>Style:</strong> ${styleProfile || 'Default'}<br>
+    <strong>Generated:</strong> ${new Date().toLocaleString()}
+  </div>
+  
+  ${convertMarkdownToHTML(generatedContent)}
+  
+  <div class="export-note">
+    Generated by AgentWrite Pro • ${new Date().toLocaleDateString()}
+  </div>
+</body>
+</html>`;
+        mimeType = 'text/html';
+        break;
         
-        if (!statusRes.ok) {
-          throw new Error(`Status check failed: ${statusRes.status}`);
-        }
+      case 'pdf':
+        // For PDF, create print-optimized HTML
+        exportContent = createPrintOptimizedHTML(generatedContent, templateName, styleProfile);
+        fileName = fileName.replace('.pdf', '.html');
+        mimeType = 'text/html';
+        break;
+        
+      default:
+        // Markdown format
+        exportContent = `# Generated Content
 
-        const statusData = await statusRes.json();
+**Template:** ${templateName || 'Unknown'}  
+**Style:** ${styleProfile || 'Default'}  
+**Generated:** ${new Date().toLocaleString()}
 
-        if (statusData.status === 'completed') {
-          return statusData.data;
-        } else if (statusData.status === 'failed') {
-          throw new Error(statusData.error || 'Generation failed');
-        } else if (statusData.status === 'pending' || statusData.status === 'processing') {
-          // Still processing, wait and try again
-          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-          attempts++;
-        } else {
-          throw new Error(`Unknown status: ${statusData.status}`);
-        }
-      } catch (error) {
-        console.error(`❌ Polling error on attempt ${attempts + 1}:`, error);
-        if (attempts >= maxAttempts - 1) {
-          throw error;
-        }
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        attempts++;
-      }
+---
+
+${generatedContent}
+
+---
+*Generated by AgentWrite Pro*`;
     }
 
-    throw new Error('Generation timed out after 5 minutes');
+    const blob = new Blob([exportContent], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const generateContentMutation = useMutation<GeneratedContent, Error, GenerateContentFormValues>({
-    mutationFn: async (payload) => {
-      setIsGenerating(true);
-      setError(null);
-      setRequestId(null);
-      
-      console.log('🚀 Starting generation with payload:', payload);
+  if (isGenerating) {
+    return (
+      <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+        <CardContent className="p-8 text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-purple-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">Generating Content...</h3>
+          <p className="text-gray-300">Please wait while our AI creates your content</p>
+          <Button 
+            variant="outline" 
+            onClick={onCancel}
+            className="mt-4 border-white/20 text-white hover:bg-white/10"
+          >
+            Cancel
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
-      const payloadForBackend = {
-        template: payload.templateId,
-        style_profile: payload.styleProfileId,
-        dynamic_parameters: payload.dynamic_parameters || {},
-        priority: 1,
-        timeout_seconds: 300,
-        platform: payload.platform || "web",
-        use_mock: payload.use_mock || false,
-      };
-      
-      console.log('📤 Sending to backend:', payloadForBackend);
-      
-      // Step 1: Start the generation
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(payloadForBackend),
-      });
-      
-      console.log('📥 Response status:', res.status);
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("🔍 Error response body:", errorText);
-        
-        try {
-          const errorData = JSON.parse(errorText);
-          throw new Error(errorData.detail || errorData.message || "Failed to start generation");
-        } catch {
-          throw new Error(`HTTP ${res.status}: ${errorText}`);
-        }
-      }
-      
-      const initialResponse = await res.json();
-      console.log('📄 Initial response:', initialResponse);
+  if (!generatedContent) {
+    return null;
+  }
 
-      // Check if we got the content immediately (synchronous response)
-      if (initialResponse.content) {
-        // Transform backend response to expected format
-        return {
-          contentHtml: initialResponse.content,
-          content: initialResponse.content,
-          metadata: initialResponse.metadata || {},
-          id: initialResponse.generation_id,
-          title: "Generated Content",
-          saved_path: initialResponse.saved_path
-        };
-      }
+  return (
+    <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-white flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Generated Content
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPreview(!isPreview)}
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              {isPreview ? 'Raw' : 'Preview'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              {copySuccess ? (
+                <Check className="h-4 w-4 mr-1" />
+              ) : (
+                <Copy className="h-4 w-4 mr-1" />
+              )}
+              {copySuccess ? 'Copied!' : 'Copy'}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Content Stats */}
+        <div className="flex items-center gap-4 mb-4 text-sm text-gray-300">
+          <span>{generatedContent.split(/\s+/).length} words</span>
+          <span>{generatedContent.length} characters</span>
+          <span>{Math.ceil(generatedContent.split(/\s+/).length / 200)} min read</span>
+        </div>
 
-      // If we have a requestId, poll for completion (asynchronous response)
-      if (initialResponse.requestId) {
-        setRequestId(initialResponse.requestId);
-        return await pollGenerationStatus(initialResponse.requestId);
-      }
+        {/* Content Display */}
+        <div className="mb-6">
+          {isPreview ? (
+            <div className="bg-white rounded-lg p-6 shadow-inner">
+              <div 
+                className="prose prose-lg max-w-none text-gray-800"
+                style={{
+                  fontFamily: 'Georgia, "Times New Roman", serif',
+                  lineHeight: '1.8',
+                  fontSize: '1.1rem'
+                }}
+                dangerouslySetInnerHTML={{ 
+                  __html: convertMarkdownToHTML(generatedContent) 
+                }}
+              />
+            </div>
+          ) : (
+            <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
+              <pre className="text-gray-200 whitespace-pre-wrap font-mono text-sm overflow-x-auto">
+                {generatedContent}
+              </pre>
+            </div>
+          )}
+        </div>
 
-      // If neither, something's wrong
-      console.error("❌ Unexpected response structure:", initialResponse);
-      throw new Error("No content or request ID returned from API");
-    },
-    onSuccess: (data: GeneratedContent) => {
-      setIsGenerating(false);
-      setResult({
-        content: data.contentHtml || data.content || "",
-        metadata: data.metadata,
-        saved_path: data.saved_path,
-      });
-      console.log('✅ Generation completed successfully');
-    },
-    onError: (error: Error) => {
-      setIsGenerating(false);
-      const message = error instanceof Error ? error.message : "An unknown error occurred during generation.";
-      setError(message);
-      console.error("❌ Generation error:", error);
-    },
-  });
+        {/* Export Options */}
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-white/20">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => handleExport('markdown')}
+              variant="outline"
+              size="sm"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Markdown
+            </Button>
+            <Button
+              onClick={() => handleExport('html')}
+              variant="outline"
+              size="sm"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              HTML
+            </Button>
+            <Button
+              onClick={() => handleExport('pdf')}
+              variant="outline"
+              size="sm"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              PDF Ready
+            </Button>
+          </div>
+          
+          <Button
+            onClick={onSave}
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save Content
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
-  const startGeneration = (params: GenerateContentFormValues) => {
-    generateContentMutation.mutate(params);
-  };
-
-  const cancelGeneration = () => {
-    setIsGenerating(false);
-    setRequestId(null);
-    generateContentMutation.reset();
-  };
-
-  const resetGeneration = () => {
-    setResult(null);
-    setError(null);
-    setRequestId(null);
-    generateContentMutation.reset();
-  };
-
-  return {
-    isGenerating,
-    result,
-    error,
-    requestId,
-    startGeneration,
-    cancelGeneration,
-    resetGeneration,
-  };
+// Helper function to convert markdown-like content to HTML
+function convertMarkdownToHTML(content: string): string {
+  return content
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<[uo]l>|<h[1-6]>)(.+)$/gm, '<p>$1</p>')
+    .replace(/<\/p><p><ul>/g, '</p><ul>')
+    .replace(/<\/ul><p>/g, '</ul><p>');
 }
 
-// ----------------------
-// Main Integrated Component
-// ----------------------
+// Helper function to create print-optimized HTML for PDF
+function createPrintOptimizedHTML(content: string, templateName?: string, styleProfile?: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Generated Content - Print Version</title>
+  <meta charset="UTF-8">
+  <style>
+    @page { 
+      margin: 1in; 
+      size: A4;
+    }
+    body { 
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.6;
+      color: #000;
+      background: #fff;
+    }
+    h1 { 
+      font-size: 18pt; 
+      margin-bottom: 12pt; 
+      page-break-after: avoid;
+    }
+    h2 { 
+      font-size: 16pt; 
+      margin-top: 18pt; 
+      margin-bottom: 10pt; 
+      page-break-after: avoid;
+    }
+    h3 { 
+      font-size: 14pt; 
+      margin-top: 14pt; 
+      margin-bottom: 8pt; 
+      page-break-after: avoid;
+    }
+    p { 
+      margin-bottom: 8pt; 
+      text-align: justify;
+    }
+    .header {
+      border-bottom: 1pt solid #000;
+      padding-bottom: 8pt;
+      margin-bottom: 16pt;
+    }
+    .footer {
+      margin-top: 24pt;
+      padding-top: 8pt;
+      border-top: 1pt solid #000;
+      font-size: 10pt;
+      text-align: center;
+    }
+    @media print {
+      body { margin: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <strong>Template:</strong> ${templateName || 'Unknown'}<br>
+    <strong>Style:</strong> ${styleProfile || 'Default'}<br>
+    <strong>Generated:</strong> ${new Date().toLocaleString()}
+  </div>
+  
+  ${convertMarkdownToHTML(content)}
+  
+  <div class="footer">
+    Generated by AgentWrite Pro • ${new Date().toLocaleDateString()}
+  </div>
+  
+  <div class="no-print" style="position: fixed; top: 20px; right: 20px;">
+    <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+      Print to PDF
+    </button>
+  </div>
+</body>
+</html>`;
+}
+
+// Main Component
 export default function GeneratePage() {
-  // State for generating dialog
   const [isGeneratingDialogOpen, setIsGeneratingDialogOpen] = useState(false);
   
-  // Use the updated hooks
-  const { templates, isLoading: templatesLoading, isError: templatesError, error: templatesErrorDetails } = useTemplates();
-  const { styleProfiles, isLoading: profilesLoading, isError: profilesError } = useStyleProfiles();
+  const { data: styleProfiles, isLoading: profilesLoading, isError: profilesError } = useStyleProfiles();
+  const { data: templates, isLoading: templatesLoading, isError: templatesError, error: templatesErrorDetails } = useTemplates();
 
   const {
     isGenerating,
@@ -267,17 +474,13 @@ export default function GeneratePage() {
     resetGeneration,
   } = useEnhancedGeneration();
 
-  // ----------------------
-  // Form Setup - Using backend-compatible schema
-  // ----------------------
-  const form = useForm<GenerateContentFormValues>({
+  const form = useForm({
     resolver: zodResolver(generateContentSchema),
     defaultValues: {
       templateId: "",
       styleProfileId: "",
       dynamic_parameters: {},
       platform: "web",
-      use_mock: false,
     },
     mode: "onChange",
   });
@@ -285,58 +488,77 @@ export default function GeneratePage() {
   const watchedTemplateId = form.watch("templateId");
   const watchedStyleProfileId = form.watch("styleProfileId");
 
-  // Safe template and style profile finding
-  const selectedTemplate: ExtendedTemplate | null = templates && Array.isArray(templates) 
-    ? templates.find((t: ExtendedTemplate) => t.id === watchedTemplateId) || null
+  // Safe template and style profile finding with null checking
+  const selectedTemplate: Template | null = templates && Array.isArray(templates) && watchedTemplateId
+    ? templates.find((t: Template) => t && t.id === watchedTemplateId) || null
     : null;
     
-  const selectedStyleProfile: ExtendedStyleProfile | null = styleProfiles && Array.isArray(styleProfiles)
-    ? styleProfiles.find((sp: ExtendedStyleProfile) => sp.id === watchedStyleProfileId) || null
+  const selectedStyleProfile: ExtendedStyleProfile | null = styleProfiles && Array.isArray(styleProfiles) && watchedStyleProfileId
+    ? styleProfiles.find((sp: ExtendedStyleProfile) => sp && sp.id === watchedStyleProfileId) || null
     : null;
 
-  // Debug logging
-  console.log('🔍 Debug info:', {
-    templates: templates?.length || 0,
-    styleProfiles: styleProfiles?.length || 0,
-    selectedTemplate: selectedTemplate?.name,
-    selectedStyleProfile: selectedStyleProfile?.name,
-    watchedTemplateId,
-    watchedStyleProfileId
-  });
+  const queryClient = useQueryClient();
 
-  // Update selected template when form changes
+  // Force fresh data on page load to fix caching issues
   useEffect(() => {
-    if (selectedTemplate && selectedTemplate.parameters && Array.isArray(selectedTemplate.parameters)) {
-      const newDefaults: Record<string, string | number | boolean> = {};
-      selectedTemplate.parameters.forEach((param: TemplateParameter) => {
-        if (param.default !== undefined) {
-          newDefaults[param.name] = param.default;
-        } else {
-          switch (param.type) {
-            case "text":
-            case "textarea":
-            case "select":
-              newDefaults[param.name] = "";
-              break;
-            case "number":
-              newDefaults[param.name] = 0;
-              break;
-            case "checkbox":
-              newDefaults[param.name] = false;
-              break;
+    queryClient.invalidateQueries({ queryKey: ['templates'] });
+    queryClient.invalidateQueries({ queryKey: ['style-profiles'] });
+  }, [queryClient]);
+
+  // Handle URL parameters for template pre-selection
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const templateParam = urlParams.get('template');
+    
+    if (templateParam && templates?.find(t => t.id === templateParam)) {
+      form.setValue('templateId', templateParam);
+      console.log('Template pre-selected from URL:', templateParam);
+    }
+  }, [templates, form]);
+
+  // Update selected template parameters
+  useEffect(() => {
+    if (selectedTemplate?.parameters && typeof selectedTemplate.parameters === 'object') {
+      try {
+        const newDefaults: Record<string, string | number | boolean> = {};
+        Object.entries(selectedTemplate.parameters).forEach(([paramName, param]) => {
+          if (!param || typeof param !== 'object' || !paramName) {
+            console.warn('Invalid parameter:', param);
+            return;
           }
-        }
-      });
-      form.resetField("dynamic_parameters", { defaultValue: newDefaults });
+          
+          if (param.default !== undefined) {
+            newDefaults[paramName] = param.default;
+          } else {
+            switch (param.type) {
+              case "text":
+              case "textarea":
+              case "select":
+              case "string":
+                newDefaults[paramName] = "";
+                break;
+              case "number":
+                newDefaults[paramName] = 0;
+                break;
+              case "checkbox":
+                newDefaults[paramName] = false;
+                break;
+              default:
+                newDefaults[paramName] = "";
+            }
+          }
+        });
+        form.resetField("dynamic_parameters", { defaultValue: newDefaults });
+      } catch (error) {
+        console.error('Error processing template parameters:', error);
+      }
     }
   }, [watchedTemplateId, selectedTemplate, form]);
 
-  // Sync generating dialog with generation state
   useEffect(() => {
     setIsGeneratingDialogOpen(isGenerating);
   }, [isGenerating]);
 
-  // Loading states
   if (templatesLoading || profilesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -348,65 +570,132 @@ export default function GeneratePage() {
     );
   }
 
-  // Error states
   if (templatesError || profilesError) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center text-red-600">
-          <h2 className="text-xl font-bold mb-2">Error Loading Data</h2>
-          <p className="mb-4">
-            {templatesError && "Failed to load templates. "}
-            {profilesError && "Failed to load style profiles."}
-          </p>
-          <p className="text-sm text-gray-500 mb-4">
-            {templatesErrorDetails?.message}
-          </p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Retry
-          </button>
+        <div className="text-center">
+          <Card className="bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 max-w-md">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 text-red-700 dark:text-red-300">
+                <AlertCircle className="h-5 w-5" />
+                <div>
+                  <h3 className="font-medium">Error Loading Data</h3>
+                  <p className="text-sm mt-1">
+                    {templatesError && "Failed to load templates. "}
+                    {profilesError && "Failed to load style profiles."}
+                  </p>
+                  {templatesErrorDetails?.message && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      {templatesErrorDetails.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                className="mt-4 w-full" 
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
-  // No data states
   if (!templates || !Array.isArray(templates) || templates.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <h2 className="text-xl font-bold mb-2">No Templates Available</h2>
-          <p className="text-gray-600 mb-4">
-            Templates: {templates?.length || 0} | Type: {typeof templates}
-          </p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Refresh
-          </button>
+          <Card className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800 max-w-md">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 text-yellow-700 dark:text-yellow-300">
+                <AlertCircle className="h-5 w-5" />
+                <div>
+                  <h3 className="font-medium">No Templates Available</h3>
+                  <p className="text-sm mt-1">
+                    No templates found. Please check your backend connection.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Templates: {templates?.length || 0} | Backend: {USE_BACKEND_API ? 'Enabled' : 'Disabled'}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                className="mt-4 w-full" 
+                onClick={() => window.location.reload()}
+              >
+                Refresh
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
-  // ----------------------
-  // Event Handlers
-  // ----------------------
-  const onSubmit = (values: GenerateContentFormValues) => {
-    console.log('📝 Form submitted:', values);
-    startGeneration(values);
+  const onSubmit: SubmitHandler<GenerateContentFormValues> = (values) => {
+    console.log('🔍 Form submitted with values:', values);
+    console.log('🔍 Dynamic parameters:', values.dynamic_parameters);
+    
+    const params = values.dynamic_parameters || {};
+    
+    const getValue = (key: string, fallback: string): string => {
+      const value = params[key];
+      if (value === null || value === undefined) return fallback;
+      return String(value);
+    };
+    
+    const topic = getValue("topic", "") || 
+                 getValue("blog_topic", "") || 
+                 getValue("subject", "") || 
+                 getValue("content_topic", "") || 
+                 "Data Science";
+    
+    const audience = getValue("target_audience", "") || 
+                    getValue("audience", "") || 
+                    getValue("target_demographic", "") || 
+                    getValue("intended_audience", "") ||
+                    "Data enthusiasts";
+
+    console.log('🔍 Extracted values:', { topic, audience });
+    console.log('✅ Starting generation...');
+    
+    startGeneration({
+      template: values.templateId,
+      style_profile: values.styleProfileId,
+      dynamic_parameters: params,
+      topic,
+      audience,
+      tags: [],
+      platform: values.platform,
+      priority: 1,
+      timeout_seconds: 300,
+      generation_mode: 'standard',
+    });
+  };
+
+  type GenerationResultMetadata = {
+    saved_path?: string;
+    [key: string]: unknown;
   };
 
   const handleSaveContent = () => {
-    if (result?.saved_path) {
-      const slug = result.saved_path.split("/").pop()?.replace(/\.(json|md)$/, "");
-      if (slug) {
-        window.location.href = `/content/${slug}`;
+    if (result && 'metadata' in result && result.metadata) {
+      const savedPath = (result.metadata as GenerationResultMetadata)?.saved_path;
+      if (savedPath) {
+        const slug = savedPath.split("/").pop()?.replace(/\.(json|md)$/, "");
+        if (slug) {
+          window.location.href = `/content/${slug}`;
+          return;
+        }
       }
     }
+    
+    window.location.href = '/content';
   };
 
   const canGenerate = 
@@ -418,13 +707,6 @@ export default function GeneratePage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 text-gray-900 dark:text-white">
-      {/* Debug info (remove after fixing) */}
-      <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-        <p>📊 Debug: {templates?.length || 0} templates, {styleProfiles?.length || 0} profiles loaded</p>
-        <p>🎯 Selected: {selectedTemplate?.name || 'None'} | {selectedStyleProfile?.name || 'None'}</p>
-        <p>🔍 Watching: {watchedTemplateId} | {watchedStyleProfileId}</p>
-      </div>
-
       {/* Enhanced Header */}
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
@@ -433,13 +715,17 @@ export default function GeneratePage() {
         <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
           Create high-quality content using our advanced AI models. Select a template and style profile to get started.
         </p>
+        {USE_BACKEND_API && (
+          <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            Connected to AI Backend
+          </div>
+        )}
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Configuration Section */}
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Template Selection */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -453,9 +739,8 @@ export default function GeneratePage() {
               <CardContent>
                 <TemplateSelector
                   form={form}
-                  // FIXED VERSION:
-                templates={adaptTemplateCollection(templates || [])}
-                styleProfiles={adaptStyleProfileCollection(styleProfiles || [])}
+                  templates={adaptTemplateCollection(templates || [])}
+                  styleProfiles={adaptStyleProfileCollection(styleProfiles || [])}
                   isLoadingTemplates={templatesLoading}
                   isLoadingStyleProfiles={profilesLoading}
                 />
@@ -472,7 +757,6 @@ export default function GeneratePage() {
               </CardContent>
             </Card>
 
-            {/* Style Profile Selection */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -484,10 +768,6 @@ export default function GeneratePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <StyleProfilesSelector
-                  value={watchedStyleProfileId}
-                  onChange={(value: string) => form.setValue("styleProfileId", value)}
-                />
                 {selectedStyleProfile && (
                   <div className="mt-4">
                     <Badge variant="secondary" className="mb-2">
@@ -502,8 +782,7 @@ export default function GeneratePage() {
             </Card>
           </div>
 
-          {/* Dynamic Parameters */}
-          {selectedTemplate && selectedTemplate.parameters && Array.isArray(selectedTemplate.parameters) && selectedTemplate.parameters.length > 0 && (
+         {selectedTemplate && selectedTemplate.parameters && typeof selectedTemplate.parameters === 'object' && Object.keys(selectedTemplate.parameters).length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Template Parameters</CardTitle>
@@ -512,12 +791,22 @@ export default function GeneratePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <DynamicParameters parameters={selectedTemplate.parameters} />
+                <DynamicParameters 
+                  parameters={Object.entries(selectedTemplate.parameters).map(([key, param]) => ({
+                    name: key,
+                    label: param.label,
+                    type: param.type === "string" ? "text" : param.type as "text" | "textarea" | "select" | "number" | "checkbox",
+                    options: param.options,
+                    default: param.default,
+                    required: param.required,
+                    placeholder: param.placeholder,
+                    description: param.description
+                  }))} 
+                />
               </CardContent>
             </Card>
           )}
 
-          {/* Generation Controls */}
           <Card className="border-2 border-dashed border-purple-200 dark:border-purple-800">
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -529,7 +818,7 @@ export default function GeneratePage() {
                     <h3 className="font-semibold">Ready to Generate</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-300">
                       {canGenerate 
-                        ? "Click generate to create your content"
+                        ? "Click generate to create your content with AI"
                         : "Please select both template and style profile"
                       }
                     </p>
@@ -567,20 +856,26 @@ export default function GeneratePage() {
         </form>
       </Form>
 
-      {/* Error Display */}
       {error && (
         <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
-              <span className="font-medium">Generation Failed:</span>
-              <span>{error}</span>
+              <AlertCircle className="h-5 w-5" />
+              <div>
+                <span className="font-medium">Generation Failed:</span>
+                <p className="text-sm mt-1">{error}</p>
+                {!USE_BACKEND_API && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                    Tip: Enable backend API in environment variables for better reliability
+                  </p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Generation Preview */}
-      <GenerationPreview
+      <EnhancedGenerationPreview
         isGenerating={isGenerating}
         generatedContent={result?.content}
         onCancel={cancelGeneration}
@@ -589,7 +884,6 @@ export default function GeneratePage() {
         styleProfile={selectedStyleProfile?.name}
       />
 
-      {/* Enhanced Generating Dialog */}
       <GeneratingDialog open={isGeneratingDialogOpen} />
     </div>
   );

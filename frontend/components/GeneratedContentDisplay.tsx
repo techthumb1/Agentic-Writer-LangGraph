@@ -14,7 +14,13 @@ import {
   FileText, 
   BarChart3, 
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Send,
+  Newspaper,    // For Substack
+  Edit3,        // For Medium
+  Briefcase,    // For LinkedIn
+  MessageCircle, // For Twitter/X
+  FileType      // For WordPress
 } from 'lucide-react';
 
 // Enterprise interfaces
@@ -81,6 +87,9 @@ interface GeneratedContentDisplayProps {
   enableRealTimeAnalytics?: boolean;
   enableAIEnhancements?: boolean;
   enableCompetitiveIntelligence?: boolean;
+  onPublish?: (content: string, platform: string, options?: unknown) => Promise<void>;
+  onSchedule?: (content: string, platform: string, scheduledTime: Date) => Promise<void>;
+  enablePublishing?: boolean;
 }
 
 const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({ 
@@ -92,7 +101,9 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
   onContentUpdate,
   enableRealTimeAnalytics = true,
   enableAIEnhancements = true,
-  enableCompetitiveIntelligence = true
+  enableCompetitiveIntelligence = true,
+  onPublish,
+  enablePublishing = false
 }) => {
   // Enterprise state management
   const [isSaving, setIsSaving] = useState(false);
@@ -102,11 +113,52 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
   const [analytics, setAnalytics] = useState<ContentAnalytics | null>(initialAnalytics || null);
   const [exportFormat, setExportFormat] = useState<'markdown' | 'html' | 'pdf' | 'docx'>('markdown');
   const [shareableUrl, setShareableUrl] = useState<string | null>(null);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   
   const { toast } = useToast();
   const { measureFunction, reportMetric } = usePerformanceMonitoring();
   const { mcpCapabilities, callTool, storeMemory } = useMCP();
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Publishing platforms configuration
+  const publishingPlatforms = [
+    { 
+      id: 'substack', 
+      name: 'Substack', 
+      icon: Newspaper, 
+      color: 'bg-orange-500',
+      description: 'Newsletter Publishing Platform'
+    },
+    { 
+      id: 'medium', 
+      name: 'Medium', 
+      icon: Edit3, 
+      color: 'bg-green-500',
+      description: 'Professional Writing Platform'
+    },
+    { 
+      id: 'linkedin', 
+      name: 'LinkedIn', 
+      icon: Briefcase, 
+      color: 'bg-blue-600',
+      description: 'Professional Network'
+    },
+    { 
+      id: 'twitter', 
+      name: 'Twitter/X', 
+      icon: MessageCircle, 
+      color: 'bg-gray-900',
+      description: 'Social Media Platform'
+    },
+    { 
+      id: 'wordpress', 
+      name: 'WordPress', 
+      icon: FileType, 
+      color: 'bg-blue-500',
+      description: 'Content Management System'
+    },
+  ];
 
   // Enterprise content analysis
   const contentStats = useMemo(() => {
@@ -121,6 +173,45 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
       uniqueness_fingerprint: generateContentFingerprint(content)
     };
   }, [content]);
+
+  // Publishing handler
+  const handlePublishContent = useCallback(async (platform: string) => {
+    if (!onPublish) return;
+
+    setIsPublishing(true);
+    try {
+      await onPublish(content, platform);
+
+      toast({
+        title: "WriterzRoom Publishing",
+        description: `Content published to ${platform} successfully`,
+      });
+
+      setShowPublishModal(false);
+
+      // Track publishing in MCP if available
+      if (mcpCapabilities?.memory) {
+        await storeMemory({
+          key: `publish_action_${generationId}`,
+          value: JSON.stringify({
+            platform,
+            timestamp: new Date().toISOString(),
+            content_fingerprint: contentStats?.uniqueness_fingerprint,
+          }),
+          namespace: 'publishing_history'
+        });
+      }
+
+    } catch {
+      toast({
+        title: "Publishing Failed",
+        description: `Failed to publish to ${platform}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [content, onPublish, generationId, mcpCapabilities, contentStats, storeMemory, toast]);
 
   // Advanced copy with AI-powered variations
   const handleIntelligentCopy = useCallback(async () => {
@@ -149,8 +240,8 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
                 content: enhancedContent.result as string 
               });
             }
-          } catch (error) {
-            console.warn('AI enhancement failed:', error);
+          } catch {
+            console.warn('AI enhancement failed');
           }
         }
         
@@ -326,8 +417,8 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
         URL.revokeObjectURL(url);
         
         toast({
-          title: "Export Successful!",
-          description: `Content exported as ${exportFormat.toUpperCase()} with analytics.`,
+          title: "WriterzRoom Export",
+          description: `Content exported as ${exportFormat.toUpperCase()} with analytics`,
         });
         
         reportMetric({
@@ -405,8 +496,8 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
         setAnalytics(combinedAnalytics);
         
         toast({
-          title: "Analysis Complete!",
-          description: `Content analyzed with ${analysisPromises.length} AI models.`,
+          title: "WriterzRoom Analytics",
+          description: `Content analyzed with ${analysisPromises.length} AI models`,
         });
         
       } catch (analysisError) {
@@ -467,8 +558,8 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
         }
         
         toast({
-          title: "Enterprise Save Complete!",
-          description: `Content saved with analytics and monetization data.`,
+          title: "WriterzRoom Enterprise",
+          description: `Content saved with analytics and monetization data`,
         });
         
         reportMetric({
@@ -623,6 +714,93 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
         </div>
       )}
 
+      {/* Publishing Modal */}
+      {showPublishModal && enablePublishing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-3xl w-full mx-4 max-h-[85vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <Send className="h-5 w-5 text-purple-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Publish Content</h3>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowPublishModal(false)}
+                >
+                  Close
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {publishingPlatforms.map((platform) => {
+                  const IconComponent = platform.icon;
+                  return (
+                    <div key={platform.id} className="border rounded-lg p-4 hover:border-purple-500 transition-colors hover:shadow-md">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-10 h-10 ${platform.color} rounded-lg flex items-center justify-center`}>
+                          <IconComponent className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-900">{platform.name}</span>
+                          <p className="text-xs text-gray-500">{platform.description}</p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => handlePublishContent(platform.id)}
+                        disabled={isPublishing}
+                        className="w-full"
+                        size="sm"
+                      >
+                        {isPublishing ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                            Publishing...
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Send className="h-3 w-3" />
+                            Publish to {platform.name}
+                          </div>
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Content Preview in Modal */}
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Eye className="h-4 w-4 text-gray-600" />
+                  <h4 className="font-medium text-gray-900">Content Preview</h4>
+                </div>
+                <div className="text-sm text-gray-700 max-h-32 overflow-y-auto bg-white p-3 rounded border">
+                  {content.substring(0, 300)}...
+                </div>
+                <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    {contentStats?.word_count} words
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <BarChart3 className="h-3 w-3" />
+                    {contentStats?.estimated_read_time}min read
+                  </div>
+                  {analytics && (
+                    <div className="flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      SEO: {analytics.seo_optimization?.score || 0}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Enterprise Action Buttons */}
       <div className="flex flex-wrap gap-2 justify-between items-center border-b pb-4">
         <div className="flex flex-wrap gap-2">
@@ -693,6 +871,26 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
             >
               <Sparkles className="h-4 w-4" />
               {isEnhancing ? 'Enhancing...' : 'AI Enhance'}
+            </Button>
+          )}
+
+          {enablePublishing && onPublish && (
+            <Button
+              onClick={() => setShowPublishModal(true)}
+              variant="outline"
+              size="sm"
+              disabled={isPublishing}
+              className="flex items-center gap-2 border-purple-500 text-purple-600 hover:bg-purple-50 hover:border-purple-600 transition-all duration-200"
+            >
+              <Send className="h-4 w-4" />
+              {isPublishing ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 border border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                  Publishing
+                </div>
+              ) : (
+                'Publish'
+              )}
             </Button>
           )}
           

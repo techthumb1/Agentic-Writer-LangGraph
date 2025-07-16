@@ -97,7 +97,7 @@ export default function SettingsPage() {
     // Toast without duration since it's not supported
     toast({
       title: 'Theme Updated',
-      description: `Switched to ${newTheme === 'agentwrite-pro' ? 'AgentWrite Pro' : newTheme} theme`,
+      description: `Switched to ${newTheme === 'writerzroom' ? 'WriterzRoom' : newTheme} theme`,
     })
   }
 
@@ -111,7 +111,7 @@ export default function SettingsPage() {
           ...prev,
           name: 'John Doe',
           email: 'john.doe@example.com',
-          bio: 'Content creator using AgentWrite Pro'
+          bio: 'Content creator using WriterzRoom'
         }))
       } catch (err) {
         console.error('Failed to load settings:', err)
@@ -177,7 +177,7 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'agentwrite-pro-settings.json'
+      a.download = 'writerzroom-settings.json'
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -235,7 +235,7 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'agentwrite-pro-data-export.json'
+      a.download = 'writerzroom-data-export.json'
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -266,7 +266,7 @@ export default function SettingsPage() {
               </span>
             </h1>
             <p className="text-xl text-muted-foreground">
-              Manage your AgentWrite Pro preferences and account settings
+              Manage your WriterzRoom preferences and account settings
             </p>
           </div>
 
@@ -442,7 +442,7 @@ export default function SettingsPage() {
                     <div className="space-y-0.5">
                       <Label>Marketing Communications</Label>
                       <p className="text-sm text-muted-foreground">
-                        Receive updates about new features, tips, and AgentWrite Pro promotions
+                        Receive updates about new features, tips, and WriterzRoom promotions
                       </p>
                     </div>
                     <Switch
@@ -476,14 +476,14 @@ export default function SettingsPage() {
                     Appearance Settings
                   </CardTitle>
                   <CardDescription>
-                    Customize the look and feel of AgentWrite Pro
+                    Customize the look and feel of WriterzRoom
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="theme">Theme Preference</Label>
                     <Select
-                      value={theme || 'agentwrite-pro'}
+                      value={theme || 'writerzroom'}
                       onValueChange={handleThemeChange}
                       key={theme} // This forces re-render when theme changes
                     >
@@ -491,10 +491,10 @@ export default function SettingsPage() {
                         <SelectValue placeholder="Select a theme" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="agentwrite-pro">
+                        <SelectItem value="writerzroom">
                           <div className="flex items-center gap-2">
                             <Sparkles className="h-4 w-4" />
-                            AgentWrite Pro
+                            WriterzRoom
                           </div>
                         </SelectItem>
                         <SelectItem value="light">
@@ -518,7 +518,7 @@ export default function SettingsPage() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Current: {theme === 'agentwrite-pro' ? 'AgentWrite Pro' : theme} theme
+                      Current: {theme === 'writerzroom' ? 'WriterzRoom' : theme} theme
                     </p>
                   </div>
                 </CardContent>
@@ -534,7 +534,7 @@ export default function SettingsPage() {
                       Content Generation Settings
                     </CardTitle>
                     <CardDescription>
-                      Configure default settings for AgentWrite Pro content generation
+                      Configure default settings for WriterzRoom content generation
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -719,7 +719,7 @@ export default function SettingsPage() {
                   Backup & Export
                 </CardTitle>
                 <CardDescription>
-                  Export or import your AgentWrite Pro settings for backup purposes
+                  Export or import your WriterzRoom settings for backup purposes
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -770,7 +770,7 @@ export default function SettingsPage() {
                   Account Information
                 </CardTitle>
                 <CardDescription>
-                  View and manage your AgentWrite Pro account details
+                  View and manage your WriterzRoom account details
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -786,7 +786,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Account Type</Label>
-                  <Input value="AgentWrite Pro Premium" disabled />
+                  <Input value="WriterzRoom Premium" disabled />
                 </div>
               </CardContent>
             </Card>
@@ -798,7 +798,7 @@ export default function SettingsPage() {
                   Data Export
                 </CardTitle>
                 <CardDescription>
-                  Download all your AgentWrite Pro data for backup or migration
+                  Download all your WriterzRoom data for backup or migration
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -824,7 +824,7 @@ export default function SettingsPage() {
                   Danger Zone
                 </CardTitle>
                 <CardDescription>
-                  Permanently delete your AgentWrite Pro account and all associated data
+                  Permanently delete your WriterzRoom account and all associated data
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -833,7 +833,7 @@ export default function SettingsPage() {
                     Account Deletion
                   </h4>
                   <p className="text-sm text-muted-foreground mb-4">
-                    This action cannot be undone. This will permanently delete your AgentWrite Pro account, 
+                    This action cannot be undone. This will permanently delete your WriterzRoom account, 
                     all your generated content, templates, and remove all associated data from our servers.
                   </p>
                   <ul className="text-sm text-muted-foreground space-y-1 mb-4">

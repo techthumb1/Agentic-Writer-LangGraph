@@ -14,7 +14,9 @@ interface ApiError extends Error {
 
 // Define mutation context type
 
-export function ReactQueryProvider({ children }: { children: React.ReactNode }) {
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function ReactQueryProvider({ children }: { children: any }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
