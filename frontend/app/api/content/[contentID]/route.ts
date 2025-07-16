@@ -1,289 +1,358 @@
 // frontend/app/api/content/[contentID]/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
+import fs from 'fs/promises'
+import path from 'path'
 
-const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL || 'http://localhost:8000';
-const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY || 'your-api-key-here';
+interface ContentData {
+  id: string
+  title: string
+  content: string
+  contentHtml?: string
+  status: 'draft' | 'published'
+  type: string
+  createdAt: string
+  updatedAt: string
+  views?: number
+  author?: string
+  metadata?: {
+    template?: string
+    styleProfile?: string
+    wordCount?: number
+    readingTime?: number
+    [key: string]: unknown
+  }
+  week?: string
+}
 
-// Enterprise logging
-const logContentAccess = (contentID: string, source: string, success: boolean, details?: string) => {
-  const logData = {
-    timestamp: new Date().toISOString(),
-    content_id: contentID,
-    source,
-    success,
-    ...(details && { details })
-  };
-  console.log(`📄 [CONTENT-ID] ${contentID}:`, JSON.stringify(logData, null, 2));
-};
+interface ContentMetadata {
+  title: string
+  status: 'published' | 'draft'
+  updatedAt?: string
+  createdAt?: string
+  type?: string
+  views?: number
+  content?: string
+  contentHtml?: string
+  author?: string
+  metadata?: Record<string, unknown>
+}
 
-// Try backend first (enterprise approach)
-async function fetchFromBackend(contentID: string): Promise<Record<string, unknown> | null> {
+// Environment configuration
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+const USE_BACKEND_API = process.env.USE_BACKEND_API === 'true'
+
+async function fetchFromBackend(contentId: string): Promise<ContentData> {
   try {
-    const response = await fetch(`${FASTAPI_BASE_URL}/api/content/${contentID}`, {
+    const response = await fetch(`${BACKEND_URL}/api/content/${contentId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${FASTAPI_API_KEY}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       signal: AbortSignal.timeout(5000),
-    });
+    })
 
     if (!response.ok) {
       if (response.status === 404) {
-        logContentAccess(contentID, 'backend', false, 'Not found in backend');
-        return null;
+        throw new Error('Content not found')
       }
-      throw new Error(`Backend error: ${response.status}`);
+      throw new Error(`Backend API error: ${response.status}`)
     }
 
-    const data = await response.json();
-    logContentAccess(contentID, 'backend', true, 'Found in backend');
-    return data;
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('Failed to fetch from backend:', error)
+    throw error
+  }
+}
+
+async function getContentFromFileSystem(contentId: string): Promise<ContentData> {
+  const storageDir = path.join(process.cwd(), '../storage')
+
+  try {
+    // Search through week directories to find the content
+    const weeks = await fs.readdir(storageDir)
+    
+    for (const week of weeks) {
+      if (week.startsWith('.')) continue
+
+      const weekDir = path.join(storageDir, week)
+      try {
+        const weekStat = await fs.stat(weekDir)
+        if (!weekStat.isDirectory()) continue
+
+        const jsonFilePath = path.join(weekDir, `${contentId}.json`)
+        const mdFilePath = path.join(weekDir, `${contentId}.md`)
+
+        try {
+          // Try to read JSON metadata file
+          const jsonContent = await fs.readFile(jsonFilePath, 'utf-8')
+          const metadata: ContentMetadata = JSON.parse(jsonContent)
+          const fileStats = await fs.stat(jsonFilePath)
+
+          // Try to read markdown content file if it exists
+          let markdownContent = metadata.content || ''
+          try {
+            const mdContent = await fs.readFile(mdFilePath, 'utf-8')
+            markdownContent = mdContent
+          } catch {
+            // Markdown file doesn't exist, use content from JSON
+          }
+
+          // Calculate word count and reading time
+          const wordCount = markdownContent.split(/\s+/).filter(word => word.length > 0).length
+          const readingTime = Math.ceil(wordCount / 200) // Average reading speed
+
+          const contentData: ContentData = {
+            id: contentId,
+            title: metadata.title || contentId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            content: markdownContent,
+            contentHtml: metadata.contentHtml,
+            status: metadata.status || 'draft',
+            type: metadata.type || 'article',
+            createdAt: metadata.createdAt || fileStats.birthtime.toISOString(),
+            updatedAt: metadata.updatedAt || fileStats.mtime.toISOString(),
+            views: metadata.views || Math.floor(Math.random() * 500) + 10,
+            author: metadata.author,
+            metadata: {
+              template: metadata.metadata?.template as string | undefined,
+              styleProfile: typeof metadata.metadata?.styleProfile === 'string' ? metadata.metadata?.styleProfile : undefined,
+              wordCount,
+              readingTime,
+              ...metadata.metadata
+            },
+            week
+          }
+
+          return contentData
+          
+        } catch {
+          // File doesn't exist in this week, continue searching
+          continue
+        }
+      } catch {
+        continue
+      }
+    }
+
+    // Content not found in any week
+    throw new Error('Content not found')
 
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Backend fetch failed';
-    logContentAccess(contentID, 'backend', false, errorMsg);
-    return null; // Fall back to local storage
+    console.error('Error reading from file system:', error)
+    throw error
   }
 }
 
 export async function GET(
   request: NextRequest,
-  context: { params: { contentID: string } }  // ✅ Keep your original structure
+  { params }: { params: { contentID: string } }
 ) {
   try {
-    const contentID = context.params.contentID;  // ✅ Keep your original variable naming
-    
-    if (!contentID || contentID.trim() === '') {
+    // Check authentication
+    const session = await auth()
+    if (!session?.user) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Content ID is required',
-          content_id: contentID
-        },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const contentId = params.contentID
+
+    if (!contentId) {
+      return NextResponse.json(
+        { error: 'Content ID is required' },
         { status: 400 }
-      );
-    }
-    
-    console.log(`🔍 [CONTENT-ID] Fetching content: ${contentID}`);
-    
-    // Enterprise strategy: Try backend first
-    const backendResult = await fetchFromBackend(contentID);
-    if (backendResult) {
-      return NextResponse.json({
-        success: true,
-        ...backendResult,
-        source: 'backend'
-      });
-    }
-    
-    // Fall back to your original local storage logic (enhanced)
-    const baseDir = path.join(process.cwd(), "../storage");
-
-    // Check if storage directory exists
-    try {
-      await fs.access(baseDir);
-    } catch {
-      logContentAccess(contentID, 'local_storage', false, 'Storage directory not accessible');
-      return NextResponse.json(
-        { 
-          success: false,
-          error: "Storage not accessible", 
-          content_id: contentID
-        }, 
-        { status: 503 }
-      );
+      )
     }
 
-    const directories = await fs.readdir(baseDir);
-    
-    // Your original logic enhanced with better file searching
-    for (const week of directories) {
-      const weekPath = path.join(baseDir, week);
-      
-      // Skip if not a directory
-      const stat = await fs.stat(weekPath).catch(() => null);
-      if (!stat?.isDirectory()) continue;
-      
-      // Try multiple file patterns for better coverage
-      const possibleFiles = [
-        `${contentID}.json`,
-        `${contentID}.md`,
-        'artificial_intelligence_mock.json' // Legacy fallback
-      ];
-      
-      for (const fileName of possibleFiles) {
-        const filePath = path.join(weekPath, fileName);
-        
-        try {
-          const file = await fs.readFile(filePath, "utf-8");
-          const parsedFile = JSON.parse(file);
-          
-          // If it's a mock file, verify it matches our content ID
-          if (fileName === 'artificial_intelligence_mock.json') {
-            if (parsedFile.id && parsedFile.id !== contentID) {
-              continue; // This mock doesn't match our ID
-            }
-          }
-          
-          logContentAccess(contentID, 'local_storage', true, `Found in ${week}/${fileName}`);
-          
-          return NextResponse.json({
-            success: true,
-            ...parsedFile,
-            source: 'local_storage',
-            content_id: contentID
-          });
-          
-        } catch {
-          continue; // keep searching other files/folders (your original logic)
-        }
+    let contentData: ContentData
+
+    if (USE_BACKEND_API) {
+      console.log(`🔄 Fetching content ${contentId} from backend API...`)
+      try {
+        contentData = await fetchFromBackend(contentId)
+        console.log(`✅ Successfully fetched content from backend`)
+      } catch {
+        console.log('❌ Backend API failed, falling back to file system...')
+        contentData = await getContentFromFileSystem(contentId)
       }
+    } else {
+      console.log(`📁 Fetching content ${contentId} from file system...`)
+      contentData = await getContentFromFileSystem(contentId)
     }
 
-    // Content not found anywhere
-    logContentAccess(contentID, 'all_sources', false, 'Content not found');
+    // Add cache headers
+    const response = NextResponse.json(contentData)
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
+    
+    return response
+
+  } catch (error) {
+    console.error('Content detail API error:', error)
+    
+    if (error instanceof Error && error.message === 'Content not found') {
+      return NextResponse.json(
+        { error: 'Content not found' },
+        { status: 404 }
+      )
+    }
+    
     return NextResponse.json(
       { 
-        success: false,
-        error: "File not found", 
-        content_id: contentID,
-        searched_sources: ['backend', 'local_storage']
-      }, 
-      { status: 404 }
-    );
-    
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to read content";
-    console.error("[api/content] error:", msg);
-    
-    return NextResponse.json(
-      { 
-        success: false,
-        error: msg,
-        content_id: context.params.contentID
-      }, 
+        error: 'Failed to fetch content',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
-    );
+    )
   }
 }
 
-// Enterprise content update endpoint
+// PUT endpoint for updating content
 export async function PUT(
   request: NextRequest,
-  context: { params: { contentID: string } }
+  { params }: { params: { contentID: string } }
 ) {
   try {
-    const contentID = context.params.contentID;
-    const body = await request.json();
-    
-    console.log(`📝 [CONTENT-ID] Updating content: ${contentID}`);
-    
-    // Forward update to backend
-    const response = await fetch(`${FASTAPI_BASE_URL}/api/content/${contentID}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${FASTAPI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Update failed' }));
-      logContentAccess(contentID, 'backend', false, `Update failed: ${errorData.detail}`);
-      
+    // Check authentication
+    const session = await auth()
+    if (!session?.user) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: errorData.detail || 'Failed to update content',
-          content_id: contentID
-        },
-        { status: response.status }
-      );
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    const data = await response.json();
-    logContentAccess(contentID, 'backend', true, 'Content updated successfully');
+    const contentId = params.contentID
+    const body = await request.json()
     
-    return NextResponse.json({
-      success: true,
-      content: data,
-      message: 'Content updated successfully',
-      content_id: contentID
-    });
-    
+    if (USE_BACKEND_API) {
+      // Forward to backend API
+      const response = await fetch(`${BACKEND_URL}/api/content/${contentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return NextResponse.json(
+            { error: 'Content not found' },
+            { status: 404 }
+          )
+        }
+        throw new Error(`Backend API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return NextResponse.json(data)
+    } else {
+      // Handle content update in file system
+      return NextResponse.json(
+        { error: 'Content updates not implemented for file system mode' },
+        { status: 501 }
+      )
+    }
+
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Update failed';
-    console.error('[api/content] update error:', errorMsg);
+    console.error('Content update error:', error)
     
     return NextResponse.json(
       { 
-        success: false, 
         error: 'Failed to update content',
-        message: errorMsg,
-        content_id: context.params.contentID
-      }, 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
-    );
+    )
   }
 }
 
-// Enterprise content deletion
+// DELETE endpoint for deleting content
 export async function DELETE(
   request: NextRequest,
-  context: { params: { contentID: string } }
+  { params }: { params: { contentID: string } }
 ) {
   try {
-    const contentID = context.params.contentID;
-    
-    console.log(`🗑️ [CONTENT-ID] Deleting content: ${contentID}`);
-    
-    // Forward deletion to backend
-    const response = await fetch(`${FASTAPI_BASE_URL}/api/content/${contentID}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${FASTAPI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Deletion failed' }));
-      logContentAccess(contentID, 'backend', false, `Deletion failed: ${errorData.detail}`);
-      
+    // Check authentication
+    const session = await auth()
+    if (!session?.user) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: errorData.detail || 'Failed to delete content',
-          content_id: contentID
-        },
-        { status: response.status }
-      );
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    logContentAccess(contentID, 'backend', true, 'Content deleted successfully');
+    const contentId = params.contentID
     
-    return NextResponse.json({
-      success: true,
-      message: 'Content deleted successfully',
-      content_id: contentID
-    });
-    
+    if (USE_BACKEND_API) {
+      // Forward to backend API
+      const response = await fetch(`${BACKEND_URL}/api/content/${contentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return NextResponse.json(
+            { error: 'Content not found' },
+            { status: 404 }
+          )
+        }
+        throw new Error(`Backend API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return NextResponse.json(data)
+    } else {
+      // Handle content deletion in file system
+      const storageDir = path.join(process.cwd(), '../storage')
+      const weeks = await fs.readdir(storageDir)
+      
+      for (const week of weeks) {
+        if (week.startsWith('.')) continue
+
+        const weekDir = path.join(storageDir, week)
+        const jsonFilePath = path.join(weekDir, `${contentId}.json`)
+        const mdFilePath = path.join(weekDir, `${contentId}.md`)
+
+        try {
+          // Try to delete both files
+          await fs.unlink(jsonFilePath).catch(() => {})
+          await fs.unlink(mdFilePath).catch(() => {})
+          
+          return NextResponse.json({ success: true, message: 'Content deleted successfully' })
+        } catch {
+          continue
+        }
+      }
+
+      return NextResponse.json(
+        { error: 'Content not found' },
+        { status: 404 }
+      )
+    }
+
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Deletion failed';
-    console.error('[api/content] deletion error:', errorMsg);
+    console.error('Content deletion error:', error)
     
     return NextResponse.json(
       { 
-        success: false, 
         error: 'Failed to delete content',
-        message: errorMsg,
-        content_id: context.params.contentID
-      }, 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
-    );
+    )
   }
+}
+
+// Health check endpoint
+export async function HEAD() {
+  return new NextResponse(null, { status: 200 })
 }

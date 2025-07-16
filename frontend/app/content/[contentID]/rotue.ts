@@ -60,7 +60,7 @@ async function fetchFromBackend(contentId: string): Promise<ContentData> {
       throw new Error(`Backend API error: ${response.status}`)
     }
 
-    const data: ContentData = await response.json()
+    const data = await response.json()
     return data
   } catch (backendError) {
     console.error('Failed to fetch from backend:', backendError)
@@ -133,8 +133,7 @@ async function getContentFromFileSystem(contentId: string): Promise<ContentData>
           console.error(`File error in week ${week}:`, fileError)
           continue
         }
-      } catch (weekError) {
-        console.error(`Error processing week ${week}:`, weekError)
+      } catch {
         continue
       }
     }
@@ -149,7 +148,7 @@ async function getContentFromFileSystem(contentId: string): Promise<ContentData>
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { contentID: string } }
 ) {
   try {
@@ -178,9 +177,8 @@ export async function GET(
       try {
         contentData = await fetchFromBackend(contentId)
         console.log(`✅ Successfully fetched content from backend`)
-      } catch (backendError) {
+      } catch {
         console.log('❌ Backend API failed, falling back to file system...')
-        console.error('Backend error:', backendError)
         contentData = await getContentFromFileSystem(contentId)
       }
     } else {
@@ -194,10 +192,10 @@ export async function GET(
     
     return response
 
-  } catch (routeError) {
-    console.error('Content detail API error:', routeError)
+  } catch (error) {
+    console.error('Content detail API error:', error)
     
-    if (routeError instanceof Error && routeError.message === 'Content not found') {
+    if (error instanceof Error && error.message === 'Content not found') {
       return NextResponse.json(
         { error: 'Content not found' },
         { status: 404 }
@@ -207,7 +205,7 @@ export async function GET(
     return NextResponse.json(
       { 
         error: 'Failed to fetch content',
-        details: routeError instanceof Error ? routeError.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )
@@ -262,13 +260,13 @@ export async function PUT(
       )
     }
 
-  } catch (updateError) {
-    console.error('Content update error:', updateError)
+  } catch (error) {
+    console.error('Content update error:', error)
     
     return NextResponse.json(
       { 
         error: 'Failed to update content',
-        details: updateError instanceof Error ? updateError.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )
@@ -277,7 +275,7 @@ export async function PUT(
 
 // DELETE endpoint for deleting content
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { contentID: string } }
 ) {
   try {
@@ -343,13 +341,13 @@ export async function DELETE(
       )
     }
 
-  } catch (deleteApiError) {
-    console.error('Content deletion error:', deleteApiError)
+  } catch (error) {
+    console.error('Content deletion error:', error)
     
     return NextResponse.json(
       { 
         error: 'Failed to delete content',
-        details: deleteApiError instanceof Error ? deleteApiError.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )

@@ -1,95 +1,112 @@
-// frontend/app/api/generate/status/[requestId]/route.ts
+// frontend/app/api/generate/route.ts - ADD DEBUG LOGGING
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 
-const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL || 'http://localhost:8000';
-const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY || 'your-api-key-here';
+const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL;
+const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ requestId: string }> }
-) {
+export async function POST(request: NextRequest) {
+  const requestId = randomUUID();
+  
   try {
-    // Await the params Promise
-    const { requestId } = await context.params;
+    const body = await request.json();
     
-    if (!requestId) {
+    // 🔍 ADD THIS DEBUG LOGGING
+    console.log('🔍 [DEBUG] Received request body:', JSON.stringify(body, null, 2));
+    console.log('🔍 [DEBUG] Environment variables:', {
+      FASTAPI_BASE_URL,
+      HAS_FASTAPI_API_KEY: !!FASTAPI_API_KEY,
+      NODE_ENV: process.env.NODE_ENV
+    });
+    
+    // Enterprise request validation
+    if (!body.template) {
+      console.log('❌ [DEBUG] Missing template field');
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Request ID is required' 
+          error: 'Template ID is required',
+          request_id: requestId,
+          received_fields: Object.keys(body)
         },
         { status: 400 }
       );
     }
     
-    console.log(`🔍 [GENERATE-STATUS] Checking status for: ${requestId}`);
-    
-    // Try to get status from backend
-    try {
-      const response = await fetch(`${FASTAPI_BASE_URL}/api/generation/${requestId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${FASTAPI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(5000),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return NextResponse.json({
-          success: true,
-          status: data.status || 'completed',
-          progress: data.progress || 100,
-          content: data.content,
-          metadata: data.metadata,
-          request_id: requestId
-        });
-      }
-      
-      if (response.status === 404) {
-        // Generation might be completed and cleaned up
-        return NextResponse.json({
-          success: true,
-          status: 'completed',
-          progress: 100,
+    if (!body.style_profile) {
+      console.log('❌ [DEBUG] Missing style_profile field');
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Style Profile ID is required',
           request_id: requestId,
-          message: 'Generation completed (no longer in queue)'
-        });
-      }
-      
-    } catch {
-      console.log(`⚠️ Backend status check failed, using fallback`);
+          received_fields: Object.keys(body)
+        },
+        { status: 400 }
+      );
     }
     
-    // Fallback status response
-    return NextResponse.json({
-      success: true,
-      status: 'completed',
-      progress: 100,
-      request_id: requestId,
-      message: 'Generation status unknown, assuming completed'
+    // 🔍 ADD THIS DEBUG LOGGING
+    console.log('✅ [DEBUG] Validation passed:', {
+      template: body.template,
+      style_profile: body.style_profile
     });
     
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Status check failed';
-    console.error('🚨 [GENERATE-STATUS] Error:', errorMsg);
-    
-    // Handle potential undefined requestId in error case
-    let requestIdForError: string | undefined;
-    try {
-      const params = await context.params;
-      requestIdForError = params.requestId;
-    } catch {
-      requestIdForError = 'unknown';
+    // Validate backend URL
+    if (!FASTAPI_BASE_URL) {
+      console.error('🚨 [CONFIG] FASTAPI_BASE_URL not configured');
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Backend service not configured',
+          request_id: requestId,
+          debug_info: {
+            fastapi_base_url: FASTAPI_BASE_URL,
+            env_vars_available: Object.keys(process.env).filter(key => key.includes('FASTAPI'))
+          }
+        },
+        { status: 503 }
+      );
     }
+    
+    // Enterprise payload transformation
+    const enterprisePayload = {
+      requestId: requestId,
+      template: body.template,
+      style_profile: body.style_profile,
+      topic: body.topic || body.dynamic_parameters?.topic || body.templateId || 'Future of LLMs',
+      audience: body.audience || body.dynamic_parameters?.audience || 'general',
+      platform: body.platform || body.dynamic_parameters?.platform || 'blog',
+      length: body.length || body.dynamic_parameters?.length || 'medium',
+      tags: body.tags || body.dynamic_parameters?.tags || [],
+      tone: body.tone || body.dynamic_parameters?.tone || 'professional',
+      code: body.code || body.dynamic_parameters?.code || false,
+      dynamic_parameters: body.dynamic_parameters || {},
+      priority: body.priority || 1,
+      timeout_seconds: body.timeout_seconds || 300,
+      generation_mode: body.generation_mode || "standard",
+      created_at: new Date().toISOString(),
+      user_id: body.user_id
+    };
+    
+    // 🔍 ADD THIS DEBUG LOGGING
+    console.log('🔍 [DEBUG] Final payload to backend:', JSON.stringify(enterprisePayload, null, 2));
+    console.log('🔍 [DEBUG] Backend URL:', `${FASTAPI_BASE_URL}/api/generate`);
+    
+    // Rest of your existing code...
+    // Continue with the fetch logic
+    
+  } catch (error: unknown) {
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    console.error('❌ [DEBUG] Request processing error:', errorObj.message);
+    console.error('❌ [DEBUG] Full error:', errorObj);
     
     return NextResponse.json(
       { 
-        success: false, 
-        error: 'Failed to check generation status',
-        message: errorMsg,
-        request_id: requestIdForError
+        success: false,
+        error: 'Critical generation failure', 
+        message: errorObj.message,
+        request_id: requestId
       }, 
       { status: 500 }
     );
