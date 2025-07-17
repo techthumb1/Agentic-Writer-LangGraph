@@ -304,7 +304,7 @@ export default function CustomersPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto border-purple-400 text-purple-300 hover:bg-purple-900/20 border-2 font-semibold px-8 py-3 rounded-full shadow-md transition-all duration-300 hover:scale-105"
+                className="w-full sm:w-auto border-purple-400 text-purple-500 hover:bg-purple-900/20 border-2 font-semibold px-8 py-3 rounded-full shadow-md transition-all duration-300 hover:scale-105"
               >
                 Contact Sales
               </Button>

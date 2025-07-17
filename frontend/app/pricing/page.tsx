@@ -89,71 +89,73 @@ export default function PricingPage() {
         </header>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          {plans.map((plan) => {
-            const IconComponent = plan.icon;
-            return (
-              <div
-                key={plan.name}
-                className={`relative bg-white/10 backdrop-blur-sm border rounded-xl p-8 hover:bg-white/15 transition-all duration-300 transform hover:scale-105 ${
-                  plan.popular 
-                    ? 'border-purple-400 ring-2 ring-purple-400/20' 
-                    : 'border-white/20'
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-medium flex items-center">
-                      <Star className="h-4 w-4 mr-1" />
-                      Most Popular
-                    </div>
-                  </div>
-                )}
-                
-                <div className="text-center">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                    plan.popular 
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
-                      : 'bg-gray-700'
-                  }`}>
-                    <IconComponent className="h-8 w-8 text-white" />
-                  </div>
-                  
-                  <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold">{plan.price}</span>
-                    {plan.price !== "Free" && (
-                      <span className="text-gray-400 ml-1">/{plan.period}</span>
-                    )}
-                  </div>
-                  <p className="text-gray-300 text-sm mb-6">{plan.description}</p>
-                </div>
-
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-start">
-                      <Check className="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link href={plan.href} className="block">
-                  <Button
-                    className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${
-                      plan.popular
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
-                        : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
-                    }`}
-                  >
-                    {plan.cta}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            );
-          })}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+  {plans.map((plan) => {
+    const IconComponent = plan.icon;
+    return (
+      <div
+        key={plan.name}
+        className={`relative bg-white/10 backdrop-blur-sm border rounded-xl p-8 hover:bg-white/15 transition-all duration-300 transform hover:scale-105 flex flex-col h-full ${
+          plan.popular 
+            ? 'border-purple-400 ring-2 ring-purple-400/20' 
+            : 'border-white/20'
+        }`}
+      >
+        {plan.popular && (
+          <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+            <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-medium flex items-center">
+              <Star className="h-4 w-4 mr-1" />
+              Most Popular
+            </div>
+          </div>
+        )}
+        
+        <div className="text-center">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+            plan.popular 
+              ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
+              : 'bg-gray-700'
+          }`}>
+            <IconComponent className="h-8 w-8 text-white" />
+          </div>
+          
+          <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+          <div className="mb-4">
+            <span className="text-4xl font-bold">{plan.price}</span>
+            {plan.price !== "Free" && (
+              <span className="text-gray-400 ml-1">/{plan.period}</span>
+            )}
+          </div>
+          <p className="text-gray-300 text-sm mb-6">{plan.description}</p>
         </div>
+
+        <ul className="space-y-3 mb-8 flex-grow">
+          {plan.features.map((feature, featureIndex) => (
+            <li key={featureIndex} className="flex items-start">
+              <Check className="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" />
+              <span className="text-gray-300 text-sm">{feature}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-auto">
+          <Link href={plan.href} className="block">
+            <Button
+              className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${
+                plan.popular
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+                  : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+              }`}
+            >
+              {plan.cta}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  })}
+</div>
 
         {/* FAQ Section */}
         <div className="mb-16">
@@ -203,7 +205,7 @@ export default function PricingPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto border-purple-400 text-purple-300 hover:bg-purple-900/20 border-2 font-semibold px-8 py-3 rounded-full shadow-md transition-all duration-300 hover:scale-105"
+                className="w-full sm:w-auto border-purple-400 text-purple-500 hover:bg-purple-900/20 border-2 font-semibold px-8 py-3 rounded-full shadow-md transition-all duration-300 hover:scale-105"
               >
                 Contact Sales
               </Button>

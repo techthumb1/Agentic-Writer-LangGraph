@@ -172,7 +172,14 @@ async function getStatsFromFileSystem(): Promise<DashboardStats> {
 
 interface BackendContentResponse {
   content: ContentItem[]
-  totalViews?: number
+  totalViews: number
+  views?: number  // Add this to handle both formats
+  stats: {
+    total: number
+    published: number
+    drafts: number
+    types: number
+  }
 }
 
 async function getStatsFromBackend(): Promise<DashboardStats> {
@@ -229,7 +236,7 @@ async function getStatsFromBackend(): Promise<DashboardStats> {
       stats.totalContent = contentData.content.length
       stats.drafts = contentData.content.filter((item: ContentItem) => item.status === 'draft').length
       stats.published = contentData.content.filter((item: ContentItem) => item.status === 'published').length
-      stats.views = contentData.totalViews || contentData.content.reduce((sum: number, item: ContentItem) => sum + (item.views || 0), 0)
+      stats.views = contentData.totalViews || 0
       stats.recentContent = contentData.content.slice(0, 4).map((item: ContentItem) => ({
         id: item.id || item.title.toLowerCase().replace(/\s+/g, '-'),
         title: item.title,

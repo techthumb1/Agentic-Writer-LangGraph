@@ -191,18 +191,6 @@ export default function DynamicParameters({ parameters }: Props) {
           </div>
         );
       })}
-      
-      {/* Debug Info (only in development) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-4 p-3 bg-muted rounded-lg">
-          <details>
-            <summary className="text-xs font-medium cursor-pointer">Debug: Template Parameters</summary>
-            <pre className="text-xs mt-2 overflow-auto">
-              {JSON.stringify(parameters, null, 2)}
-            </pre>
-          </details>
-        </div>
-      )}
     </div>
   );
 }

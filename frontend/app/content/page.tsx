@@ -1,16 +1,16 @@
 // frontend/app/content/page.tsx
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Loader2, FileText, Plus, Search, AlertCircle, Edit } from 'lucide-react';
-import Link from 'next/link';
+import { Loader2, FileText, Plus, Search, AlertCircle, Edit, Trash2, Eye, Calendar, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useToast } from "@/hooks/use-toast";
 
-type ContentItem = {
+interface ContentItem {
   id: string;
   title: string;
   date: string;
@@ -20,9 +20,9 @@ type ContentItem = {
   updatedAt?: string;
   createdAt?: string;
   week?: string;
-};
+}
 
-type ContentResponse = {
+interface ContentResponse {
   content: ContentItem[];
   totalViews: number;
   stats: {
@@ -31,54 +31,41 @@ type ContentResponse = {
     drafts: number;
     types: number;
   };
-};
+}
 
-// Environment configuration
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-const USE_BACKEND_API = process.env.NEXT_PUBLIC_USE_BACKEND_API === 'true';
-
-// Custom hook for content data
-function useContentData() {
+export default function MyContentPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  
+  // State management
   const [contentData, setContentData] = useState<ContentResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'title' | 'views'>('date');
 
+  // Load content data
   const fetchContent = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Try frontend API first
       const response = await fetch('/api/content', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        cache: 'no-store',
       });
 
       if (!response.ok) {
-        if (response.status === 404 && USE_BACKEND_API) {
-          // Fallback to backend API
-          const backendResponse = await fetch(`${BACKEND_URL}/api/content`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (!backendResponse.ok) {
-            throw new Error(`Backend API error: ${backendResponse.status}`);
-          }
-
-          const backendData = await backendResponse.json();
-          setContentData(backendData);
-          return;
-        }
         throw new Error(`Failed to fetch content: ${response.status}`);
       }
 
       const data = await response.json();
       setContentData(data);
+      console.log('📋 [CONTENT-PAGE] Loaded content:', data);
 
     } catch (err) {
       console.error('Content fetch error:', err);
@@ -104,27 +91,95 @@ function useContentData() {
     fetchContent();
   }, []);
 
-  return { contentData, isLoading, error, refresh: fetchContent };
-}
-
-export default function MyContentPage() {
-  const router = useRouter();
-  const { contentData, isLoading, error } = useContentData();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all');
-
   // Handle edit content navigation
   const handleEditContent = (contentId: string) => {
     router.push(`/content/${contentId}/edit`);
   };
 
-  // Filter content based on search and status
-  const filteredContent = contentData?.content?.filter(item => {
+  // Handle view content navigation
+  const handleViewContent = (contentId: string) => {
+    router.push(`/content/${contentId}`);
+  };
+
+  // Handle delete content
+  const handleDeleteContent = async (contentId: string, title: string) => {
+    if (!confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/content/${contentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete: ${response.status}`);
+      }
+
+      toast({
+        title: "Content Deleted",
+        description: `"${title}" has been deleted successfully.`,
+      });
+
+      // Refresh content
+      fetchContent();
+
+    } catch (err) {
+      console.error('Error deleting content:', err);
+      toast({
+        title: "Delete Failed",
+        description: err instanceof Error ? err.message : "Failed to delete content",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Filter and sort content based on search and status
+  const filteredAndSortedContent = contentData?.content?.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
     return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case 'title':
+        return a.title.localeCompare(b.title);
+      case 'views':
+        return (b.views || 0) - (a.views || 0);
+      case 'date':
+      default:
+        return new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime();
+    }
   }) || [];
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getRelativeTime = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    } else if (diffHours > 0) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else if (diffMinutes > 0) {
+      return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+    } else {
+      return 'Just now';
+    }
+  };
 
   if (isLoading) {
     return (
@@ -139,7 +194,7 @@ export default function MyContentPage() {
         </div>
         <div className="flex justify-center py-12">
           <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-400 mx-auto mb-4" />
+            <Loader2 className="h-8 w-8 animate-spin text-purple-500 mx-auto mb-4" />
             <p className="text-gray-300">Loading your content...</p>
           </div>
         </div>
@@ -215,17 +270,35 @@ export default function MyContentPage() {
             <option value="published">Published</option>
             <option value="draft">Drafts</option>
           </select>
-          <Button asChild className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
-            <Link href="/generate" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              New Content
-            </Link>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'views')}
+            className="px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-md text-white"
+          >
+            <option value="date">Sort by Date</option>
+            <option value="title">Sort by Title</option>
+            <option value="views">Sort by Views</option>
+          </select>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={fetchContent}
+            className="border-purple-400/50 text-purple-500 hover:bg-purple-900/20"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button 
+            onClick={() => router.push('/generate')}
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Content
           </Button>
         </div>
       </div>
 
       {/* Content Display */}
-      {filteredContent.length === 0 ? (
+      {filteredAndSortedContent.length === 0 ? (
         <div className="text-center py-12">
           <FileText className="h-16 w-16 text-gray-500 mx-auto mb-4" />
           <p className="text-xl text-gray-400 mb-2">
@@ -238,12 +311,27 @@ export default function MyContentPage() {
               ? 'Try adjusting your search terms or filters'
               : 'Start creating amazing content with our AI tools'}
           </p>
-          <Button asChild className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
-            <Link href="/generate">
+          <div className="flex gap-2 justify-center">
+            {(searchTerm || filterStatus !== 'all') && (
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setSearchTerm("");
+                  setFilterStatus('all');
+                }}
+                className="border-white/20 text-white hover:bg-white/10"
+              >
+                Clear Filters
+              </Button>
+            )}
+            <Button 
+              onClick={() => router.push('/generate')}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Your First Content
-            </Link>
-          </Button>
+            </Button>
+          </div>
         </div>
       ) : (
         <>
@@ -277,17 +365,17 @@ export default function MyContentPage() {
 
           {/* Content Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredContent.map((item) => (
+            {filteredAndSortedContent.map((item) => (
               <Card key={item.id} className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/15 transition-colors">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <CardTitle className="flex items-center gap-2 text-white">
-                        <FileText className="h-5 w-5 text-purple-400" />
+                        <FileText className="h-5 w-5 text-purple-500" />
                         {item.title}
                       </CardTitle>
                       <CardDescription className="text-gray-300 mt-1">
-                        Created on {new Date(item.date).toLocaleDateString()}
+                        Created {getRelativeTime(item.createdAt || item.date)}
                         {item.week && (
                           <span className="block text-xs text-gray-400 mt-1">
                             Week: {item.week}
@@ -310,7 +398,7 @@ export default function MyContentPage() {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="border-purple-400/50 text-purple-300">
+                      <Badge variant="outline" className="border-purple-400/50 text-purple-500">
                         {item.type}
                       </Badge>
                       {item.views && (
@@ -320,20 +408,44 @@ export default function MyContentPage() {
                       )}
                     </div>
                     
+                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        <span>{formatDate(item.updatedAt || item.date)}</span>
+                      </div>
+                      {item.views !== undefined && (
+                        <div className="flex items-center gap-1">
+                          <Eye className="h-4 w-4" />
+                          <span>{item.views} views</span>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex gap-2">
-                      <Button asChild size="sm" className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
-                        <Link href={`/content/${item.id}`}>
-                          View Content
-                        </Link>
+                      <Button 
+                        size="sm" 
+                        className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        onClick={() => handleViewContent(item.id)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleEditContent(item.id)}
-                        className="border-purple-400 text-purple-300 hover:bg-purple-900/20"
+                        className="border-purple-400 text-purple-500 hover:bg-purple-900/20"
                       >
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleDeleteContent(item.id, item.title)}
+                        className="border-red-400 text-red-500 hover:bg-red-900/20"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -341,6 +453,13 @@ export default function MyContentPage() {
               </Card>
             ))}
           </div>
+
+          {/* Footer */}
+          {filteredAndSortedContent.length > 0 && (
+            <div className="text-center text-sm text-gray-400 py-4">
+              Showing {filteredAndSortedContent.length} of {contentData?.stats.total || 0} content items
+            </div>
+          )}
         </>
       )}
     </div>

@@ -1,6 +1,8 @@
 // frontend/app/api/generate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
+import fs from 'fs/promises';
+import path from 'path';
 
 const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL;
 const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
@@ -12,7 +14,7 @@ if (!FASTAPI_API_KEY) {
 
 // Enterprise request tracking interface
 interface GenerationRequest {
-  requestId: string; // Frontend requestId that backend will use
+  requestId: string;
   template: string;
   style_profile: string;
   topic: string;
@@ -40,6 +42,140 @@ interface GenerationResponse {
   error?: string;
   estimated_completion?: string;
   progress?: number;
+}
+
+interface BackendResponse {
+  data?: {
+    requestId?: string;
+    status?: string;
+    metadata?: Record<string, unknown>;
+    content?: string;
+  };
+  requestId?: string;
+  generation_id?: string;
+  status?: string;
+  metadata?: Record<string, unknown>;
+  innovation_report?: unknown;
+  content_quality?: unknown;
+  estimated_completion?: string;
+  progress?: number;
+  content?: string;
+}
+
+// ✅ NEW: Helper function to infer content type from template
+function inferContentType(template: string): string {
+  const templateLower = template.toLowerCase();
+  
+  if (templateLower.includes('blog')) return 'Blog Article';
+  if (templateLower.includes('learning') || templateLower.includes('tutorial')) return 'Educational';
+  if (templateLower.includes('decision') || templateLower.includes('tree')) return 'Data Science';
+  if (templateLower.includes('future') || templateLower.includes('trend')) return 'Analysis';
+  if (templateLower.includes('federated')) return 'AI Research';
+  if (templateLower.includes('ai') || templateLower.includes('ml')) return 'AI/ML';
+  
+  return 'Article';
+}
+
+// ✅ ENHANCED: Auto-save functionality with better directory structure
+async function saveGeneratedContent(content: string, metadata: {
+  requestId: string;
+  template: string;
+  style_profile: string;
+  topic: string;
+  audience?: string;
+}): Promise<{ saved_path: string; content_id: string }> {
+  try {
+    // Create content ID from topic and timestamp
+    const timestamp = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const topicSlug = metadata.topic
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '_')
+      .substring(0, 50);
+    
+    const contentId = `${topicSlug}_${timestamp}_${metadata.requestId.substring(0, 8)}`;
+    
+    // ✅ FIXED: Save to generated_content directory (not storage)
+    const saveDir = path.join(process.cwd(), '../generated_content');
+    
+    // ✅ FIXED: Create proper week directory structure
+    const now = new Date();
+    const currentWeek = `week_${now.getFullYear()}_${Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000))}`;
+    const weekDir = path.join(saveDir, currentWeek);
+    
+    // Ensure directory exists
+    await fs.mkdir(weekDir, { recursive: true });
+    
+    // Calculate content statistics
+    const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
+    const readingTime = Math.ceil(wordCount / 200);
+    
+    // ✅ ENHANCED: Create metadata object that matches content API expectations
+    const contentMetadata = {
+      title: metadata.topic || 'Generated Content',
+      status: 'draft' as const,
+      type: inferContentType(metadata.template),
+      content, // Store content in JSON as backup
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      author: 'AI Assistant',
+      views: 0,
+      metadata: {
+        template: metadata.template,
+        styleProfile: metadata.style_profile,
+        requestId: metadata.requestId,
+        topic: metadata.topic,
+        audience: metadata.audience,
+        wordCount,
+        readingTime,
+        generatedAt: new Date().toISOString(),
+        generation_mode: 'enhanced'
+      }
+    };
+    
+    // Save JSON metadata file
+    const jsonPath = path.join(weekDir, `${contentId}.json`);
+    await fs.writeFile(jsonPath, JSON.stringify(contentMetadata, null, 2));
+    
+    // ✅ ENHANCED: Save markdown content file with frontmatter
+    const mdPath = path.join(weekDir, `${contentId}.md`);
+    const frontmatter = [
+      '---',
+      `title: "${metadata.topic}"`,
+      `template: "${metadata.template}"`,
+      `styleProfile: "${metadata.style_profile}"`,
+      `status: "draft"`,
+      `type: "${inferContentType(metadata.template)}"`,
+      `createdAt: "${new Date().toISOString()}"`,
+      '---',
+      '',
+      content
+    ].join('\n');
+    
+    await fs.writeFile(mdPath, frontmatter);
+    
+    console.log(`✅ [AUTO-SAVE] Content saved successfully:`, {
+      contentId,
+      week: currentWeek,
+      jsonPath,
+      mdPath,
+      wordCount,
+      readingTime
+    });
+    
+    return {
+      saved_path: jsonPath,
+      content_id: contentId
+    };
+    
+  } catch (error) {
+    console.error('❌ [AUTO-SAVE] Failed to save content:', error);
+    // Don't throw error - generation should still succeed even if save fails
+    return {
+      saved_path: '',
+      content_id: ''
+    };
+  }
 }
 
 // Enterprise error logging
@@ -72,7 +208,7 @@ const logSuccess = (context: string, data: unknown, requestId?: string) => {
   console.log(`✅ [ENTERPRISE] ${context}:`, JSON.stringify(logData, null, 2));
 };
 
-// NEW: Enhanced fetch headers configuration
+// Enhanced fetch headers configuration
 const createFetchHeaders = (requestId: string, generationMode: string): Record<string, string> => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -90,7 +226,7 @@ const createFetchHeaders = (requestId: string, generationMode: string): Record<s
   return headers;
 };
 
-// NEW: Error categorization helper
+// Error categorization helper
 const categorizeFetchError = (error: Error): string => {
   const errorName = error.name.toLowerCase();
   const errorMessage = error.message.toLowerCase();
@@ -130,7 +266,7 @@ const categorizeFetchError = (error: Error): string => {
   return 'UNKNOWN';
 };
 
-// NEW: Enhanced fetch with comprehensive error handling
+// Enhanced fetch with comprehensive error handling
 const performFetchWithRetry = async (
   url: string,
   payload: GenerationRequest,
@@ -203,12 +339,6 @@ const performFetchWithRetry = async (
 
 // Enhanced content extraction for multiple backend patterns
 function extractContentFromBackendResponse(data: unknown): string {
-  // Debug logging to see what we're getting from the backend
-  console.log('🔍 [DEBUG] Complete backend response structure:');
-  console.log('🔍 [DEBUG] Response keys:', data && typeof data === 'object' ? Object.keys(data) : 'Not an object');
-  console.log('🔍 [DEBUG] Response type:', typeof data);
-  console.log('🔍 [DEBUG] Full response (first 500 chars):', JSON.stringify(data, null, 2).substring(0, 500));
-  
   // Type guard for object with string properties
   const isObjectWithStringProps = (obj: unknown): obj is Record<string, unknown> => {
     return typeof obj === 'object' && obj !== null;
@@ -328,25 +458,6 @@ function extractContentFromBackendResponse(data: unknown): string {
   return '';
 }
 
-// Add this interface before the POST function
-interface BackendResponse {
-  data?: {
-    requestId?: string;
-    status?: string;
-    metadata?: Record<string, unknown>;
-    content?: string;
-  };
-  requestId?: string;
-  generation_id?: string;
-  status?: string;
-  metadata?: Record<string, unknown>;
-  innovation_report?: unknown;
-  content_quality?: unknown;
-  estimated_completion?: string;
-  progress?: number;
-  content?: string;
-}
-
 export async function POST(request: NextRequest) {
   const requestId = randomUUID();
   const startTime = Date.now();
@@ -379,7 +490,6 @@ export async function POST(request: NextRequest) {
     
     // Enterprise payload transformation - Enhanced for backend planning agent
     const enterprisePayload: GenerationRequest = {
-      // ✅ ADD THIS BACK: Include requestId for backend
       requestId: requestId, // Frontend requestId that backend will use
       template: body.template,
       style_profile: body.style_profile,
@@ -490,7 +600,7 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // ✅ Extract backend's request_id
+      // Extract backend's request_id
       const backendRequestId = data?.data?.requestId || data?.requestId || data?.generation_id || requestId;
       
       // **FIX: Poll for completion if status is pending**
@@ -537,11 +647,23 @@ export async function POST(request: NextRequest) {
       // ENHANCED CONTENT EXTRACTION
       const extractedContent = extractContentFromBackendResponse(finalData);
       
+      // ✅ NEW: Auto-save generated content
+      let saveResult = { saved_path: '', content_id: '' };
+      if (extractedContent && extractedContent.length > 50) {
+        saveResult = await saveGeneratedContent(extractedContent, {
+          requestId,
+          template: enterprisePayload.template,
+          style_profile: enterprisePayload.style_profile,
+          topic: enterprisePayload.topic,
+          audience: enterprisePayload.audience
+        });
+      }
+      
       // Enterprise response formatting
       const enterpriseResponse: GenerationResponse = {
         success: true,
         generation_id: finalData?.data?.requestId || finalData?.generation_id || backendRequestId,
-        request_id: backendRequestId, // ✅ Use backend's request_id for status tracking
+        request_id: backendRequestId, // Use backend's request_id for status tracking
         status: finalData?.data?.status || finalData?.status || (extractedContent ? 'completed' : 'processing'),
         content: extractedContent, // Use extracted content instead of data.content
         metadata: {
@@ -553,6 +675,10 @@ export async function POST(request: NextRequest) {
           template_used: enterprisePayload.template,
           style_profile_used: enterprisePayload.style_profile,
           generation_mode: enterprisePayload.generation_mode,
+          // ✅ NEW: Include save information
+          saved_path: saveResult.saved_path,
+          content_id: saveResult.content_id,
+          auto_saved: !!saveResult.content_id,
           // Enhanced metadata
           innovation_report: finalData?.innovation_report || finalData?.metadata?.innovation_report,
           content_quality: finalData?.metadata?.content_quality,
@@ -568,7 +694,9 @@ export async function POST(request: NextRequest) {
         backend_request_id: backendRequestId,
         processing_time_ms: processingTime,
         content_length: extractedContent ? extractedContent.length : 0,
-        content_found: !!extractedContent
+        content_found: !!extractedContent,
+        auto_saved: !!saveResult.content_id,
+        content_id: saveResult.content_id
       }, requestId);
       
       return NextResponse.json(enterpriseResponse);

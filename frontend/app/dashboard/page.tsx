@@ -59,67 +59,92 @@ function useDashboardData() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
+// File: frontend/app/dashboard/page.tsx
+// Replace your fetchDashboardData function with this:
 
-      // Fetch dashboard stats from your backend
-      const statsResponse = await fetch('/api/dashboard/stats', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
+const fetchDashboardData = useCallback(async () => {
+  try {
+    setIsLoading(true)
+    setError(null)
 
-      if (!statsResponse.ok) {
-        if (statsResponse.status === 404) {
-          // If dashboard stats endpoint doesn't exist yet, fall back to individual endpoints
-          const [contentResponse, activityResponse] = await Promise.all([
-            fetch('/api/content').catch(() => null),
-            fetch('/api/dashboard/activity').catch(() => null)
-          ])
+    console.log('🔍 Frontend: Starting dashboard data fetch...')
 
-          // Parse responses if available
-          const contentData: ContentResponse | null = contentResponse?.ok ? await contentResponse.json() : null
-          const activityData: ActivityResponse | null = activityResponse?.ok ? await activityResponse.json() : null
+    // Fetch dashboard stats from your backend
+    const statsResponse = await fetch('/api/dashboard/stats', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
 
-          // Build stats from available data
-          const stats: DashboardStats = {
-            totalContent: contentData?.content?.length || 0,
-            drafts: contentData?.content?.filter((item: RecentContentItem) => item.status === 'draft').length || 0,
-            published: contentData?.content?.filter((item: RecentContentItem) => item.status === 'published').length || 0,
-            views: contentData?.totalViews || 0,
-            recentContent: contentData?.content?.slice(0, 4) || [],
-            recentActivity: activityData?.activities?.slice(0, 4) || []
-          }
+    console.log('🔍 Frontend: Stats response status:', statsResponse.status)
 
-          setData(stats)
-          return
+    if (!statsResponse.ok) {
+      if (statsResponse.status === 404) {
+        console.log('🔍 Frontend: 404 - falling back to individual endpoints')
+        
+        // If dashboard stats endpoint doesn't exist yet, fall back to individual endpoints
+        const [contentResponse, activityResponse] = await Promise.all([
+          fetch('/api/content').catch(() => null),
+          fetch('/api/dashboard/activity').catch(() => null)
+        ])
+
+        console.log('🔍 Frontend: Content response:', contentResponse?.status)
+        console.log('🔍 Frontend: Activity response:', activityResponse?.status)
+
+        // Parse responses if available
+        const contentData: ContentResponse | null = contentResponse?.ok ? await contentResponse.json() : null
+        const activityData: ActivityResponse | null = activityResponse?.ok ? await activityResponse.json() : null
+
+        console.log('🔍 Frontend: Content data:', contentData)
+        console.log('🔍 Frontend: Activity data:', activityData)
+
+        // Build stats from available data
+        const stats: DashboardStats = {
+          totalContent: contentData?.content?.length || 0,
+          drafts: contentData?.content?.filter((item: RecentContentItem) => item.status === 'draft').length || 0,
+          published: contentData?.content?.filter((item: RecentContentItem) => item.status === 'published').length || 0,
+          views: contentData?.totalViews || 0,
+          recentContent: contentData?.content?.slice(0, 4) || [],
+          recentActivity: activityData?.activities?.slice(0, 4) || []
         }
-        throw new Error(`Failed to fetch dashboard data: ${statsResponse.status}`)
+
+        console.log('🔍 Frontend: Built stats from fallback:', stats)
+        setData(stats)
+        return
       }
-
-      const statsData = await statsResponse.json()
-      setData(statsData)
-
-    } catch (err) {
-      console.error('Dashboard data fetch error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
-      
-      // Set fallback data to prevent complete UI failure
-      setData({
-        totalContent: 0,
-        drafts: 0,
-        published: 0,
-        views: 0,
-        recentContent: [],
-        recentActivity: []
-      })
-    } finally {
-      setIsLoading(false)
+      throw new Error(`Failed to fetch dashboard data: ${statsResponse.status}`)
     }
-  }, [])
+
+    const statsData = await statsResponse.json()
+    //console.log('🔍 Frontend: Raw stats response:', statsData)
+    //console.log('🔍 Frontend: Stats data keys:', Object.keys(statsData))
+    //console.log('🔍 Frontend: Has totalContent?', 'totalContent' in statsData)
+    //console.log('🔍 Frontend: recentContent type:', typeof statsData.recentContent)
+    //console.log('🔍 Frontend: recentContent isArray?', Array.isArray(statsData.recentContent))
+
+    setData(statsData)
+
+  } catch (err) {
+    console.error('🔍 Frontend: Dashboard data fetch error:', err)
+    setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
+    
+    // Set fallback data to prevent complete UI failure
+    const fallbackData = {
+      totalContent: 0,
+      drafts: 0,
+      published: 0,
+      views: 0,
+      recentContent: [],
+      recentActivity: []
+    }
+    
+    console.log('🔍 Frontend: Using fallback data:', fallbackData)
+    setData(fallbackData)
+  } finally {
+    setIsLoading(false)
+  }
+}, [])
 
   useEffect(() => {
     fetchDashboardData()
@@ -147,7 +172,7 @@ export default function DashboardPage() {
     return (
       <div className="container mx-auto p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-400 mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-purple-500 mx-auto mb-4" />
           <p className="text-gray-300">Loading dashboard...</p>
         </div>
       </div>
@@ -182,7 +207,7 @@ export default function DashboardPage() {
   }
 
   const stats = dashboardData!
-
+  console.log('Stats object:', stats);
   return (
     <div className="container mx-auto p-6 space-y-8 text-white">
       {/* Header */}
@@ -206,7 +231,7 @@ export default function DashboardPage() {
               New Content
             </Link>
           </Button>
-          <Button variant="outline" asChild className="border-purple-400 text-purple-300 hover:bg-purple-900/20">
+          <Button variant="outline" asChild className="border-purple-400 text-purple-500 hover:bg-purple-900/20">
             <Link href="/settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Settings
@@ -262,7 +287,7 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-pink-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{stats.views.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">{stats.views?.toLocaleString() || '0'}</div>
             <p className="text-xs text-gray-300">
               Content engagement
             </p>
@@ -282,7 +307,7 @@ export default function DashboardPage() {
                   Your latest articles and drafts
                 </CardDescription>
               </div>
-              <Button variant="outline" size="sm" asChild className="border-purple-400 text-purple-300 hover:bg-purple-900/20">
+              <Button variant="outline" size="sm" asChild className="border-purple-400 text-purple-500 hover:bg-purple-900/20">
                 <Link href="/content" className="flex items-center gap-2">
                   View All
                   <ChevronRight className="h-4 w-4" />
@@ -362,21 +387,21 @@ export default function DashboardPage() {
               </Link>
             </Button>
             
-            <Button asChild className="w-full justify-start border-purple-400 text-purple-300 hover:bg-purple-900/20" variant="outline">
+            <Button asChild className="w-full justify-start border-purple-400 text-purple-500 hover:bg-purple-900/20" variant="outline">
               <Link href="/templates" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 Browse Templates
               </Link>
             </Button>
             
-            <Button asChild className="w-full justify-start border-purple-400 text-purple-300 hover:bg-purple-900/20" variant="outline">
+            <Button asChild className="w-full justify-start border-purple-400 text-purple-500 hover:bg-purple-900/20" variant="outline">
               <Link href="/content" className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
                 Manage Content
               </Link>
             </Button>
             
-            <Button asChild className="w-full justify-start border-purple-400 text-purple-300 hover:bg-purple-900/20" variant="outline">
+            <Button asChild className="w-full justify-start border-purple-400 text-purple-500 hover:bg-purple-900/20" variant="outline">
               <Link href="/analytics" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
                 View Analytics

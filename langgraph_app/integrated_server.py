@@ -13,7 +13,9 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
 from contextlib import asynccontextmanager
-
+from pathlib import Path
+from datetime import datetime
+from fastapi import HTTPException
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Request
 
 
@@ -24,11 +26,6 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, field_validator
 import uvicorn
-from langgraph_app.main import (
-    validate_api_key,
-    safe_get_template,
-    safe_get_style_profile
-)
 
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
 import structlog
@@ -495,55 +492,6 @@ def load_templates() -> List[ContentTemplate]:
     
     return templates
 
-#@app.post("/api/generate-enterprise", response_model=GenerationResponse)
-#async def generate_enterprise(
-#    request: EnterpriseGenerationRequest,
-#    background_tasks: BackgroundTasks,
-#    api_key: str = Depends(validate_api_key)
-#):
-#    logger.info(f"GEN MODE RECEIVED: {request.generation_mode!r}")
-#
-#    """Enterprise-level generation endpoint"""
-#    # Validate + extract from `prompt`, `preferences`, `workflow`
-#    # Adapt structure into `job_data` compatible with orchestrator
-#    template = request.prompt.user_parameters.get("template")
-#    style_profile = request.prompt.user_parameters.get("style_profile")
-#    dynamic_parameters = request.prompt.user_parameters
-#
-#    job_data = {
-#      "template": template,
-#      "style_profile": style_profile,
-#      "dynamic_parameters": dynamic_parameters,
-#      "topic": request.prompt.content_requirements.get("title", "Untitled"),
-#      "audience": request.prompt.content_requirements.get("target_audience", "General"),
-#      "generation_id": str(uuid.uuid4()),
-#      "generation_mode": request.generation_mode,
-#      "template_data": safe_get_template(template),
-#      "style_data": safe_get_style_profile(style_profile)
-#        
-#    }
-#
-#    # Submit job to orchestrator
-#    background_tasks.add_task(submit_job_to_orchestrator, job_data)
-#    return GenerationResponse(generation_id=job_data["generation_id"])
-#
-#
-#def submit_job_to_orchestrator(job_data):
-#    loop = asyncio.get_event_loop()
-#    if loop.is_running():
-#        asyncio.create_task(app.state.content_graph.generate_content(
-#            request_id=job_data["generation_id"],
-#            template_config=job_data["template_data"],
-#            style_config=job_data["style_data"]
-#        ))
-#    else:
-#        loop.run_until_complete(app.state.content_graph.generate_content(
-#            request_id=job_data["generation_id"],
-#            template_config=job_data["template_data"],
-#            style_config=job_data["style_data"]
-#        ))
-
-
 def load_style_profiles() -> List[StyleProfile]:
     """Load and validate all style profiles with enhanced structure"""
     profiles = []
@@ -907,6 +855,403 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 # API Endpoints
+# Replace the existing get_dashboard_stats function in integrated_server.py with this fixed version
+# Add these missing endpoints to your integrated_server.py
+
+# File: langgraph_app/integrated_server.py
+# Update your /api/content endpoint to match what the frontend expects:
+
+@app.get("/api/content")
+async def list_content():
+    """List all content items for content page"""
+    try:
+        base_path = Path(__file__).parent.parent
+        content_dir = base_path / "generated_content"
+        
+        content_items = []
+        total_views = 0
+        published_count = 0
+        draft_count = 0
+        
+        if content_dir.exists():
+            for week_dir in content_dir.iterdir():
+                if not week_dir.is_dir():
+                    continue
+                
+                for json_file in week_dir.glob("*.json"):
+                    try:
+                        with open(json_file, 'r', encoding='utf-8') as f:
+                            metadata = json.load(f)
+                        
+                        content_id = json_file.stem
+                        status = metadata.get('status', 'draft')
+                        views = metadata.get('views', 0)
+                        
+                        # Count stats
+                        total_views += views
+                        if status == 'published':
+                            published_count += 1
+                        else:
+                            draft_count += 1
+                        
+                        content_items.append({
+                            "id": content_id,
+                            "title": metadata.get('title', content_id.replace('_', ' ').title()),
+                            "status": status,
+                            "type": metadata.get('type', 'article'),
+                            "date": metadata.get('createdAt', datetime.now().isoformat()),
+                            "createdAt": metadata.get('createdAt', datetime.now().isoformat()),
+                            "updatedAt": metadata.get('updatedAt', datetime.now().isoformat()),
+                            "views": views,
+                            "week": week_dir.name
+                        })
+                    except Exception as e:
+                        logger.warning(f"Error processing {json_file}: {e}")
+                        continue
+        
+        # Sort by creation date, newest first
+        content_items.sort(key=lambda x: x.get('createdAt', ''), reverse=True)
+        
+        # Return structure that matches frontend expectations
+        return {
+            "content": content_items,
+            "totalViews": total_views,
+            "stats": {
+                "total": len(content_items),      # Frontend expects stats.total
+                "published": published_count,
+                "drafts": draft_count,
+                "types": len(set(item['type'] for item in content_items))
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"List content error: {e}")
+        return {
+            "content": [], 
+            "totalViews": 0,
+            "stats": {
+                "total": 0,
+                "published": 0,
+                "drafts": 0,
+                "types": 0
+            }
+        }
+    
+@app.get("/api/dashboard/activity")
+async def get_dashboard_activity():
+    """Get recent activity for dashboard"""
+    try:
+        base_path = Path(__file__).parent.parent
+        content_dir = base_path / "generated_content"
+        
+        activities = []
+        
+        if content_dir.exists():
+            for week_dir in content_dir.iterdir():
+                if not week_dir.is_dir():
+                    continue
+                
+                for json_file in week_dir.glob("*.json"):
+                    try:
+                        with open(json_file, 'r', encoding='utf-8') as f:
+                            metadata = json.load(f)
+                        
+                        content_id = json_file.stem
+                        title = metadata.get('title', content_id.replace('_', ' ').title())
+                        status = metadata.get('status', 'draft')
+                        timestamp = metadata.get('updatedAt', metadata.get('createdAt', datetime.now().isoformat()))
+                        
+                        activities.append({
+                            "id": f"activity-{content_id}",
+                            "type": "published" if status == "published" else "created",
+                            "description": f"{'Published' if status == 'published' else 'Created'} \"{title}\"",
+                            "timestamp": timestamp
+                        })
+                    except Exception as e:
+                        logger.warning(f"Error processing activity {json_file}: {e}")
+                        continue
+        
+        # Sort by timestamp, newest first, and limit to 10
+        activities.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        return {"activities": activities[:10]}
+        
+    except Exception as e:
+        logger.error(f"Dashboard activity error: {e}")
+        return {"activities": []}
+
+
+@app.get("/api/dashboard/stats")
+async def get_dashboard_stats():
+    """Get dashboard statistics with correct structure"""
+    try:
+        base_path = Path(__file__).parent.parent
+        content_dir = base_path / "generated_content"
+        
+        stats = {
+            "total": 0,           # Frontend expects 'total', not 'totalContent'
+            "totalContent": 0,    # Keep both for compatibility
+            "drafts": 0,
+            "published": 0,
+            "views": 0,
+            "recentContent": [],
+            "recentActivity": []
+        }
+        
+        recent_items = []
+        cutoff_date = datetime.now() - timedelta(days=30)
+        
+        if content_dir.exists():
+            for week_dir in content_dir.iterdir():
+                if not week_dir.is_dir():
+                    continue
+                    
+                for json_file in week_dir.glob("*.json"):
+                    try:
+                        with open(json_file, 'r', encoding='utf-8') as f:
+                            metadata = json.load(f)
+                        
+                        stats["total"] += 1
+                        stats["totalContent"] += 1
+                        stats["views"] += metadata.get('views', 0)
+                        
+                        status = metadata.get('status', 'draft')
+                        if status == 'published':
+                            stats["published"] += 1
+                        else:
+                            stats["drafts"] += 1
+                        
+                        created_at = metadata.get('createdAt', metadata.get('updatedAt'))
+                        if created_at:
+                            try:
+                                created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                            except:
+                                created_date = datetime.now()
+                        else:
+                            created_date = datetime.now()
+                        
+                        if created_date >= cutoff_date:
+                            content_id = json_file.stem
+                            recent_items.append({
+                                "id": content_id,
+                                "title": metadata.get('title', content_id.replace('_', ' ').title()),
+                                "status": status,
+                                "updatedAt": metadata.get('updatedAt', created_at or datetime.now().isoformat()),
+                                "type": metadata.get('type', 'article'),
+                                "createdAt": created_at or datetime.now().isoformat()
+                            })
+                            
+                    except Exception as e:
+                        logger.warning(f"Error processing {json_file}: {e}")
+                        continue
+        
+        recent_items.sort(key=lambda x: x.get('createdAt', ''), reverse=True)
+        stats["recentContent"] = recent_items[:5]
+        
+        stats["recentActivity"] = [
+            {
+                "id": f"activity-{item['id']}",
+                "type": "created" if item["status"] == "draft" else "published",
+                "description": f"{'Published' if item['status'] == 'published' else 'Created'} \"{item['title']}\"",
+                "timestamp": item["updatedAt"]
+            }
+            for item in stats["recentContent"]
+        ]
+        
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Dashboard stats error: {e}")
+        return {
+            "total": 0,
+            "totalContent": 0,
+            "drafts": 0,
+            "published": 0,
+            "views": 0,
+            "recentContent": [],
+            "recentActivity": []
+        }
+        
+        recent_items = []
+        cutoff_date = datetime.now() - timedelta(days=30)
+        
+        if content_dir.exists():
+            for week_dir in content_dir.iterdir():
+                if not week_dir.is_dir():
+                    continue
+                    
+                for json_file in week_dir.glob("*.json"):
+                    try:
+                        with open(json_file, 'r', encoding='utf-8') as f:
+                            metadata = json.load(f)
+                        
+                        # Update stats
+                        stats["totalContent"] += 1
+                        stats["views"] += metadata.get('views', 0)
+                        
+                        # Determine status
+                        status = metadata.get('status', 'draft')
+                        if status == 'published':
+                            stats["published"] += 1
+                        else:
+                            stats["drafts"] += 1
+                        
+                        # Parse creation date
+                        created_at = metadata.get('createdAt', metadata.get('updatedAt'))
+                        if created_at:
+                            try:
+                                if isinstance(created_at, str):
+                                    created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                                else:
+                                    created_date = datetime.now()
+                            except:
+                                created_date = datetime.now()
+                        else:
+                            created_date = datetime.now()
+                        
+                        # Add to recent items if within cutoff
+                        if created_date >= cutoff_date:
+                            content_id = json_file.stem
+                            recent_items.append({
+                                "id": content_id,
+                                "title": metadata.get('title', content_id.replace('_', ' ').title()),
+                                "status": status,
+                                "updatedAt": metadata.get('updatedAt', created_at or datetime.now().isoformat()),
+                                "type": metadata.get('type', 'article'),
+                                "createdAt": created_at or datetime.now().isoformat()
+                            })
+                            
+                    except Exception as e:
+                        logger.warning(f"Error processing {json_file}: {e}")
+                        continue
+        
+        # Sort recent items by creation date and take top 5
+        recent_items.sort(key=lambda x: x.get('createdAt', ''), reverse=True)
+        stats["recentContent"] = recent_items[:5]
+        
+        # Generate recent activity from recent content
+        stats["recentActivity"] = [
+            {
+                "id": f"activity-{item['id']}",
+                "type": "created" if item["status"] == "draft" else "published",
+                "description": f"{'Published' if item['status'] == 'published' else 'Created'} \"{item['title']}\"",
+                "timestamp": item["updatedAt"]
+            }
+            for item in stats["recentContent"]
+        ]
+        
+        # Ensure arrays are properly formatted
+        if not isinstance(stats["recentContent"], list):
+            stats["recentContent"] = []
+        if not isinstance(stats["recentActivity"], list):
+            stats["recentActivity"] = []
+            
+        logger.info(f"Dashboard stats generated: {stats['totalContent']} total, {len(stats['recentContent'])} recent")
+        
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Dashboard stats error: {e}")
+        # Return safe fallback with proper structure
+        return {
+            "totalContent": 0,
+            "drafts": 0,
+            "published": 0,
+            "views": 0,
+            "recentContent": [],  # Always return empty array, never null/undefined
+            "recentActivity": []
+        }
+
+@app.get("/api/content/{content_id}")
+async def get_content(content_id: str):
+    """Get specific content item"""
+    base_path = Path(__file__).parent.parent
+    content_dir = base_path / "generated_content"
+    
+    for week_dir in content_dir.iterdir():
+        if not week_dir.is_dir():
+            continue
+        
+        json_file = week_dir / f"{content_id}.json"
+        md_file = week_dir / f"{content_id}.md"
+        
+        if json_file.exists():
+            with open(json_file, 'r') as f:
+                metadata = json.load(f)
+            
+            content = metadata.get('content', '')
+            if md_file.exists():
+                with open(md_file, 'r') as f:
+                    content = f.read()
+            
+            return {
+                "id": content_id,
+                "title": metadata.get('title', content_id.replace('_', ' ').title()),
+                "content": content,
+                "contentHtml": metadata.get('contentHtml'),
+                "status": metadata.get('status', 'draft'),
+                "type": metadata.get('type', 'article'),
+                "createdAt": metadata.get('createdAt'),
+                "updatedAt": metadata.get('updatedAt'),
+                "views": metadata.get('views', 0),
+                "author": metadata.get('author'),
+                "metadata": metadata.get('metadata', {}),
+                "week": week_dir.name
+            }
+    
+    raise HTTPException(status_code=404, detail="Content not found")
+
+@app.put("/api/content/{content_id}")
+async def update_content(content_id: str, data: dict):
+    """Update content item"""
+    base_path = Path(__file__).parent.parent
+    content_dir = base_path / "generated_content"
+    
+    for week_dir in content_dir.iterdir():
+        if not week_dir.is_dir():
+            continue
+        
+        json_file = week_dir / f"{content_id}.json"
+        if json_file.exists():
+            with open(json_file, 'r') as f:
+                metadata = json.load(f)
+            
+            metadata.update(data)
+            metadata['updatedAt'] = datetime.now().isoformat()
+            
+            with open(json_file, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            if 'content' in data:
+                md_file = week_dir / f"{content_id}.md"
+                with open(md_file, 'w') as f:
+                    f.write(data['content'])
+            
+            return {"success": True, "message": "Content updated"}
+    
+    raise HTTPException(status_code=404, detail="Content not found")
+
+@app.delete("/api/content/{content_id}")
+async def delete_content(content_id: str):
+    """Delete content item"""
+    base_path = Path(__file__).parent.parent
+    content_dir = base_path / "generated_content"
+    
+    for week_dir in content_dir.iterdir():
+        if not week_dir.is_dir():
+            continue
+        
+        json_file = week_dir / f"{content_id}.json"
+        md_file = week_dir / f"{content_id}.md"
+        
+        if json_file.exists():
+            json_file.unlink()
+            if md_file.exists():
+                md_file.unlink()
+            return {"success": True, "message": "Content deleted"}
+    
+    raise HTTPException(status_code=404, detail="Content not found")
+
 @app.get("/", response_model=APIResponse)
 async def root(request: Request):
     """API root endpoint with system information"""

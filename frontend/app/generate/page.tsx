@@ -48,8 +48,6 @@ const generateContentSchema = z.object({
   styleProfileId: z.string().min(1),
   dynamic_parameters: z.record(z.union([z.string(), z.number(), z.boolean()])),
   platform: z.string(),
-}).refine(data => data.dynamic_parameters.topic && data.dynamic_parameters.target_audience, {
-  message: "Topic and audience are required inside dynamic parameters",
 });
 
 type GenerateContentFormValues = z.infer<typeof generateContentSchema>;
@@ -637,46 +635,26 @@ export default function GeneratePage() {
     );
   }
 
-  const onSubmit: SubmitHandler<GenerateContentFormValues> = (values) => {
-    console.log('🔍 Form submitted with values:', values);
-    console.log('🔍 Dynamic parameters:', values.dynamic_parameters);
-    
-    const params = values.dynamic_parameters || {};
-    
-    const getValue = (key: string, fallback: string): string => {
-      const value = params[key];
-      if (value === null || value === undefined) return fallback;
-      return String(value);
-    };
-    
-    const topic = getValue("topic", "") || 
-                 getValue("blog_topic", "") || 
-                 getValue("subject", "") || 
-                 getValue("content_topic", "") || 
-                 "Data Science";
-    
-    const audience = getValue("target_audience", "") || 
-                    getValue("audience", "") || 
-                    getValue("target_demographic", "") || 
-                    getValue("intended_audience", "") ||
-                    "Data enthusiasts";
 
-    console.log('🔍 Extracted values:', { topic, audience });
-    console.log('✅ Starting generation...');
-    
-    startGeneration({
-      template: values.templateId,
-      style_profile: values.styleProfileId,
-      dynamic_parameters: params,
-      topic,
-      audience,
-      tags: [],
-      platform: values.platform,
-      priority: 1,
-      timeout_seconds: 300,
-      generation_mode: 'standard',
-    });
-  };
+const onSubmit: SubmitHandler<GenerateContentFormValues> = (values) => {
+  console.log('🔍 Form submitted with values:', values);
+  console.log('🔍 Dynamic parameters:', values.dynamic_parameters);
+  
+  const params = values.dynamic_parameters || {};
+  
+  console.log('🔍 Raw form parameters:', params);
+  console.log('✅ Starting generation with all parameters...');
+  
+  startGeneration({
+    template: values.templateId,
+    style_profile: values.styleProfileId,
+    dynamic_parameters: params, // Pass through all parameters as-is
+    platform: values.platform,
+    priority: 1,
+    timeout_seconds: 300,
+    generation_mode: 'standard',
+  });
+};
 
   type GenerationResultMetadata = {
     saved_path?: string;
@@ -712,15 +690,9 @@ export default function GeneratePage() {
         <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
           Generate AI Content
         </h1>
-        <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+        <p className="text-lg text-white max-w-2xl mx-auto">
           Create high-quality content using our advanced AI models. Select a template and style profile to get started.
         </p>
-        {USE_BACKEND_API && (
-          <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            Connected to AI Backend
-          </div>
-        )}
       </div>
 
       <Form {...form}>
