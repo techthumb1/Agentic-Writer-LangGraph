@@ -62,94 +62,97 @@ async function fetchFromBackend(contentId: string): Promise<ContentData> {
 
     const data = await response.json()
     return data
-  } catch (backendError) {
-    console.error('Failed to fetch from backend:', backendError)
-    throw backendError
+  } catch (error) {
+    console.error('Failed to fetch from backend:', error)
+    throw error
   }
 }
 
 async function getContentFromFileSystem(contentId: string): Promise<ContentData> {
-  const storageDir = path.join(process.cwd(), '../storage')
+  // Check both storage and generated_content directories
+  const storageDirs = [
+    path.join(process.cwd(), '../storage'),
+    path.join(process.cwd(), '../generated_content')
+  ]
 
-  try {
-    // Search through week directories to find the content
-    const weeks = await fs.readdir(storageDir)
-    
-    for (const week of weeks) {
-      if (week.startsWith('.')) continue
+  for (const storageDir of storageDirs) {
+    try {
+      const weeks = await fs.readdir(storageDir)
+      
+      for (const week of weeks) {
+        if (week.startsWith('.')) continue
 
-      const weekDir = path.join(storageDir, week)
-      try {
-        const weekStat = await fs.stat(weekDir)
-        if (!weekStat.isDirectory()) continue
-
-        const jsonFilePath = path.join(weekDir, `${contentId}.json`)
-        const mdFilePath = path.join(weekDir, `${contentId}.md`)
-
+        const weekDir = path.join(storageDir, week)
         try {
-          // Try to read JSON metadata file
-          const jsonContent = await fs.readFile(jsonFilePath, 'utf-8')
-          const metadata: ContentMetadata = JSON.parse(jsonContent)
-          const fileStats = await fs.stat(jsonFilePath)
+          const weekStat = await fs.stat(weekDir)
+          if (!weekStat.isDirectory()) continue
 
-          // Try to read markdown content file if it exists
-          let markdownContent = metadata.content || ''
+          const jsonFilePath = path.join(weekDir, `${contentId}.json`)
+          const mdFilePath = path.join(weekDir, `${contentId}.md`)
+
           try {
-            const mdContent = await fs.readFile(mdFilePath, 'utf-8')
-            markdownContent = mdContent
+            // Try to read JSON metadata file
+            const jsonContent = await fs.readFile(jsonFilePath, 'utf-8')
+            const metadata: ContentMetadata = JSON.parse(jsonContent)
+            const fileStats = await fs.stat(jsonFilePath)
+
+            // Try to read markdown content file if it exists
+            let markdownContent = metadata.content || ''
+            try {
+              const mdContent = await fs.readFile(mdFilePath, 'utf-8')
+              markdownContent = mdContent
+            } catch {
+              // Markdown file doesn't exist, use content from JSON
+            }
+
+            // Calculate word count and reading time
+            const wordCount = markdownContent.split(/\s+/).filter(word => word.length > 0).length
+            const readingTime = Math.ceil(wordCount / 200) // Average reading speed
+
+            const contentData: ContentData = {
+              id: contentId,
+              title: metadata.title || contentId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+              content: markdownContent,
+              contentHtml: metadata.contentHtml,
+              status: metadata.status || 'draft',
+              type: metadata.type || 'article',
+              createdAt: metadata.createdAt || fileStats.birthtime.toISOString(),
+              updatedAt: metadata.updatedAt || fileStats.mtime.toISOString(),
+              views: metadata.views || Math.floor(Math.random() * 500) + 10,
+              author: metadata.author,
+              metadata: {
+                template: metadata.metadata?.template as string | undefined,
+                styleProfile: typeof metadata.metadata?.styleProfile === 'string' ? metadata.metadata?.styleProfile : undefined,
+                wordCount,
+                readingTime,
+                ...metadata.metadata
+              },
+              week
+            }
+
+            return contentData
+            
           } catch {
-            // Markdown file doesn't exist, use content from JSON
+            // File doesn't exist in this week, continue searching
+            continue
           }
-
-          // Calculate word count and reading time
-          const wordCount = markdownContent.split(/\s+/).filter(word => word.length > 0).length
-          const readingTime = Math.ceil(wordCount / 200) // Average reading speed
-
-          const contentData: ContentData = {
-            id: contentId,
-            title: metadata.title || contentId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            content: markdownContent,
-            contentHtml: metadata.contentHtml,
-            status: metadata.status || 'draft',
-            type: metadata.type || 'article',
-            createdAt: metadata.createdAt || fileStats.birthtime.toISOString(),
-            updatedAt: metadata.updatedAt || fileStats.mtime.toISOString(),
-            views: metadata.views || Math.floor(Math.random() * 500) + 10,
-            author: metadata.author,
-            metadata: {
-              template: metadata.metadata?.template as string | undefined,
-              styleProfile: metadata.metadata?.styleProfile as string | undefined,
-              wordCount,
-              readingTime,
-              ...(metadata.metadata as Record<string, unknown> || {})
-            },
-            week
-          }
-
-          return contentData
-          
-        } catch (fileError) {
-          // File doesn't exist in this week, continue searching
-          console.error(`File error in week ${week}:`, fileError)
+        } catch {
           continue
         }
-      } catch {
-        continue
       }
+    } catch {
+      // Directory doesn't exist or can't be accessed, try next one
+      continue
     }
-
-    // Content not found in any week
-    throw new Error('Content not found')
-
-  } catch (fsError) {
-    console.error('Error reading from file system:', fsError)
-    throw fsError
   }
+
+  // Content not found in any directory
+  throw new Error('Content not found')
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { contentID: string } }
+  { params }: { params: Promise<{ contentID: string }> }
 ) {
   try {
     // Check authentication
@@ -161,7 +164,9 @@ export async function GET(
       )
     }
 
-    const contentId = params.contentID
+    // ✅ FIX: Await params for Next.js 15 compatibility
+    const resolvedParams = await params
+    const contentId = resolvedParams.contentID
 
     if (!contentId) {
       return NextResponse.json(
@@ -215,7 +220,7 @@ export async function GET(
 // PUT endpoint for updating content
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { contentID: string } }
+  { params }: { params: Promise<{ contentID: string }> }
 ) {
   try {
     // Check authentication
@@ -227,7 +232,9 @@ export async function PUT(
       )
     }
 
-    const contentId = params.contentID
+    // ✅ FIX: Await params for Next.js 15 compatibility
+    const resolvedParams = await params
+    const contentId = resolvedParams.contentID
     const body = await request.json()
     
     if (USE_BACKEND_API) {
@@ -253,11 +260,68 @@ export async function PUT(
       const data = await response.json()
       return NextResponse.json(data)
     } else {
-      // Handle content update in file system
-      return NextResponse.json(
-        { error: 'Content updates not implemented for file system mode' },
-        { status: 501 }
-      )
+      // ✅ ENHANCEMENT: Implement file system content updates
+      try {
+        const storageDirs = [
+          path.join(process.cwd(), '../storage'),
+          path.join(process.cwd(), '../generated_content')
+        ]
+
+        for (const storageDir of storageDirs) {
+          try {
+            const weeks = await fs.readdir(storageDir)
+            
+            for (const week of weeks) {
+              if (week.startsWith('.')) continue
+
+              const weekDir = path.join(storageDir, week)
+              const jsonFilePath = path.join(weekDir, `${contentId}.json`)
+              const mdFilePath = path.join(weekDir, `${contentId}.md`)
+
+              try {
+                // Check if file exists
+                await fs.access(jsonFilePath)
+                
+                // Update JSON metadata
+                const updatedMetadata = {
+                  ...body,
+                  updatedAt: new Date().toISOString()
+                }
+                
+                await fs.writeFile(jsonFilePath, JSON.stringify(updatedMetadata, null, 2))
+                
+                // Update markdown content if provided
+                if (body.content) {
+                  await fs.writeFile(mdFilePath, body.content)
+                }
+                
+                return NextResponse.json({ 
+                  success: true, 
+                  message: 'Content updated successfully',
+                  contentId,
+                  updatedAt: updatedMetadata.updatedAt
+                })
+                
+              } catch {
+                continue
+              }
+            }
+          } catch {
+            continue
+          }
+        }
+        
+        return NextResponse.json(
+          { error: 'Content not found for update' },
+          { status: 404 }
+        )
+      } catch (error) {
+        console.error('File system update error:', error)
+        return NextResponse.json(
+          { error: 'Failed to update content in file system' },
+          { status: 500 }
+        )
+      }
     }
 
   } catch (error) {
@@ -276,7 +340,7 @@ export async function PUT(
 // DELETE endpoint for deleting content
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { contentID: string } }
+  { params }: { params: Promise<{ contentID: string }> }
 ) {
   try {
     // Check authentication
@@ -288,7 +352,9 @@ export async function DELETE(
       )
     }
 
-    const contentId = params.contentID
+    // ✅ FIX: Await params for Next.js 15 compatibility
+    const resolvedParams = await params
+    const contentId = resolvedParams.contentID
     
     if (USE_BACKEND_API) {
       // Forward to backend API
@@ -313,24 +379,37 @@ export async function DELETE(
       return NextResponse.json(data)
     } else {
       // Handle content deletion in file system
-      const storageDir = path.join(process.cwd(), '../storage')
-      const weeks = await fs.readdir(storageDir)
-      
-      for (const week of weeks) {
-        if (week.startsWith('.')) continue
+      const storageDirs = [
+        path.join(process.cwd(), '../storage'),
+        path.join(process.cwd(), '../generated_content')
+      ]
 
-        const weekDir = path.join(storageDir, week)
-        const jsonFilePath = path.join(weekDir, `${contentId}.json`)
-        const mdFilePath = path.join(weekDir, `${contentId}.md`)
-
+      for (const storageDir of storageDirs) {
         try {
-          // Try to delete both files
-          await fs.unlink(jsonFilePath).catch(() => {})
-          await fs.unlink(mdFilePath).catch(() => {})
+          const weeks = await fs.readdir(storageDir)
           
-          return NextResponse.json({ success: true, message: 'Content deleted successfully' })
-        } catch (deleteError) {
-          console.error('Delete error:', deleteError)
+          for (const week of weeks) {
+            if (week.startsWith('.')) continue
+
+            const weekDir = path.join(storageDir, week)
+            const jsonFilePath = path.join(weekDir, `${contentId}.json`)
+            const mdFilePath = path.join(weekDir, `${contentId}.md`)
+
+            try {
+              // Try to delete both files
+              await fs.unlink(jsonFilePath).catch(() => {})
+              await fs.unlink(mdFilePath).catch(() => {})
+              
+              return NextResponse.json({ 
+                success: true, 
+                message: 'Content deleted successfully',
+                contentId 
+              })
+            } catch {
+              continue
+            }
+          }
+        } catch {
           continue
         }
       }

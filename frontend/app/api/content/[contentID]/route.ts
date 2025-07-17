@@ -69,88 +69,126 @@ async function fetchFromBackend(contentId: string): Promise<ContentData> {
 }
 
 async function getContentFromFileSystem(contentId: string): Promise<ContentData> {
-  const storageDir = path.join(process.cwd(), '../storage')
+  // ✅ FIXED: Check generated_content first, then storage
+  const storageDirs = [
+    path.join(process.cwd(), '../generated_content'), // ✅ Real content first
+    path.join(process.cwd(), '../storage')            // ❌ Mock data fallback
+  ]
 
-  try {
-    // Search through week directories to find the content
-    const weeks = await fs.readdir(storageDir)
-    
-    for (const week of weeks) {
-      if (week.startsWith('.')) continue
+  for (const storageDir of storageDirs) {
+    try {
+      console.log(`🔍 [CONTENT-DETAIL] Searching in: ${storageDir}`)
+      const entries = await fs.readdir(storageDir)
+      
+      for (const entry of entries) {
+        if (entry.startsWith('.')) continue
 
-      const weekDir = path.join(storageDir, week)
-      try {
-        const weekStat = await fs.stat(weekDir)
-        if (!weekStat.isDirectory()) continue
-
-        const jsonFilePath = path.join(weekDir, `${contentId}.json`)
-        const mdFilePath = path.join(weekDir, `${contentId}.md`)
-
+        const entryPath = path.join(storageDir, entry)
         try {
-          // Try to read JSON metadata file
-          const jsonContent = await fs.readFile(jsonFilePath, 'utf-8')
-          const metadata: ContentMetadata = JSON.parse(jsonContent)
-          const fileStats = await fs.stat(jsonFilePath)
-
-          // Try to read markdown content file if it exists
-          let markdownContent = metadata.content || ''
-          try {
-            const mdContent = await fs.readFile(mdFilePath, 'utf-8')
-            markdownContent = mdContent
-          } catch {
-            // Markdown file doesn't exist, use content from JSON
-          }
-
-          // Calculate word count and reading time
-          const wordCount = markdownContent.split(/\s+/).filter(word => word.length > 0).length
-          const readingTime = Math.ceil(wordCount / 200) // Average reading speed
-
-          const contentData: ContentData = {
-            id: contentId,
-            title: metadata.title || contentId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            content: markdownContent,
-            contentHtml: metadata.contentHtml,
-            status: metadata.status || 'draft',
-            type: metadata.type || 'article',
-            createdAt: metadata.createdAt || fileStats.birthtime.toISOString(),
-            updatedAt: metadata.updatedAt || fileStats.mtime.toISOString(),
-            views: metadata.views || Math.floor(Math.random() * 500) + 10,
-            author: metadata.author,
-            metadata: {
-              template: metadata.metadata?.template as string | undefined,
-              styleProfile: typeof metadata.metadata?.styleProfile === 'string' ? metadata.metadata?.styleProfile : undefined,
-              wordCount,
-              readingTime,
-              ...metadata.metadata
-            },
-            week
-          }
-
-          return contentData
+          const entryStat = await fs.stat(entryPath)
           
+          if (entryStat.isDirectory()) {
+            // Search in week directories
+            const jsonFilePath = path.join(entryPath, `${contentId}.json`)
+            const mdFilePath = path.join(entryPath, `${contentId}.md`)
+
+            try {
+              const jsonContent = await fs.readFile(jsonFilePath, 'utf-8')
+              const metadata: ContentMetadata = JSON.parse(jsonContent)
+              const fileStats = await fs.stat(jsonFilePath)
+
+              // Try to read markdown content
+              let markdownContent = metadata.content || ''
+              try {
+                const mdContent = await fs.readFile(mdFilePath, 'utf-8')
+                markdownContent = mdContent
+              } catch {
+                // Use content from JSON if no markdown file
+              }
+
+              const wordCount = markdownContent.split(/\s+/).filter(word => word.length > 0).length
+              const readingTime = Math.ceil(wordCount / 200)
+
+              const contentData: ContentData = {
+                id: contentId,
+                title: metadata.title || contentId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                content: markdownContent,
+                contentHtml: metadata.contentHtml,
+                status: metadata.status || 'draft',
+                type: metadata.type || 'article',
+                createdAt: metadata.createdAt || fileStats.birthtime.toISOString(),
+                updatedAt: metadata.updatedAt || fileStats.mtime.toISOString(),
+                views: metadata.views || Math.floor(Math.random() * 500) + 10,
+                author: metadata.author,
+                metadata: {
+                  template: metadata.metadata?.template as string | undefined,
+                  styleProfile: typeof metadata.metadata?.styleProfile === 'string' ? metadata.metadata?.styleProfile : undefined,
+                  wordCount,
+                  readingTime,
+                  ...metadata.metadata
+                },
+                week: entry
+              }
+
+              console.log(`✅ [CONTENT-DETAIL] Found content in ${storageDir}/${entry}`)
+              return contentData
+              
+            } catch {
+              // File doesn't exist in this directory, continue searching
+              continue
+            }
+          } else if (entry === `${contentId}.json`) {
+            // Handle direct files (not in week directories)
+            try {
+              const jsonContent = await fs.readFile(entryPath, 'utf-8')
+              const metadata: ContentMetadata = JSON.parse(jsonContent)
+              const fileStats = await fs.stat(entryPath)
+
+              const contentData: ContentData = {
+                id: contentId,
+                title: metadata.title || contentId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                content: metadata.content || '',
+                contentHtml: metadata.contentHtml,
+                status: metadata.status || 'draft',
+                type: metadata.type || 'article',
+                createdAt: metadata.createdAt || fileStats.birthtime.toISOString(),
+                updatedAt: metadata.updatedAt || fileStats.mtime.toISOString(),
+                views: metadata.views || Math.floor(Math.random() * 500) + 10,
+                author: metadata.author,
+                metadata: {
+                  ...metadata.metadata
+                }
+              }
+
+              console.log(`✅ [CONTENT-DETAIL] Found content as direct file in ${storageDir}`)
+              return contentData
+            } catch {
+              continue
+            }
+          }
         } catch {
-          // File doesn't exist in this week, continue searching
           continue
         }
-      } catch {
-        continue
       }
+    } catch (error) {
+      console.warn(`⚠️ [CONTENT-DETAIL] Directory ${storageDir} not accessible:`, error)
+      continue
     }
-
-    // Content not found in any week
-    throw new Error('Content not found')
-
-  } catch (error) {
-    console.error('Error reading from file system:', error)
-    throw error
   }
+
+  throw new Error('Content not found')
 }
 
+// ✅ FIXED: Await params for Next.js 15 compatibility
 export async function GET(
   request: NextRequest,
-  { params }: { params: { contentID: string } }
+  context: { params: Promise<{ contentID: string }> }
 ) {
   try {
+    // ✅ NEW: Await params for Next.js 15
+    const params = await context.params
+    const contentId = params.contentID
+
     // Check authentication
     const session = await auth()
     if (!session?.user) {
@@ -159,8 +197,6 @@ export async function GET(
         { status: 401 }
       )
     }
-
-    const contentId = params.contentID
 
     if (!contentId) {
       return NextResponse.json(
@@ -185,7 +221,6 @@ export async function GET(
       contentData = await getContentFromFileSystem(contentId)
     }
 
-    // Add cache headers
     const response = NextResponse.json(contentData)
     response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
     
@@ -211,12 +246,15 @@ export async function GET(
   }
 }
 
-// PUT endpoint for updating content
+// ✅ FIXED: Await params for PUT
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { contentID: string } }
+  context: { params: Promise<{ contentID: string }> }
 ) {
   try {
+    const params = await context.params
+    const contentId = params.contentID
+
     // Check authentication
     const session = await auth()
     if (!session?.user) {
@@ -226,11 +264,9 @@ export async function PUT(
       )
     }
 
-    const contentId = params.contentID
     const body = await request.json()
     
     if (USE_BACKEND_API) {
-      // Forward to backend API
       const response = await fetch(`${BACKEND_URL}/api/content/${contentId}`, {
         method: 'PUT',
         headers: {
@@ -252,10 +288,67 @@ export async function PUT(
       const data = await response.json()
       return NextResponse.json(data)
     } else {
-      // Handle content update in file system
+      // ✅ ENHANCED: Implement file system content updates
+      const storageDirs = [
+        path.join(process.cwd(), '../generated_content'),
+        path.join(process.cwd(), '../storage')
+      ]
+      
+      for (const storageDir of storageDirs) {
+        try {
+          const entries = await fs.readdir(storageDir)
+          
+          for (const entry of entries) {
+            const entryPath = path.join(storageDir, entry)
+            const entryStat = await fs.stat(entryPath)
+            
+            if (entryStat.isDirectory()) {
+              const jsonFilePath = path.join(entryPath, `${contentId}.json`)
+              const mdFilePath = path.join(entryPath, `${contentId}.md`)
+
+              try {
+                // Check if content exists
+                await fs.access(jsonFilePath)
+                
+                // Read existing metadata
+                const existingContent = await fs.readFile(jsonFilePath, 'utf-8')
+                const existingMetadata = JSON.parse(existingContent)
+                
+                // Update metadata
+                const updatedMetadata = {
+                  ...existingMetadata,
+                  ...body,
+                  updatedAt: new Date().toISOString()
+                }
+                
+                // Save updated JSON
+                await fs.writeFile(jsonFilePath, JSON.stringify(updatedMetadata, null, 2))
+                
+                // Save updated markdown if content provided
+                if (body.content) {
+                  await fs.writeFile(mdFilePath, body.content)
+                }
+                
+                return NextResponse.json({
+                  success: true,
+                  message: 'Content updated successfully',
+                  contentId,
+                  updatedAt: updatedMetadata.updatedAt
+                })
+                
+              } catch {
+                continue
+              }
+            }
+          }
+        } catch {
+          continue
+        }
+      }
+      
       return NextResponse.json(
-        { error: 'Content updates not implemented for file system mode' },
-        { status: 501 }
+        { error: 'Content not found' },
+        { status: 404 }
       )
     }
 
@@ -272,12 +365,15 @@ export async function PUT(
   }
 }
 
-// DELETE endpoint for deleting content
+// ✅ FIXED: Await params for DELETE
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { contentID: string } }
+  context: { params: Promise<{ contentID: string }> }
 ) {
   try {
+    const params = await context.params
+    const contentId = params.contentID
+
     // Check authentication
     const session = await auth()
     if (!session?.user) {
@@ -286,11 +382,8 @@ export async function DELETE(
         { status: 401 }
       )
     }
-
-    const contentId = params.contentID
     
     if (USE_BACKEND_API) {
-      // Forward to backend API
       const response = await fetch(`${BACKEND_URL}/api/content/${contentId}`, {
         method: 'DELETE',
         headers: {
@@ -311,23 +404,38 @@ export async function DELETE(
       const data = await response.json()
       return NextResponse.json(data)
     } else {
-      // Handle content deletion in file system
-      const storageDir = path.join(process.cwd(), '../storage')
-      const weeks = await fs.readdir(storageDir)
+      // ✅ ENHANCED: Check both generated_content and storage for deletion
+      const storageDirs = [
+        path.join(process.cwd(), '../generated_content'),
+        path.join(process.cwd(), '../storage')
+      ]
       
-      for (const week of weeks) {
-        if (week.startsWith('.')) continue
-
-        const weekDir = path.join(storageDir, week)
-        const jsonFilePath = path.join(weekDir, `${contentId}.json`)
-        const mdFilePath = path.join(weekDir, `${contentId}.md`)
-
+      for (const storageDir of storageDirs) {
         try {
-          // Try to delete both files
-          await fs.unlink(jsonFilePath).catch(() => {})
-          await fs.unlink(mdFilePath).catch(() => {})
+          const entries = await fs.readdir(storageDir)
           
-          return NextResponse.json({ success: true, message: 'Content deleted successfully' })
+          for (const entry of entries) {
+            const entryPath = path.join(storageDir, entry)
+            const entryStat = await fs.stat(entryPath)
+            
+            if (entryStat.isDirectory()) {
+              const jsonFilePath = path.join(entryPath, `${contentId}.json`)
+              const mdFilePath = path.join(entryPath, `${contentId}.md`)
+
+              try {
+                await fs.unlink(jsonFilePath).catch(() => {})
+                await fs.unlink(mdFilePath).catch(() => {})
+                
+                return NextResponse.json({ 
+                  success: true, 
+                  message: 'Content deleted successfully',
+                  location: entryPath
+                })
+              } catch {
+                continue
+              }
+            }
+          }
         } catch {
           continue
         }
