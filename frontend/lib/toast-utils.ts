@@ -5,7 +5,7 @@ export const showToast = {
   success: (message: string, description?: string) => {
     return toast.success(message, {
       description,
-      duration: 4000,
+      duration: 5000, // Changed from 5000 to 2.5 seconds
       closeButton: true,
     })
   },
@@ -13,7 +13,7 @@ export const showToast = {
   error: (message: string, description?: string) => {
     return toast.error(message, {
       description,
-      duration: 4000,
+      duration: 5000, // Changed from 5000 to 3 seconds (slightly longer for errors)
       closeButton: true,
     })
   },
@@ -21,7 +21,7 @@ export const showToast = {
   info: (message: string, description?: string) => {
     return toast.info(message, {
       description,
-      duration: 4000,
+      duration: 5000, // Changed from 5000 to 2.5 seconds
       closeButton: true,
     })
   },
@@ -29,7 +29,7 @@ export const showToast = {
   warning: (message: string, description?: string) => {
     return toast.warning(message, {
       description,
-      duration: 3000,
+      duration: 5000, // Changed from 5000 to 2.5 seconds
       closeButton: true,
     })
   },
@@ -37,7 +37,7 @@ export const showToast = {
   custom: (message: string, options?: Record<string, unknown>) => {
     return toast(message, {
       closeButton: true,
-      duration: 2000,
+      duration: 2000, // This one was already at 2 seconds
       ...options,
     })
   },

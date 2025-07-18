@@ -1,17 +1,30 @@
-/* File: frontend/components/ToastProvider.tsx */
 "use client"
 
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 export function ToastProvider() {
   const { theme } = useTheme()
+  const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Clear toasts when navigating between pages (as backup to duration)
+  useEffect(() => {
+    if (mounted) {
+      // Small delay to prevent clearing toasts immediately on mount
+      const timer = setTimeout(() => {
+        toast.dismiss()
+      }, 100)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [pathname, mounted])
 
   if (!mounted) {
     return null
@@ -23,7 +36,9 @@ export function ToastProvider() {
       expand={true}
       richColors={true}
       closeButton={true}
-      duration={4000}
+      duration={2500} // Default fallback duration
+      visibleToasts={4} // Limit visible toasts
+      gap={8}
       toastOptions={{
         style: {
           background: 'hsl(var(--background))',
@@ -43,5 +58,5 @@ export function ToastProvider() {
       }}
       theme={theme as 'light' | 'dark' | 'system'}
     />
-    )
-}  
+  )
+}

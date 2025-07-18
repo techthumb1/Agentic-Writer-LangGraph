@@ -2662,5 +2662,77 @@
       "word_count": 757,
       "model_used": "gpt-4o"
     }
+  },
+  {
+    "timestamp": "2025-07-18T01:16:38.791076",
+    "context": {
+      "topic_category": "general",
+      "audience": "general",
+      "intent": "teach",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "analytical",
+      "structure": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "The Math behind Data Science: An Overview of Your Favorite Algorithms",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "teach",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "analytical",
+      "structure_pattern": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-18T01:16:38.790932",
+      "word_count": 765,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-18T14:40:57.077875",
+    "context": {
+      "topic_category": "general",
+      "audience": "general",
+      "intent": "teach",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "analytical",
+      "structure": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "teach",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "analytical",
+      "structure_pattern": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-18T14:40:57.077734",
+      "word_count": 730,
+      "model_used": "gpt-4o"
+    }
   }
 ]

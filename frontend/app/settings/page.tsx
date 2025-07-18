@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useToast } from '@/hooks/use-toast'
+import { showToast } from '@/lib/toast-utils'
 import { useTheme } from 'next-themes'
 import { 
   User, 
@@ -63,7 +63,6 @@ interface GenerationSettings {
 }
 
 export default function SettingsPage() {
-  const { toast } = useToast()
   const { theme, setTheme } = useTheme() // Use next-themes instead of custom theme management
   const [isLoading, setIsLoading] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
@@ -95,10 +94,10 @@ export default function SettingsPage() {
     setTheme(newTheme)
     
     // Toast without duration since it's not supported
-    toast({
-      title: 'Theme Updated',
-      description: `Switched to ${newTheme === 'writerzroom' ? 'WriterzRoom' : newTheme} theme`,
-    })
+    showToast.success(
+  'Theme Updated',
+  `Switched to ${newTheme === 'writerzroom' ? 'WriterzRoom' : newTheme} theme`
+)
   }
 
   useEffect(() => {
@@ -115,35 +114,26 @@ export default function SettingsPage() {
         }))
       } catch (err) {
         console.error('Failed to load settings:', err)
-        toast({
-          title: 'Error',
-          description: 'Failed to load settings',
-          variant: 'destructive',
-        })
+        showToast.error('Error', 'Failed to load settings')
+
       } finally {
         setIsLoading(false)
       }
     }
 
     loadSettings()
-  }, [toast])
+  }, [])
 
   const saveUserSettings = async () => {
     try {
       setIsLoading(true)
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      toast({
-        title: 'Success',
-        description: 'User settings saved successfully',
-      })
+      showToast.success('Success', 'User settings saved successfully')
     } catch (err) {
       console.error('Failed to save user settings:', err)
-      toast({
-        title: 'Error',
-        description: 'Failed to save user settings',
-        variant: 'destructive',
-      })
+      showToast.error('Error', 'Failed to load settings')
+
     } finally {
       setIsLoading(false)
     }
@@ -154,17 +144,11 @@ export default function SettingsPage() {
       setIsLoading(true)
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      toast({
-        title: 'Success',
-        description: 'Generation settings saved successfully',
-      })
+      showToast.success('Success', 'User settings saved successfully')
     } catch (err) {
       console.error('Failed to save generation settings:', err)
-      toast({
-        title: 'Error',
-        description: 'Failed to save generation settings',
-        variant: 'destructive',
-      })
+      showToast.error('Error', 'Failed to load settings')
+
     } finally {
       setIsLoading(false)
     }
@@ -183,17 +167,10 @@ export default function SettingsPage() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      toast({
-        title: 'Success',
-        description: 'Settings exported successfully',
-      })
+      showToast.success('Success', 'User settings saved successfully')
     } catch (err) {
       console.error('Failed to export settings:', err)
-      toast({
-        title: 'Error',
-        description: 'Failed to export settings',
-        variant: 'destructive',
-      })
+      showToast.error('Error', 'Failed to load settings')
     }
   }
 
@@ -208,17 +185,10 @@ export default function SettingsPage() {
       if (imported.userSettings) setUserSettings(imported.userSettings)
       if (imported.generationSettings) setGenerationSettings(imported.generationSettings)
       
-      toast({
-        title: 'Success',
-        description: 'Settings imported successfully',
-      })
+      showToast.success('Success', 'User settings saved successfully')
     } catch (err) {
       console.error('Failed to import settings:', err)
-      toast({
-        title: 'Error',
-        description: 'Failed to import settings. Please check the file format.',
-        variant: 'destructive',
-      })
+      showToast.error('Error', 'Failed to load settings')
     }
   }
 
@@ -241,17 +211,10 @@ export default function SettingsPage() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      toast({
-        title: 'Success',
-        description: 'User data exported successfully',
-      })
+      showToast.success('Success', 'User settings saved successfully')
     } catch (err) {
       console.error('Failed to export user data:', err)
-      toast({
-        title: 'Error',
-        description: 'Failed to export user data',
-        variant: 'destructive',
-      })
+      showToast.error('Error', 'Failed to load settings')
     }
   }
 
@@ -879,11 +842,10 @@ export default function SettingsPage() {
                     className="w-full"
                     disabled={deleteConfirmation !== 'DELETE'}
                     onClick={() => {
-                      toast({
-                        title: 'Account Deletion',
-                        description: 'This feature is not implemented in demo mode',
-                        variant: 'destructive',
-                      })
+                      showToast.error(
+                        'Account Deletion',
+                        'This feature is not implemented in demo mode'
+                      )
                     }}
                   >
                     <AlertCircle className="h-4 w-4 mr-2" />

@@ -79,10 +79,10 @@ const TemplatePreviewModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 writerzroom:bg-white/10 writerzroom:backdrop-blur-sm writerzroom:border writerzroom:border-white/20 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700 writerzroom:border-white/20">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">{template.name}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white writerzroom:text-white">{template.name}</h2>
             <Button variant="outline" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
@@ -91,29 +91,29 @@ const TemplatePreviewModal = ({
         
         <div className="p-6 space-y-6">
           {/* Template Overview */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-            <p className="text-gray-700">{template.description}</p>
+          <div className="bg-gray-50 dark:bg-gray-700 writerzroom:bg-white/10 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 dark:text-white writerzroom:text-white mb-2">Description</h3>
+            <p className="text-gray-700 dark:text-gray-300 writerzroom:text-gray-300">{template.description}</p>
           </div>
 
           {/* Template Details */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-1">Category</h4>
-              <p className="text-blue-700">{template.category}</p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 writerzroom:bg-blue-500/20 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 dark:text-blue-300 writerzroom:text-blue-300 mb-1">Category</h4>
+              <p className="text-blue-700 dark:text-blue-400 writerzroom:text-blue-400">{template.category}</p>
             </div>
             {template.difficulty && (
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-medium text-green-900 mb-1">Difficulty</h4>
+              <div className="bg-green-50 dark:bg-green-900/20 writerzroom:bg-green-500/20 rounded-lg p-4">
+                <h4 className="font-medium text-green-900 dark:text-green-300 writerzroom:text-green-300 mb-1">Difficulty</h4>
                 <p className={`font-medium ${getDifficultyColor(template.difficulty)}`}>
                   {template.difficulty}
                 </p>
               </div>
             )}
             {template.estimatedLength && (
-              <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="font-medium text-purple-900 mb-1">Time Required</h4>
-                <p className="text-purple-700">{template.estimatedLength}</p>
+              <div className="bg-purple-50 dark:bg-purple-900/20 writerzroom:bg-purple-500/20 rounded-lg p-4">
+                <h4 className="font-medium text-purple-900 dark:text-purple-300 writerzroom:text-purple-300 mb-1">Time Required</h4>
+                <p className="text-purple-700 dark:text-purple-400 writerzroom:text-purple-400">{template.estimatedLength}</p>
               </div>
             )}
           </div>
@@ -121,7 +121,7 @@ const TemplatePreviewModal = ({
           {/* Parameters Preview */}
           {template.parameters && Array.isArray(template.parameters) && template.parameters.length > 0 && (
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3">Template Parameters</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white writerzroom:text-white mb-3">Template Parameters</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {template.parameters.map((param: {
                   label: string;
@@ -130,17 +130,17 @@ const TemplatePreviewModal = ({
                   type?: string;
                   default?: string;
                 }, index: number) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-3">
+                  <div key={index} className="border border-gray-200 dark:border-gray-700 writerzroom:border-white/20 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-gray-900">{param.label}</span>
+                      <span className="font-medium text-gray-900 dark:text-white writerzroom:text-white">{param.label}</span>
                       {param.required && (
-                        <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                        <span className="text-xs bg-red-100 dark:bg-red-900/20 writerzroom:bg-red-500/20 text-red-700 dark:text-red-400 writerzroom:text-red-400 px-2 py-1 rounded">
                           Required
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">{param.description}</p>
-                    <div className="text-xs text-gray-500">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 writerzroom:text-gray-400 mb-2">{param.description}</p>
+                    <div className="text-xs text-gray-500 dark:text-gray-500 writerzroom:text-gray-500">
                       Type: {param.type}
                       {param.default && ` • Default: ${param.default}`}
                     </div>
@@ -153,9 +153,9 @@ const TemplatePreviewModal = ({
           {/* Instructions */}
           {template.instructions && (
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3">Instructions</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700 whitespace-pre-line">{template.instructions}</p>
+              <h3 className="font-semibold text-gray-900 dark:text-white writerzroom:text-white mb-3">Instructions</h3>
+              <div className="bg-gray-50 dark:bg-gray-700 writerzroom:bg-white/10 rounded-lg p-4">
+                <p className="text-gray-700 dark:text-gray-300 writerzroom:text-gray-300 whitespace-pre-line">{template.instructions}</p>
               </div>
             </div>
           )}
@@ -198,8 +198,8 @@ export default function TemplatesPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
-        <div className="text-center text-white">
+      <div className="min-h-screen theme-background flex items-center justify-center">
+        <div className="text-center text-foreground">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-purple-400" />
           <p className="text-xl">Loading templates...</p>
         </div>
@@ -209,11 +209,11 @@ export default function TemplatesPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
-        <div className="text-center text-white max-w-md">
+      <div className="min-h-screen theme-background flex items-center justify-center">
+        <div className="text-center text-foreground max-w-md">
           <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-400" />
           <h2 className="text-xl font-semibold mb-2">Failed to Load Templates</h2>
-          <p className="text-gray-300 mb-4">Could not connect to the backend API</p>
+          <p className="text-muted-foreground mb-4">Could not connect to the backend API</p>
           <Button onClick={() => window.location.reload()} variant="outline">
             Retry
           </Button>
@@ -223,9 +223,9 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+    <div className="min-h-screen theme-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="max-w-6xl mx-auto text-white">
+        <div className="max-w-6xl mx-auto text-foreground">
           {/* Header */}
           <header className="text-center mb-12">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
@@ -234,21 +234,21 @@ export default function TemplatesPage() {
                 {" "}Templates
               </span>
             </h1>
-            <p className="text-xl text-gray-300 leading-relaxed max-w-3xl mx-auto">
-              Choose from our library of professionally crafted templates to accelerate your content creation with AgentWrite Pro.
+            <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">
+              Choose from our library of professionally crafted templates to accelerate your content creation with WriterzRoom.
             </p>
           </header>
 
           {/* Search and Filters */}
-          <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6 mb-8">
+          <div className="bg-card/50 backdrop-blur-sm border border-border rounded-xl p-6 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="md:col-span-2 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search templates..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-gray-800 border-gray-600 text-white focus:border-purple-500"
+                  className="pl-10 bg-background/50 border-border text-foreground focus:border-primary"
                 />
               </div>
               
@@ -256,7 +256,7 @@ export default function TemplatesPage() {
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-white focus:border-purple-500 focus:outline-none"
+                  className="w-full bg-background/50 border border-border rounded-md px-3 py-2 text-foreground focus:border-primary focus:outline-none"
                 >
                   {categories.map(category => (
                     <option key={category} value={category}>{category}</option>
@@ -268,7 +268,7 @@ export default function TemplatesPage() {
                 <select
                   value={selectedDifficulty}
                   onChange={(e) => setSelectedDifficulty(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-white focus:border-purple-500 focus:outline-none"
+                  className="w-full bg-background/50 border border-border rounded-md px-3 py-2 text-foreground focus:border-primary focus:outline-none"
                 >
                   <option value="all">All Difficulty</option>
                   <option value="beginner">Beginner</option>
@@ -281,32 +281,32 @@ export default function TemplatesPage() {
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 text-center">
+            <div className="bg-card/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
               <FileText className="h-6 w-6 text-purple-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{extendedTemplates?.length || 0}</div>
-              <div className="text-xs text-gray-400">Templates Available</div>
+              <div className="text-2xl font-bold text-foreground">{extendedTemplates?.length || 0}</div>
+              <div className="text-xs text-muted-foreground">Templates Available</div>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 text-center">
+            <div className="bg-card/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
               <Users className="h-6 w-6 text-blue-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">15K+</div>
-              <div className="text-xs text-gray-400">Monthly Uses</div>
+              <div className="text-2xl font-bold text-foreground">15K+</div>
+              <div className="text-xs text-muted-foreground">Monthly Uses</div>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 text-center">
+            <div className="bg-card/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
               <Star className="h-6 w-6 text-yellow-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">4.8</div>
-              <div className="text-xs text-gray-400">Avg Rating</div>
+              <div className="text-2xl font-bold text-foreground">4.8</div>
+              <div className="text-xs text-muted-foreground">Avg Rating</div>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 text-center">
+            <div className="bg-card/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
               <Clock className="h-6 w-6 text-green-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">85%</div>
-              <div className="text-xs text-gray-400">Time Saved</div>
+              <div className="text-2xl font-bold text-foreground">85%</div>
+              <div className="text-xs text-muted-foreground">Time Saved</div>
             </div>
           </div>
 
           {/* Templates Grid */}
           <>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 {filteredTemplates.length} Templates Found
               </h2>
               <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
@@ -321,41 +321,41 @@ export default function TemplatesPage() {
                 return (
                   <div
                     key={template.id}
-                    className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6 hover:bg-white/15 transition-all duration-300 transform hover:scale-105 cursor-pointer group"
+                    className="bg-card/50 backdrop-blur-sm border border-border rounded-xl p-6 hover:bg-card/70 transition-all duration-300 transform hover:scale-105 cursor-pointer group"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-3">
-                        <div className="bg-purple-600 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-purple-500 transition-colors">
-                          <IconComponent className="h-6 w-6 text-white" />
+                        <div className="bg-primary w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/80 transition-colors">
+                          <IconComponent className="h-6 w-6 text-primary-foreground" />
                         </div>
                         <div className="flex items-center space-x-2">
                           <div className="flex items-center">
                             <Star className="h-4 w-4 text-yellow-400 mr-1" />
-                            <span className="text-sm text-gray-300">95%</span>
+                            <span className="text-sm text-muted-foreground">95%</span>
                           </div>
                         </div>
                       </div>
                       {template.difficulty && (
-                        <div className={`px-2 py-1 rounded text-xs font-medium ${getDifficultyColor(template.difficulty)} bg-white/10`}>
+                        <div className={`px-2 py-1 rounded text-xs font-medium ${getDifficultyColor(template.difficulty)} bg-card/50`}>
                           {template.difficulty}
                         </div>
                       )}
                     </div>
 
-                    <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-purple-300 transition-colors">
+                    <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
                       {template.name}
                     </h3>
                     
-                    <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                    <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
                       {template.description}
                     </p>
 
-                    <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
                       <div className="flex items-center">
                         <Clock className="h-4 w-4 mr-1" />
                         <span>{template.estimatedLength || '5-10 min'}</span>
                       </div>
-                      <span className="bg-purple-600/20 text-purple-300 px-2 py-1 rounded text-xs">
+                      <span className="bg-primary/20 text-primary px-2 py-1 rounded text-xs">
                         {template.category}
                       </span>
                     </div>
@@ -373,7 +373,7 @@ export default function TemplatesPage() {
                         onClick={() => handlePreviewTemplate(template)}
                         variant="outline" 
                         size="sm"
-                        className="border-purple-400 text-purple-500 hover:bg-purple-900/20"
+                        className="border-primary text-primary hover:bg-primary/10"
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         Preview
@@ -386,9 +386,9 @@ export default function TemplatesPage() {
 
             {filteredTemplates.length === 0 && (
               <div className="text-center py-12">
-                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No templates found</h3>
-                <p className="text-gray-400 mb-4">Try adjusting your search or filter criteria</p>
+                <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">No templates found</h3>
+                <p className="text-muted-foreground mb-4">Try adjusting your search or filter criteria</p>
                 <Button 
                   onClick={() => {
                     setSearchQuery('');
@@ -396,7 +396,7 @@ export default function TemplatesPage() {
                     setSelectedDifficulty('all');
                   }}
                   variant="outline"
-                  className="border-purple-400 text-purple-300 hover:bg-purple-900/20"
+                  className="border-primary text-primary hover:bg-primary/10"
                 >
                   Clear Filters
                 </Button>
@@ -415,10 +415,10 @@ export default function TemplatesPage() {
                   <div
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 text-center hover:bg-white/10 transition-all duration-300 cursor-pointer group"
+                    className="bg-card/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center hover:bg-card/50 transition-all duration-300 cursor-pointer group"
                   >
-                    <IconComponent className="h-8 w-8 text-purple-400 mx-auto mb-2 group-hover:text-purple-300 transition-colors" />
-                    <div className="text-sm font-medium text-white group-hover:text-purple-300 transition-colors">
+                    <IconComponent className="h-8 w-8 text-primary mx-auto mb-2 group-hover:text-primary/80 transition-colors" />
+                    <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
                       {category}
                     </div>
                   </div>
@@ -428,11 +428,11 @@ export default function TemplatesPage() {
           </div>
 
           {/* CTA Section */}
-          <div className="mt-16 text-center bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-8">
+          <div className="mt-16 text-center bg-card/30 backdrop-blur-sm border border-border rounded-xl p-8">
             <h2 className="text-2xl sm:text-3xl font-bold mb-4">
               Can&apos;t Find What You Need?
             </h2>
-            <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
+            <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
               Request a custom template or contact our team to create specialized content structures for your unique needs.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -445,7 +445,7 @@ export default function TemplatesPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto border-purple-400 text-purple-500 hover:bg-purple-900/20 border-2 font-semibold px-8 py-3 rounded-full shadow-md transition-all duration-300 hover:scale-105"
+                className="w-full sm:w-auto border-primary text-primary hover:bg-primary/10 border-2 font-semibold px-8 py-3 rounded-full shadow-md transition-all duration-300 hover:scale-105"
               >
                 Contact Support
               </Button>

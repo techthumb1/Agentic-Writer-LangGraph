@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from '@/components/PageHeader';
 
 interface ContentItem {
   id: string;
@@ -183,19 +184,19 @@ export default function MyContentPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 space-y-8 text-white">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
-            My Generated Content
-          </h1>
-          <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-            Access, review, and publish your saved AI-generated drafts.
-          </p>
-        </div>
-        <div className="flex justify-center py-12">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-500 mx-auto mb-4" />
-            <p className="text-gray-300">Loading your content...</p>
+      <div className="min-h-screen theme-background">
+        <div className="container mx-auto p-6 space-y-8">
+          <PageHeader
+            title="My Generated"
+            gradientText="Content"
+            subtitle="Access, review, and publish your saved AI-generated drafts."
+            size="lg"
+          />
+          <div className="flex justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading your content...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -204,31 +205,34 @@ export default function MyContentPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto p-6 space-y-8 text-white">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
-            My Generated Content
-          </h1>
-        </div>
-        <div className="flex justify-center py-12">
-          <Card className="bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 max-w-md">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3 text-red-700 dark:text-red-300">
-                <AlertCircle className="h-5 w-5" />
-                <div>
-                  <h3 className="font-medium">Failed to load content</h3>
-                  <p className="text-sm mt-1">{error}</p>
+      <div className="min-h-screen theme-background">
+        <div className="container mx-auto p-6 space-y-8">
+          <PageHeader
+            title="My Generated"
+            gradientText="Content"
+            subtitle="Access, review, and publish your saved AI-generated drafts."
+            size="lg"
+          />
+          <div className="flex justify-center py-12">
+            <Card className="theme-card max-w-md">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  <div>
+                    <h3 className="font-medium">Failed to load content</h3>
+                    <p className="text-sm mt-1">{error}</p>
+                  </div>
                 </div>
-              </div>
-              <Button 
-                variant="outline" 
-                className="mt-4 w-full" 
-                onClick={() => window.location.reload()}
-              >
-                Retry
-              </Button>
-            </CardContent>
-          </Card>
+                <Button 
+                  variant="outline" 
+                  className="mt-4 w-full" 
+                  onClick={() => window.location.reload()}
+                >
+                  Retry
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
@@ -237,231 +241,227 @@ export default function MyContentPage() {
   const stats = contentData!.stats;
 
   return (
-    <div className="container mx-auto p-6 space-y-8 text-white">
-      {/* Header */}
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
-          My Generated Content
-        </h1>
-        <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-          Access, review, and publish your saved AI-generated drafts.
-        </p>
-      </div>
+    <div className="min-h-screen theme-background">
+      <div className="container mx-auto p-6 space-y-8">
+        {/* Header */}
+        <PageHeader
+          title="My Generated"
+          gradientText="Content"
+          subtitle="Access, review, and publish your saved AI-generated drafts."
+          size="lg"
+        />
 
-      {/* Search and Filter Bar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search content..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-          />
-        </div>
-        
-        <div className="flex gap-2">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as 'all' | 'published' | 'draft')}
-            className="px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-md text-white"
-          >
-            <option value="all">All Status</option>
-            <option value="published">Published</option>
-            <option value="draft">Drafts</option>
-          </select>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'views')}
-            className="px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-md text-white"
-          >
-            <option value="date">Sort by Date</option>
-            <option value="title">Sort by Title</option>
-            <option value="views">Sort by Views</option>
-          </select>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={fetchContent}
-            className="border-purple-400/50 text-purple-500 hover:bg-purple-900/20"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button 
-            onClick={() => router.push('/generate')}
-            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Content
-          </Button>
-        </div>
-      </div>
-
-      {/* Content Display */}
-      {filteredAndSortedContent.length === 0 ? (
-        <div className="text-center py-12">
-          <FileText className="h-16 w-16 text-gray-500 mx-auto mb-4" />
-          <p className="text-xl text-gray-400 mb-2">
-            {searchTerm || filterStatus !== 'all' 
-              ? 'No content matches your filters' 
-              : "You haven't generated anything yet"}
-          </p>
-          <p className="text-gray-500 mb-6">
-            {searchTerm || filterStatus !== 'all'
-              ? 'Try adjusting your search terms or filters'
-              : 'Start creating amazing content with our AI tools'}
-          </p>
-          <div className="flex gap-2 justify-center">
-            {(searchTerm || filterStatus !== 'all') && (
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setSearchTerm("");
-                  setFilterStatus('all');
-                }}
-                className="border-white/20 text-white hover:bg-white/10"
-              >
-                Clear Filters
-              </Button>
-            )}
+        {/* Search and Filter Bar */}
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search content..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as 'all' | 'published' | 'draft')}
+              className="px-3 py-2 text-sm theme-input rounded-md"
+            >
+              <option value="all">All Status</option>
+              <option value="published">Published</option>
+              <option value="draft">Drafts</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'views')}
+              className="px-3 py-2 text-sm theme-input rounded-md"
+            >
+              <option value="date">Sort by Date</option>
+              <option value="title">Sort by Title</option>
+              <option value="views">Sort by Views</option>
+            </select>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={fetchContent}
+              className="action-btn outline"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
             <Button 
               onClick={() => router.push('/generate')}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              className="action-btn primary"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Create Your First Content
+              New Content
             </Button>
           </div>
         </div>
-      ) : (
-        <>
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20">
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-white">{stats.total}</div>
-                <p className="text-sm text-gray-300">Total Content</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20">
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-white">{stats.published}</div>
-                <p className="text-sm text-gray-300">Published</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20">
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-white">{stats.drafts}</div>
-                <p className="text-sm text-gray-300">Drafts</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20">
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-white">{contentData!.totalViews.toLocaleString()}</div>
-                <p className="text-sm text-gray-300">Total Views</p>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Content Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredAndSortedContent.map((item) => (
-              <Card key={item.id} className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/15 transition-colors">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="flex items-center gap-2 text-white">
-                        <FileText className="h-5 w-5 text-purple-500" />
-                        {item.title}
-                      </CardTitle>
-                      <CardDescription className="text-gray-300 mt-1">
-                        Created {getRelativeTime(item.createdAt || item.date)}
-                        {item.week && (
-                          <span className="block text-xs text-gray-400 mt-1">
-                            Week: {item.week}
-                          </span>
-                        )}
-                      </CardDescription>
-                    </div>
-                    <Badge 
-                      variant={item.status === 'published' ? 'default' : 'secondary'}
-                      className={
-                        item.status === 'published'
-                          ? 'bg-green-600/20 text-green-300 border border-green-600/30'
-                          : 'bg-yellow-600/20 text-yellow-300 border border-yellow-600/30'
-                      }
-                    >
-                      {item.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="border-purple-400/50 text-purple-500">
-                        {item.type}
-                      </Badge>
-                      {item.views && (
-                        <span className="text-xs text-gray-400">
-                          {item.views} views
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{formatDate(item.updatedAt || item.date)}</span>
-                      </div>
-                      {item.views !== undefined && (
-                        <div className="flex items-center gap-1">
-                          <Eye className="h-4 w-4" />
-                          <span>{item.views} views</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                        onClick={() => handleViewContent(item.id)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleEditContent(item.id)}
-                        className="border-purple-400 text-purple-500 hover:bg-purple-900/20"
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleDeleteContent(item.id, item.title)}
-                        className="border-red-400 text-red-500 hover:bg-red-900/20"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+        {/* Content Display */}
+        {filteredAndSortedContent.length === 0 ? (
+          <div className="empty-state">
+            <FileText className="empty-state-icon" />
+            <h3 className="empty-state-title">
+              {searchTerm || filterStatus !== 'all' 
+                ? 'No content matches your filters' 
+                : "You haven't generated anything yet"}
+            </h3>
+            <p className="empty-state-description">
+              {searchTerm || filterStatus !== 'all'
+                ? 'Try adjusting your search terms or filters'
+                : 'Start creating amazing content with our AI tools'}
+            </p>
+            <div className="flex gap-2 justify-center">
+              {(searchTerm || filterStatus !== 'all') && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSearchTerm("");
+                    setFilterStatus('all');
+                  }}
+                  className="action-btn outline"
+                >
+                  Clear Filters
+                </Button>
+              )}
+              <Button 
+                onClick={() => router.push('/generate')}
+                className="action-btn primary"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Content
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <Card className="stats-card">
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-foreground">{stats.total}</div>
+                  <p className="text-sm text-muted-foreground">Total Content</p>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-
-          {/* Footer */}
-          {filteredAndSortedContent.length > 0 && (
-            <div className="text-center text-sm text-gray-400 py-4">
-              Showing {filteredAndSortedContent.length} of {contentData?.stats.total || 0} content items
+              <Card className="stats-card">
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-foreground">{stats.published}</div>
+                  <p className="text-sm text-muted-foreground">Published</p>
+                </CardContent>
+              </Card>
+              <Card className="stats-card">
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-foreground">{stats.drafts}</div>
+                  <p className="text-sm text-muted-foreground">Drafts</p>
+                </CardContent>
+              </Card>
+              <Card className="stats-card">
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-foreground">{contentData!.totalViews.toLocaleString()}</div>
+                  <p className="text-sm text-muted-foreground">Total Views</p>
+                </CardContent>
+              </Card>
             </div>
-          )}
-        </>
-      )}
+
+            {/* Content Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredAndSortedContent.map((item) => (
+                <Card key={item.id} className="theme-card">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="flex items-center gap-2 text-foreground">
+                          <FileText className="h-5 w-5 text-primary" />
+                          {item.title}
+                        </CardTitle>
+                        <CardDescription className="text-muted-foreground mt-1">
+                          Created {getRelativeTime(item.createdAt || item.date)}
+                          {item.week && (
+                            <span className="block text-xs text-muted-foreground mt-1">
+                              Week: {item.week}
+                            </span>
+                          )}
+                        </CardDescription>
+                      </div>
+                      <Badge 
+                        variant={item.status === 'published' ? 'default' : 'secondary'}
+                        className={`status-badge ${item.status}`}
+                      >
+                        {item.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="border-primary/50 text-primary">
+                          {item.type}
+                        </Badge>
+                        {item.views && (
+                          <span className="text-xs text-muted-foreground">
+                            {item.views} views
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>{formatDate(item.updatedAt || item.date)}</span>
+                        </div>
+                        {item.views !== undefined && (
+                          <div className="flex items-center gap-1">
+                            <Eye className="h-4 w-4" />
+                            <span>{item.views} views</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          className="flex-1 action-btn primary"
+                          onClick={() => handleViewContent(item.id)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleEditContent(item.id)}
+                          className="action-btn outline"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleDeleteContent(item.id, item.title)}
+                          className="border-destructive text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Footer */}
+            {filteredAndSortedContent.length > 0 && (
+              <div className="text-center text-sm text-muted-foreground py-4">
+                Showing {filteredAndSortedContent.length} of {contentData?.stats.total || 0} content items
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

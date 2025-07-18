@@ -113,8 +113,8 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
-/* AgentWrite Pro Theme Variables */
-.agentwrite-pro {
+/* WriterzRoom Theme Variables */
+.writerzroom {
   --background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(1 0 0 / 10%);
@@ -151,28 +151,47 @@
   body {
     @apply bg-background text-foreground transition-colors duration-300;
   }
-  
-  /* AgentWrite Pro specific body styling */
-  .agentwrite-pro body {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    background-attachment: fixed;
-    min-height: 100vh;
-  }
+}
+
+/* Theme-aware background utility */
+.theme-background {
+  /* Default (WriterzRoom) - Bright Purple Gradient Background */
+  background: linear-gradient(135deg, #111827 0%, #7c3aed 50%, #111827 100%);
+  background-attachment: fixed;
+  transition: background 0.3s ease;
+}
+
+/* Light theme - White background */
+.light .theme-background {
+  background: #ffffff;
+  background-attachment: initial;
+}
+
+/* Dark theme - Dark background */
+.dark .theme-background {
+  background: #030712;
+  background-attachment: initial;
+}
+
+/* WriterzRoom theme - Bright Purple gradient (explicit for clarity) */
+.writerzroom .theme-background {
+  background: linear-gradient(135deg, #111827 0%, #7c3aed 50%, #111827 100%);
+  background-attachment: fixed;
 }
 
 /* Enhanced theme-specific overrides */
-.agentwrite-pro {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+.writerzroom {
+  background: linear-gradient(135deg, #111827 0%, #7c3aed 50%, #111827 100%);
   background-attachment: fixed;
   min-height: 100vh;
 }
 
-.agentwrite-pro .backdrop-blur-sm {
+.writerzroom .backdrop-blur-sm {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-.agentwrite-pro .glass-card {
+.writerzroom .glass-card {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
@@ -186,47 +205,47 @@
   100% { background-position: 0% 50%; }
 }
 
-.agentwrite-pro .animate-gradient {
+.writerzroom .animate-gradient {
   background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
   background-size: 400% 400%;
   animation: gradient-shift 15s ease infinite;
 }
 
 /* Improved focus states */
-.agentwrite-pro *:focus-visible {
+.writerzroom *:focus-visible {
   outline: 2px solid hsl(var(--primary));
   outline-offset: 2px;
 }
 
 /* Enhanced button styles */
-.agentwrite-pro .btn-primary {
+.writerzroom .btn-primary {
   background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
   border: 1px solid rgba(147, 51, 234, 0.3);
   transition: all 0.2s ease;
 }
 
-.agentwrite-pro .btn-primary:hover {
+.writerzroom .btn-primary:hover {
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
   transform: translateY(-1px);
   box-shadow: 0 10px 25px rgba(147, 51, 234, 0.3);
 }
 
-/* Scrollbar customization for AgentWrite Pro theme */
-.agentwrite-pro ::-webkit-scrollbar {
+/* Scrollbar customization for WriterzRoom theme */
+.writerzroom ::-webkit-scrollbar {
   width: 8px;
 }
 
-.agentwrite-pro ::-webkit-scrollbar-track {
+.writerzroom ::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
 }
 
-.agentwrite-pro ::-webkit-scrollbar-thumb {
+.writerzroom ::-webkit-scrollbar-thumb {
   background: rgba(147, 51, 234, 0.5);
   border-radius: 4px;
 }
 
-.agentwrite-pro ::-webkit-scrollbar-thumb:hover {
+.writerzroom ::-webkit-scrollbar-thumb:hover {
   background: rgba(147, 51, 234, 0.7);
 }
 
@@ -258,8 +277,6 @@
     opacity: 1;
   }
 }
-
-
 
 @keyframes toastSlideOut {
   from {
@@ -456,8 +473,12 @@
     transition: none !important;
   }
   
-  .agentwrite-pro .animate-gradient {
+  .writerzroom .animate-gradient {
     animation: none;
+  }
+  
+  .theme-background {
+    transition: none;
   }
 }
 
@@ -487,18 +508,22 @@
 
 /* Print styles */
 @media print {
-  .agentwrite-pro {
+  .writerzroom {
     background: white !important;
     color: black !important;
   }
   
-  .agentwrite-pro * {
+  .writerzroom * {
     background: transparent !important;
     color: black !important;
   }
   
   .backdrop-blur-sm {
     backdrop-filter: none !important;
+  }
+  
+  .theme-background {
+    background: white !important;
   }
 }
 
@@ -507,46 +532,46 @@
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
-/* Enhanced card styling for AgentWrite Pro */
-.agentwrite-pro .card {
+/* Enhanced card styling for WriterzRoom */
+.writerzroom .card {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* Enhanced button styling for AgentWrite Pro */
-.agentwrite-pro .btn-gradient {
+/* Enhanced button styling for WriterzRoom */
+.writerzroom .btn-gradient {
   background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
   border: none;
   color: white;
   transition: all 0.2s ease;
 }
 
-.agentwrite-pro .btn-gradient:hover {
+.writerzroom .btn-gradient:hover {
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
   transform: translateY(-1px);
   box-shadow: 0 10px 25px rgba(147, 51, 234, 0.3);
 }
 
-/* Enhanced input styling for AgentWrite Pro */
-.agentwrite-pro input,
-.agentwrite-pro textarea,
-.agentwrite-pro select {
+/* Enhanced input styling for WriterzRoom */
+.writerzroom input,
+.writerzroom textarea,
+.writerzroom select {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
 }
 
-.agentwrite-pro input:focus,
-.agentwrite-pro textarea:focus,
-.agentwrite-pro select:focus {
+.writerzroom input:focus,
+.writerzroom textarea:focus,
+.writerzroom select:focus {
   border-color: rgba(147, 51, 234, 0.5);
   box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
 }
 
-.agentwrite-pro input::placeholder,
-.agentwrite-pro textarea::placeholder {
+.writerzroom input::placeholder,
+.writerzroom textarea::placeholder {
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -572,8 +597,8 @@
   box-shadow: 0 0 0 3px var(--ring-color);
 }
 
-/* Custom range slider styling for AgentWrite Pro */
-.agentwrite-pro input[type="range"] {
+/* Custom range slider styling for WriterzRoom */
+.writerzroom input[type="range"] {
   background: transparent;
   -webkit-appearance: none;
   appearance: none;
@@ -583,7 +608,7 @@
   outline: none;
 }
 
-.agentwrite-pro input[type="range"]::-webkit-slider-thumb {
+.writerzroom input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 20px;
@@ -595,7 +620,7 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
-.agentwrite-pro input[type="range"]::-moz-range-thumb {
+.writerzroom input[type="range"]::-moz-range-thumb {
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -604,8 +629,6 @@
   border: 2px solid white;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
-
-/* File: Add this to your globals.css - Toast fixes */
 
 /* Sonner toast container styles */
 [data-sonner-toaster] {
@@ -702,8 +725,8 @@
   padding-right: 24px !important; /* Make room for close button */
 }
 
-/* AgentWrite Pro toast overrides */
-.agentwrite-pro [data-sonner-toaster] {
+/* WriterzRoom toast overrides */
+.writerzroom [data-sonner-toaster] {
   --normal-bg: rgba(255, 255, 255, 0.1);
   --normal-border: rgba(255, 255, 255, 0.2);
   --normal-text: white;
@@ -713,7 +736,7 @@
   --info-bg: rgba(59, 130, 246, 0.1);
 }
 
-.agentwrite-pro [data-sonner-toast] {
+.writerzroom [data-sonner-toast] {
   background: var(--normal-bg) !important;
   border: 1px solid var(--normal-border) !important;
   color: var(--normal-text) !important;
@@ -721,11 +744,11 @@
   -webkit-backdrop-filter: blur(12px) !important;
 }
 
-.agentwrite-pro [data-sonner-toast] button[data-close-button] {
+.writerzroom [data-sonner-toast] button[data-close-button] {
   color: rgba(255, 255, 255, 0.7) !important;
 }
 
-.agentwrite-pro [data-sonner-toast] button[data-close-button]:hover {
+.writerzroom [data-sonner-toast] button[data-close-button]:hover {
   background: rgba(255, 255, 255, 0.1) !important;
   color: rgba(255, 255, 255, 1) !important;
 }

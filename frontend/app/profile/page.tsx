@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from '@/components/ui/button';
+import { showToast } from '@/lib/toast-utils';
 import { 
   User, 
   Mail, 
@@ -14,7 +15,7 @@ import {
   Camera
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface ProfileData {
   name: string;
@@ -43,52 +44,123 @@ interface ContentItem {
 export default function ProfilePage() {
   const { data: session } = useSession();
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
   const [profileData, setProfileData] = useState<ProfileData>({
-    name: (session?.user?.name as string) || 'John Doe',
-    email: (session?.user?.email as string) || 'john.doe@example.com',
-    company: 'TechFlow Solutions',
-    role: 'Content Marketing Manager',
-    bio: 'Passionate about creating engaging content that drives results. Love leveraging AI to streamline content creation workflows.',
-    joinDate: '2025-01-15'
+    name: '',
+    email: '',
+    company: '',
+    role: '',
+    bio: '',
+    joinDate: ''
   });
 
-  // Mock user stats - replace with real data from your analytics
-  const userStats: UserStats = {
-    contentGenerated: 47,
-    totalTimeSaved: 12.3, // hours
-    averageRating: 4.7,
-    daysActive: 45
-  };
+  const [userStats, setUserStats] = useState<UserStats>({
+    contentGenerated: 0,
+    totalTimeSaved: 0,
+    averageRating: 0,
+    daysActive: 0
+  });
 
-  const recentContent: ContentItem[] = [
-    {
-      title: "AI in Modern Marketing: A Complete Guide",
-      type: "Article",
-      createdAt: "2024-06-20",
-      words: 2500,
-      rating: 5
-    },
-    {
-      title: "10 Content Creation Tips for 2024",
-      type: "Blog Post",
-      createdAt: "2024-06-18",
-      words: 1800,
-      rating: 4.5
-    },
-    {
-      title: "Social Media Content Calendar Template",
-      type: "Template",
-      createdAt: "2024-06-15",
-      words: 800,
-      rating: 4.8
+  const [recentContent, setRecentContent] = useState<ContentItem[]>([]);
+  
+  const loadUserProfile = useCallback(async () => {
+    try {
+      setIsLoadingProfile(true);
+      
+      const response = await fetch('/api/user/profile', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProfileData({
+          name: data.name || (session?.user?.name as string) || '',
+          email: data.email || (session?.user?.email as string) || '',
+          company: data.company || '',
+          role: data.role || '',
+          bio: data.bio || '',
+          joinDate: data.joinDate || new Date().toISOString().split('T')[0]
+        });
+        
+        if (data.stats) {
+          setUserStats(data.stats);
+        }
+        
+        if (data.recentContent) {
+          setRecentContent(data.recentContent);
+        }
+      } else {
+        setProfileData(prev => ({
+          ...prev,
+          name: (session?.user?.name as string) || '',
+          email: (session?.user?.email as string) || '',
+          joinDate: new Date().toISOString().split('T')[0]
+        }));
+        showToast.info('Profile Setup', 'Complete your profile to get started');
+      }
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      showToast.error('Error', 'Failed to load profile data');
+      
+      // Set defaults from session on error
+      setProfileData(prev => ({
+        ...prev,
+        name: (session?.user?.name as string) || '',
+        email: (session?.user?.email as string) || '',
+        joinDate: new Date().toISOString().split('T')[0]
+      }));
+    } finally {
+      setIsLoadingProfile(false);
     }
-  ];
+  }, [session?.user?.name, session?.user?.email]);
 
-  const handleSave = () => {
-    // Here you would save the profile data to your backend
-    console.log('Saving profile data:', profileData);
-    setIsEditing(false);
+  useEffect(() => {
+    if (session?.user) {
+      loadUserProfile();
+    }
+  }, [session, loadUserProfile]);
+
+  const handleSave = async () => {
+    try {
+      setIsLoading(true);
+      
+      if (!profileData.name.trim()) {
+        showToast.error('Validation Error', 'Name is required');
+        return;
+      }
+
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: profileData.name.trim(),
+          company: profileData.company.trim(),
+          role: profileData.role.trim(),
+          bio: profileData.bio.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        showToast.success('Success', 'Profile updated successfully');
+        setIsEditing(false);
+        await loadUserProfile();
+      } else {
+        const errorData = await response.json();
+        showToast.error('Error', errorData.message || 'Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      showToast.error('Error', 'Failed to save profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: keyof ProfileData, value: string) => {
@@ -98,13 +170,20 @@ export default function ProfilePage() {
     }));
   };
 
+  const handleCancel = () => {
+    setIsEditing(false);
+    loadUserProfile();
+  };
+
   // Generate initials from name
   const getInitials = (name: string): string => {
+    if (!name) return 'U';
     return name
       .split(' ')
       .map((n: string) => n[0])
       .join('')
-      .toUpperCase();
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   if (!session) {
@@ -116,6 +195,29 @@ export default function ProfilePage() {
           <Button className="bg-purple-600 hover:bg-purple-700">
             Sign In
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoadingProfile) {
+    return (
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-4xl mx-auto">
+          <div className="animate-pulse space-y-8">
+            <div className="text-center">
+              <div className="h-8 bg-gray-700 rounded w-48 mx-auto mb-2"></div>
+              <div className="h-4 bg-gray-700 rounded w-64 mx-auto"></div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="bg-gray-700 rounded-xl h-96"></div>
+              <div className="lg:col-span-2 space-y-4">
+                <div className="h-24 bg-gray-700 rounded"></div>
+                <div className="h-48 bg-gray-700 rounded"></div>
+                <div className="h-32 bg-gray-700 rounded"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -145,7 +247,10 @@ export default function ProfilePage() {
                   <div className="w-24 h-24 bg-gradient-to-r from-purple-400 to-pink-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
                     {getInitials(profileData.name)}
                   </div>
-                  <button className="absolute bottom-0 right-0 bg-purple-600 hover:bg-purple-700 rounded-full p-2 transition-colors">
+                  <button 
+                    className="absolute bottom-0 right-0 bg-purple-600 hover:bg-purple-700 rounded-full p-2 transition-colors"
+                    onClick={() => showToast.info('Coming Soon', 'Profile picture upload will be available soon')}
+                  >
                     <Camera className="h-4 w-4 text-white" />
                   </button>
                 </div>
@@ -156,12 +261,13 @@ export default function ProfilePage() {
                 {isEditing ? (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">Name</label>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">Name *</label>
                       <input
                         type="text"
                         value={profileData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        required
                       />
                     </div>
                     <div>
@@ -170,6 +276,7 @@ export default function ProfilePage() {
                         type="text"
                         value={profileData.company}
                         onChange={(e) => handleInputChange('company', e.target.value)}
+                        placeholder="Enter your company"
                         className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -179,6 +286,7 @@ export default function ProfilePage() {
                         type="text"
                         value={profileData.role}
                         onChange={(e) => handleInputChange('role', e.target.value)}
+                        placeholder="Enter your role"
                         className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -187,6 +295,7 @@ export default function ProfilePage() {
                       <textarea
                         value={profileData.bio}
                         onChange={(e) => handleInputChange('bio', e.target.value)}
+                        placeholder="Tell us about yourself"
                         rows={3}
                         className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
@@ -196,26 +305,32 @@ export default function ProfilePage() {
                   <>
                     <div className="flex items-center text-gray-300">
                       <User className="h-4 w-4 mr-2 text-purple-400" />
-                      <span className="font-medium">{profileData.name}</span>
+                      <span className="font-medium">{profileData.name || 'No name set'}</span>
                     </div>
                     <div className="flex items-center text-gray-300">
                       <Mail className="h-4 w-4 mr-2 text-purple-400" />
                       <span className="text-sm">{profileData.email}</span>
                     </div>
-                    <div className="flex items-center text-gray-300">
-                      <TrendingUp className="h-4 w-4 mr-2 text-purple-400" />
-                      <span className="text-sm">{profileData.role}</span>
-                    </div>
-                    <div className="text-gray-300 text-sm">
-                      <strong className="text-purple-400">Company:</strong> {profileData.company}
-                    </div>
-                    <div className="text-gray-300 text-sm">
-                      <strong className="text-purple-400">Bio:</strong>
-                      <p className="mt-1">{profileData.bio}</p>
-                    </div>
+                    {profileData.role && (
+                      <div className="flex items-center text-gray-300">
+                        <TrendingUp className="h-4 w-4 mr-2 text-purple-400" />
+                        <span className="text-sm">{profileData.role}</span>
+                      </div>
+                    )}
+                    {profileData.company && (
+                      <div className="text-gray-300 text-sm">
+                        <strong className="text-purple-400">Company:</strong> {profileData.company}
+                      </div>
+                    )}
+                    {profileData.bio && (
+                      <div className="text-gray-300 text-sm">
+                        <strong className="text-purple-400">Bio:</strong>
+                        <p className="mt-1">{profileData.bio}</p>
+                      </div>
+                    )}
                     <div className="flex items-center text-gray-400 text-sm">
                       <Calendar className="h-4 w-4 mr-2" />
-                      <span>Joined {new Date(profileData.joinDate).toLocaleDateString()}</span>
+                      <span>Joined {profileData.joinDate ? new Date(profileData.joinDate).toLocaleDateString() : 'Unknown'}</span>
                     </div>
                   </>
                 )}
@@ -226,13 +341,15 @@ export default function ProfilePage() {
                     <div className="flex space-x-2">
                       <Button 
                         onClick={handleSave}
+                        disabled={isLoading}
                         className="flex-1 bg-green-600 hover:bg-green-700"
                       >
                         <Save className="h-4 w-4 mr-2" />
-                        Save
+                        {isLoading ? 'Saving...' : 'Save'}
                       </Button>
                       <Button 
-                        onClick={() => setIsEditing(false)}
+                        onClick={handleCancel}
+                        disabled={isLoading}
                         variant="outline"
                         className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700"
                       >
@@ -282,50 +399,74 @@ export default function ProfilePage() {
             {/* Recent Content */}
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
               <h3 className="text-xl font-semibold text-white mb-6">Recent Content</h3>
-              <div className="space-y-4">
-                {recentContent.map((content, index) => (
-                  <div key={index} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-white mb-1">{content.title}</h4>
-                        <div className="flex items-center space-x-4 text-sm text-gray-400">
-                          <span className="bg-purple-600/20 text-purple-300 px-2 py-1 rounded text-xs">
-                            {content.type}
-                          </span>
-                          <span>{content.words} words</span>
-                          <span>{new Date(content.createdAt).toLocaleDateString()}</span>
+              {recentContent.length > 0 ? (
+                <div className="space-y-4">
+                  {recentContent.map((content, index) => (
+                    <div key={index} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-white mb-1">{content.title}</h4>
+                          <div className="flex items-center space-x-4 text-sm text-gray-400">
+                            <span className="bg-purple-600/20 text-purple-300 px-2 py-1 rounded text-xs">
+                              {content.type}
+                            </span>
+                            <span>{content.words} words</span>
+                            <span>{new Date(content.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                          <span className="text-sm text-gray-300">{content.rating}</span>
                         </div>
                       </div>
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 text-yellow-400 mr-1" />
-                        <span className="text-sm text-gray-300">{content.rating}</span>
-                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+                  <p className="text-gray-400">No content created yet</p>
+                  <p className="text-sm text-gray-500 mt-2">Start generating content to see your recent work here</p>
+                </div>
+              )}
             </div>
 
             {/* Achievement Section */}
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
               <h3 className="text-xl font-semibold text-white mb-6">Achievements</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center p-3 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-lg border border-purple-400/20">
-                  <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mr-3">
+                <div className={`flex items-center p-3 rounded-lg border ${
+                  userStats.contentGenerated >= 25 
+                    ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-purple-400/20' 
+                    : 'bg-gray-800/50 border-gray-600/50'
+                }`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-3 ${
+                    userStats.contentGenerated >= 25 ? 'bg-purple-600' : 'bg-gray-600'
+                  }`}>
                     <FileText className="h-6 w-6 text-white" />
                   </div>
                   <div>
                     <div className="font-medium text-white">Content Creator</div>
-                    <div className="text-sm text-gray-400">Generated 25+ pieces</div>
+                    <div className="text-sm text-gray-400">
+                      {userStats.contentGenerated >= 25 ? 'Generated 25+ pieces' : `${userStats.contentGenerated}/25 pieces`}
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center p-3 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-lg border border-blue-400/20">
-                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                <div className={`flex items-center p-3 rounded-lg border ${
+                  userStats.totalTimeSaved >= 10 
+                    ? 'bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-blue-400/20' 
+                    : 'bg-gray-800/50 border-gray-600/50'
+                }`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-3 ${
+                    userStats.totalTimeSaved >= 10 ? 'bg-blue-600' : 'bg-gray-600'
+                  }`}>
                     <Clock className="h-6 w-6 text-white" />
                   </div>
                   <div>
                     <div className="font-medium text-white">Time Saver</div>
-                    <div className="text-sm text-gray-400">Saved 10+ hours</div>
+                    <div className="text-sm text-gray-400">
+                      {userStats.totalTimeSaved >= 10 ? 'Saved 10+ hours' : `${userStats.totalTimeSaved}/10 hours`}
+                    </div>
                   </div>
                 </div>
               </div>

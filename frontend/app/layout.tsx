@@ -1,3 +1,4 @@
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { auth } from "@/auth";
@@ -6,11 +7,10 @@ import { CollapsibleNavigation } from "@/components/CollapsibleNavigation"
 import "./globals.css";
 import { Providers } from "./providers";
 import { ThemeProvider } from "./theme-provider";
+import { ToastProvider } from '@/components/ToastProvider'
 import { APP_CONFIG } from '@/lib/app-config';
-// In your layout.tsx
 
 const inter = Inter({ subsets: ["latin"] });
-
 
 export const metadata: Metadata = {
   title: {
@@ -44,9 +44,14 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider
-          defaultTheme="system"
+          attribute="class"
+          defaultTheme="writerzroom"
+          enableSystem={true}
+          themes={['light', 'dark', 'writerzroom']}
+          disableTransitionOnChange={false}
         >
           <Providers session={session}>
+            <ToastProvider />
             {/* Compact Header with Collapsible Navigation */}
             <header className="bg-gray-800 text-white shadow-lg sticky top-0 z-50">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -60,7 +65,7 @@ export default async function RootLayout({
                       {APP_CONFIG.name}
                     </Link>
                   </div>
-
+            
                   {/* User Actions & Navigation */}
                   <div className="flex items-center space-x-3">
                     {session?.user ? (
@@ -92,19 +97,19 @@ export default async function RootLayout({
                         Sign In
                       </Link>
                     )}
-
+          
                     {/* Collapsible Navigation Menu */}
                     <CollapsibleNavigation />
                   </div>
                 </div>
               </div>
             </header>
-
-            {/* Main Content */}
-            <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+                  
+            {/* Main Content with Theme-Aware Background */}
+            <main className="min-h-screen theme-background">
               {children}
             </main>
-
+                  
             {/* Professional Footer */}
             <footer className="bg-gray-900 text-gray-300 border-t border-gray-800">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -133,7 +138,7 @@ export default async function RootLayout({
                       </a>
                     </div>
                   </div>
-
+                  
                   {/* Product */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Product</h3>
@@ -149,7 +154,7 @@ export default async function RootLayout({
                       )}
                     </ul>
                   </div>
-
+                    
                   {/* Support */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Support</h3>
@@ -161,7 +166,7 @@ export default async function RootLayout({
                       <li><Link href="/status" className="text-sm hover:text-purple-400 transition-colors">System Status</Link></li>
                     </ul>
                   </div>
-
+                    
                   {/* Company */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Company</h3>
@@ -174,7 +179,7 @@ export default async function RootLayout({
                     </ul>
                   </div>
                 </div>
-
+                    
                 {/* Bottom Section */}
                 <div className="mt-6 pt-4 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
                   <div className="text-sm text-gray-400">
