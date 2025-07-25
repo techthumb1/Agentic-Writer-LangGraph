@@ -1,0 +1,21 @@
+{
+  "title": "Newsletter content in email campaign format",
+  "status": "draft",
+  "type": "Email Newsletter",
+  "content": "Planning failed: 'ContentIntelligenceOrchestrator' object has no attribute '_define_planning_success_criteria'",
+  "createdAt": "2025-07-21T04:17:19.842Z",
+  "updatedAt": "2025-07-21T04:17:19.842Z",
+  "author": "AI Assistant",
+  "views": 0,
+  "metadata": {
+    "template": "email_newsletter",
+    "styleProfile": "email_campaign",
+    "requestId": "c1321bbc-0417-4426-bb05-05c40df6b17c",
+    "topic": "Newsletter content in email campaign format",
+    "audience": "general",
+    "wordCount": 8,
+    "readingTime": 1,
+    "generatedAt": "2025-07-21T04:17:19.842Z",
+    "generation_mode": "enhanced"
+  }
+}
