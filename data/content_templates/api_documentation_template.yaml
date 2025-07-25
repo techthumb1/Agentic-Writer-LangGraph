@@ -1,0 +1,60 @@
+# data/content_templates/api_documentation_template.yaml
+# Professional Content Template - API Documentation
+# Category: technical_documentation
+
+id: api_documentation_template
+name: API Documentation
+description: Comprehensive API documentation template
+category: technical_documentation
+complexity: advanced
+
+# Recommended style profiles for this template
+recommended_styles:
+  - "api_documentation"
+  - "technical_specification"
+  - "implementation_guide"
+
+# Template structure
+sections:
+  - title: "Overview"
+    required: True
+  - title: "Authentication"
+    required: True
+  - title: "Endpoints"
+    required: True
+  - title: "Request/Response Examples"
+    required: True
+  - title: "Error Handling"
+    required: True
+  - title: "SDKs & Libraries"
+    required: False
+
+# Content specifications
+target_length:
+  min_words: 3000
+  max_words: 8000
+  optimal_words: 5500
+
+# Template requirements
+requirements:
+  professional_standards: true
+  evidence_based: True
+  structured_format: true
+  audience_appropriate: true
+  actionable_content: False
+
+# Quality expectations
+quality_targets:
+  clarity: 90
+  coherence: 85
+  completeness: 90
+  professional_tone: 95
+  audience_alignment: 90
+
+metadata:
+  version: "2.0.0"
+  created_by: "professional_category_system"
+  last_updated: "2025-07-18"
+  template_type: "professional"
+  category: "technical_documentation"
+  complexity_level: "advanced"

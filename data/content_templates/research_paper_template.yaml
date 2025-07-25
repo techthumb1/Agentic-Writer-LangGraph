@@ -1,0 +1,64 @@
+# data/content_templates/research_paper_template.yaml
+# Professional Content Template - Research Paper
+# Category: academic_research
+
+id: research_paper_template
+name: Research Paper
+description: Comprehensive academic research paper template
+category: academic_research
+complexity: expert
+
+# Recommended style profiles for this template
+recommended_styles:
+  - "phd_dissertation"
+  - "peer_review_article"
+  - "literature_review"
+
+# Template structure
+sections:
+  - title: "Abstract"
+    required: True
+  - title: "Introduction"
+    required: True
+  - title: "Literature Review"
+    required: True
+  - title: "Methodology"
+    required: True
+  - title: "Results"
+    required: True
+  - title: "Discussion"
+    required: True
+  - title: "Conclusion"
+    required: True
+  - title: "References"
+    required: True
+
+# Content specifications
+target_length:
+  min_words: 8000
+  max_words: 15000
+  optimal_words: 11500
+
+# Template requirements
+requirements:
+  professional_standards: true
+  evidence_based: True
+  structured_format: true
+  audience_appropriate: true
+  actionable_content: False
+
+# Quality expectations
+quality_targets:
+  clarity: 90
+  coherence: 85
+  completeness: 90
+  professional_tone: 95
+  audience_alignment: 90
+
+metadata:
+  version: "2.0.0"
+  created_by: "professional_category_system"
+  last_updated: "2025-07-18"
+  template_type: "professional"
+  category: "academic_research"
+  complexity_level: "expert"
