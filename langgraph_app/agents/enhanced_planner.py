@@ -1,5 +1,7 @@
 # langgraph_app/agents/enhanced_planner.py
+# FIXED VERSION - Proper Template/Style Profile Separation
 
+import os
 import logging
 import time
 from typing import Dict, Any, List, Tuple
@@ -27,6 +29,8 @@ class ContentType(Enum):
     BLOG_POST = "blog_post"
     SOCIAL_MEDIA = "social_media"
     NEWSLETTER = "newsletter"
+    BUSINESS_PROPOSAL = "business_proposal"
+    TECHNICAL_DOCUMENTATION = "technical_documentation"
 
 class Audience(Enum):
     BEGINNER = "beginner"
@@ -121,20 +125,22 @@ class ContentAnalyzer:
     def __init__(self, model_registry=None):
         self.model_registry = model_registry
     
-    def analyze_topic(self, topic: str, dynamic_params: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Analyze topic to determine content characteristics"""
+    def analyze_topic(self, topic: str, template_config: Dict[str, Any] = None, dynamic_params: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Analyze topic to determine content characteristics with template integration"""
         try:
             if not dynamic_params:
                 dynamic_params = {}
+            if not template_config:
+                template_config = {}
             
             topic_lower = topic.lower()
             
-            # Determine content characteristics
-            content_type = self._determine_content_type(topic_lower, dynamic_params)
-            audience = self._determine_audience(topic_lower, dynamic_params)
-            complexity = self._determine_complexity(topic_lower, dynamic_params)
-            approach = self._determine_approach(topic_lower, dynamic_params)
-            estimated_length, read_time = self._estimate_length_and_time(content_type, complexity)
+            # ✅ FIXED: Use template configuration to determine content type
+            content_type = self._determine_content_type_from_template(template_config, topic_lower, dynamic_params)
+            audience = self._determine_audience(topic_lower, dynamic_params, template_config)
+            complexity = self._determine_complexity(topic_lower, dynamic_params, template_config)
+            approach = self._determine_approach(topic_lower, dynamic_params, template_config)
+            estimated_length, read_time = self._estimate_length_and_time(content_type, complexity, template_config)
             
             return {
                 "content_type": content_type,
@@ -143,7 +149,7 @@ class ContentAnalyzer:
                 "approach": approach,
                 "estimated_length": estimated_length,
                 "estimated_read_time": read_time,
-                "analysis_confidence": self._calculate_confidence(topic, dynamic_params)
+                "analysis_confidence": self._calculate_confidence(topic, dynamic_params, template_config)
             }
             
         except Exception as e:
@@ -157,15 +163,37 @@ class ContentAnalyzer:
                 "estimated_read_time": 6,
                 "analysis_confidence": 0.5
             }
-    def _determine_content_type(self, topic: str, params: Dict) -> ContentType:
-        """Determine content type from topic and parameters"""
-        if "content_type" in params:
-            try:
-                return ContentType(params["content_type"].lower())
-            except ValueError:
-                pass
+    
+    def _determine_content_type_from_template(self, template_config: Dict, topic: str, params: Dict) -> ContentType:
+        """✅ FIXED: Determine content type primarily from template configuration"""
         
-        # Topic-based detection
+        # First priority: Use template ID mapping
+        template_id = template_config.get('id', '').lower()
+        template_name = template_config.get('name', '').lower()
+        
+        if template_id == 'business_proposal' or 'business' in template_name or 'proposal' in template_name:
+            return ContentType.BUSINESS_PROPOSAL
+        elif template_id == 'technical_documentation' or template_id == 'technical_documents':
+            return ContentType.TECHNICAL_DOCUMENTATION
+        elif template_id == 'social_media_campaign' or 'social' in template_name:
+            return ContentType.SOCIAL_MEDIA
+        elif template_id == 'email_newsletter' or 'newsletter' in template_name:
+            return ContentType.NEWSLETTER
+        elif template_id == 'press_release' or 'press' in template_name:
+            return ContentType.NEWS_ANALYSIS
+        elif template_id == 'blog_article_generator' or 'blog' in template_name:
+            return ContentType.BLOG_POST
+        
+        # Second priority: Use template category
+        template_category = template_config.get('category', '').lower()
+        if template_category == 'business':
+            return ContentType.BUSINESS_PROPOSAL
+        elif template_category == 'technical writing' or template_category == 'technical':
+            return ContentType.TECHNICAL_DOCUMENTATION
+        elif template_category == 'social media':
+            return ContentType.SOCIAL_MEDIA
+        
+        # Fallback to topic-based detection
         if any(word in topic for word in ["tutorial", "how to", "guide", "step by step"]):
             return ContentType.TUTORIAL
         elif any(word in topic for word in ["review", "analysis", "evaluation"]):
@@ -181,14 +209,26 @@ class ContentAnalyzer:
         else:
             return ContentType.BLOG_POST
     
-    def _determine_audience(self, topic: str, params: Dict) -> Audience:
-        """Determine target audience"""
+    def _determine_audience(self, topic: str, params: Dict, template_config: Dict) -> Audience:
+        """Determine target audience with template guidance"""
+        
+        # Check template configuration first
+        template_audience = template_config.get('targetAudience', '').lower()
+        if 'developer' in template_audience or 'technical' in template_audience:
+            return Audience.TECHNICAL_PROFESSIONALS
+        elif 'business' in template_audience or 'professional' in template_audience:
+            return Audience.BUSINESS_LEADERS
+        elif 'beginner' in template_audience:
+            return Audience.BEGINNER
+        
+        # Check dynamic parameters
         if "target_audience" in params:
             try:
                 return Audience(params["target_audience"].lower())
             except ValueError:
                 pass
         
+        # Topic-based fallback
         if any(word in topic for word in ["beginner", "introduction", "basics", "101"]):
             return Audience.BEGINNER
         elif any(word in topic for word in ["advanced", "expert", "professional"]):
@@ -202,14 +242,26 @@ class ContentAnalyzer:
         else:
             return Audience.GENERAL_PUBLIC
     
-    def _determine_complexity(self, topic: str, params: Dict) -> ContentComplexity:
-        """Determine content complexity"""
+    def _determine_complexity(self, topic: str, params: Dict, template_config: Dict) -> ContentComplexity:
+        """Determine content complexity with template guidance"""
+        
+        # Check template difficulty
+        template_difficulty = template_config.get('difficulty', '').lower()
+        if template_difficulty == 'beginner':
+            return ContentComplexity.SIMPLE
+        elif template_difficulty == 'intermediate':
+            return ContentComplexity.MODERATE
+        elif template_difficulty == 'advanced':
+            return ContentComplexity.COMPLEX
+        
+        # Dynamic parameters
         if "complexity" in params:
             try:
                 return ContentComplexity(params["complexity"].lower())
             except ValueError:
                 pass
         
+        # Topic-based fallback
         if any(word in topic for word in ["simple", "basic", "easy", "beginner"]):
             return ContentComplexity.SIMPLE
         elif any(word in topic for word in ["advanced", "complex", "sophisticated"]):
@@ -219,8 +271,16 @@ class ContentAnalyzer:
         else:
             return ContentComplexity.MODERATE
     
-    def _determine_approach(self, topic: str, params: Dict) -> PlanningApproach:
-        """Determine planning approach"""
+    def _determine_approach(self, topic: str, params: Dict, template_config: Dict) -> PlanningApproach:
+        """Determine planning approach with template guidance"""
+        
+        # Check template category for approach hints
+        template_category = template_config.get('category', '').lower()
+        if template_category == 'business':
+            return PlanningApproach.DATA_DRIVEN
+        elif template_category == 'technical':
+            return PlanningApproach.TUTORIAL_BASED
+        
         if "approach" in params:
             try:
                 return PlanningApproach(params["approach"].lower())
@@ -240,8 +300,38 @@ class ContentAnalyzer:
         else:
             return PlanningApproach.RESEARCH_DRIVEN
     
-    def _estimate_length_and_time(self, content_type: ContentType, complexity: ContentComplexity) -> Tuple[int, int]:
-        """Estimate content length and reading time"""
+    def _estimate_length_and_time(self, content_type: ContentType, complexity: ContentComplexity, template_config: Dict) -> Tuple[int, int]:
+        """Estimate content length and reading time with template guidance"""
+        
+        # Check template estimated length first
+        template_length = template_config.get('estimatedLength', '')
+        if isinstance(template_length, str):
+            if '20-30' in template_length:
+                base_length = 3000  # 20-30 min read
+            elif '15-25' in template_length:
+                base_length = 2500
+            elif '10-15' in template_length:
+                base_length = 1500
+            else:
+                base_length = self._get_default_length_for_type(content_type)
+        else:
+            base_length = self._get_default_length_for_type(content_type)
+        
+        complexity_multipliers = {
+            ContentComplexity.SIMPLE: 0.8,
+            ContentComplexity.MODERATE: 1.0,
+            ContentComplexity.COMPLEX: 1.3,
+            ContentComplexity.HIGHLY_TECHNICAL: 1.6
+        }
+        
+        multiplier = complexity_multipliers.get(complexity, 1.0)
+        estimated_length = int(base_length * multiplier)
+        read_time = max(1, estimated_length // 200)  # 200 words per minute
+        
+        return estimated_length, read_time
+    
+    def _get_default_length_for_type(self, content_type: ContentType) -> int:
+        """Get default length for content type"""
         base_lengths = {
             ContentType.TECHNICAL_ARTICLE: 2500,
             ContentType.TUTORIAL: 2000,
@@ -252,33 +342,22 @@ class ContentAnalyzer:
             ContentType.WHITEPAPER: 4000,
             ContentType.BLOG_POST: 1500,
             ContentType.SOCIAL_MEDIA: 300,
-            ContentType.NEWSLETTER: 800
+            ContentType.NEWSLETTER: 800,
+            ContentType.BUSINESS_PROPOSAL: 2500,
+            ContentType.TECHNICAL_DOCUMENTATION: 3000
         }
-        
-        complexity_multipliers = {
-            ContentComplexity.SIMPLE: 0.8,
-            ContentComplexity.MODERATE: 1.0,
-            ContentComplexity.COMPLEX: 1.3,
-            ContentComplexity.HIGHLY_TECHNICAL: 1.6
-        }
-        
-        base_length = base_lengths.get(content_type, 1500)
-        multiplier = complexity_multipliers.get(complexity, 1.0)
-        estimated_length = int(base_length * multiplier)
-        read_time = max(1, estimated_length // 200)  # 200 words per minute
-        
-        return estimated_length, read_time
+        return base_lengths.get(content_type, 1500)
     
-    def _calculate_confidence(self, topic: str, params: Dict) -> float:
+    def _calculate_confidence(self, topic: str, params: Dict, template_config: Dict) -> float:
         """Calculate confidence score for analysis"""
         confidence = 0.7  # Base confidence
         
+        if template_config:
+            confidence += 0.15  # Template provides structure
         if "content_type" in params:
             confidence += 0.1
         if "target_audience" in params:
-            confidence += 0.1
-        if "complexity" in params:
-            confidence += 0.1
+            confidence += 0.05
         
         topic_lower = topic.lower()
         if any(word in topic_lower for word in ["tutorial", "guide", "how to", "introduction"]):
@@ -287,49 +366,47 @@ class ContentAnalyzer:
         return min(1.0, confidence)
 
 class IntelligentPlannerAgent:
-    """Intelligent Planner Agent that creates comprehensive content plans"""
+    """✅ FIXED: Intelligent Planner Agent with proper template/style separation"""
     
     def __init__(self, model_registry=None):
         self.model_registry = model_registry
         self.content_analyzer = ContentAnalyzer(model_registry)
     
     async def intelligent_plan(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Main planning function with intelligent analysis"""
+        """✅ FIXED: Main planning function with proper template/style handling"""
         start_time = time.time()
         
         try:
-            # Extract input parameters with robust fallbacks
+            # ✅ FIXED: Robust parameter extraction with proper fallbacks
+            template_id = state.get("template", "blog_article_generator")
+            style_profile_id = state.get("style_profile", "popular_sci")  # Better default
+            
+            # Extract topic with better fallback logic - NO MORE "Future of LLMs" default!
             topic = (
                 state.get("topic") or 
-                state.get("template_config", {}).get("topic") or
                 state.get("dynamic_parameters", {}).get("topic") or
-                state.get("template", "")
+                state.get("template_config", {}).get("name", "").replace("_", " ").title() or
+                f"Content using {template_id.replace('_', ' ').title()}"
             )
-            # Create meaningful topic if none provided
-            if not topic:
-                template_name = state.get("template", "content")
-                style_name = state.get("style_profile", "")
-                topic = f"{template_name.replace('_', ' ').title()} content"
-                if style_name:
-                    topic += f" in {style_name.replace('_', ' ')} style"
             
             dynamic_params = state.get("dynamic_parameters", {})
-            style_profile_id = state.get("style_profile", "jason")
             
-            # Load the actual style profile
-            try:
-                from langgraph_app.style_profile_loader import style_profile_loader
-                style_profile = style_profile_loader.get_profile(style_profile_id)
-                if style_profile is None:
-                    style_profile = {}  # fallback to empty dict
-            except Exception as e:
-                logger.warning(f"Failed to load style profile '{style_profile_id}': {e}")
-                style_profile = {}  # fallback to empty dict
+            logger.info(f"🎯 Planning content: Template='{template_id}', Style='{style_profile_id}', Topic='{topic}'")
             
-            logger.info(f"Starting intelligent planning for topic: {topic}")
+            # ✅ FIXED: Load template and style profile separately
+            template_config = self._load_template_config(template_id)
+            style_profile = self._load_style_profile(style_profile_id)
             
-            # Analyze topic to determine content characteristics
-            analysis_result = self.content_analyzer.analyze_topic(topic, dynamic_params)
+            if not template_config:
+                logger.warning(f"Template '{template_id}' not found, using default structure")
+                template_config = self._get_default_template_config(template_id)
+            
+            if not style_profile:
+                logger.warning(f"Style profile '{style_profile_id}' not found, using default style")
+                style_profile = self._get_default_style_profile(style_profile_id)
+            
+            # ✅ FIXED: Analyze topic with template configuration
+            analysis_result = self.content_analyzer.analyze_topic(topic, template_config, dynamic_params)
             
             # Create comprehensive content plan
             content_plan = ContentPlan(
@@ -342,8 +419,8 @@ class IntelligentPlannerAgent:
                 estimated_read_time=analysis_result["estimated_read_time"]
             )
             
-            # Generate structure and requirements
-            content_plan.structure = self._generate_structure(content_plan)
+            # Generate plan components with template and style integration
+            content_plan.structure = self._generate_structure(content_plan, template_config)
             content_plan.research_requirements = self._generate_research_requirements(content_plan, dynamic_params)
             content_plan.style_requirements = self._generate_style_requirements(content_plan, style_profile)
             content_plan.seo_requirements = self._generate_seo_requirements(content_plan, dynamic_params)
@@ -353,22 +430,38 @@ class IntelligentPlannerAgent:
             # Add creation metadata
             planning_time_ms = int((time.time() - start_time) * 1000)
             content_plan.creation_metadata = {
-                "planner_version": "2.0",
+                "planner_version": "3.0.0",  # Updated version
                 "created_at": datetime.now().isoformat(),
                 "planning_time_ms": planning_time_ms,
+                "template_id": template_id,
+                "style_profile_id": style_profile_id,
                 "input_topic": topic,
                 "dynamic_parameters": dynamic_params,
-                "style_profile_applied": bool(style_profile)
+                "template_loaded": bool(template_config),
+                "style_profile_loaded": bool(style_profile)
             }
             
             # Calculate confidence and generate guidance
             confidence_score = min(1.0, analysis_result["analysis_confidence"] + 0.2)
-            recommendations = self._generate_recommendations(content_plan)
+            recommendations = self._generate_recommendations(content_plan, template_config, style_profile)
             
-            # Create comprehensive response
+            # ✅ ENHANCED: Create comprehensive response with clear separation
             response = {
-                **state,
                 "content_plan": self._serialize_content_plan(content_plan),
+                "template_metadata": {
+                    "template_id": template_id,
+                    "template_name": template_config.get("name", template_id),
+                    "template_category": template_config.get("category", "general"),
+                    "template_loaded": bool(template_config)
+                },
+                "style_metadata": {
+                    "style_profile_id": style_profile_id,
+                    "style_name": style_profile.get("name", style_profile_id),
+                    "style_category": style_profile.get("category", "general"),
+                    "style_loaded": bool(style_profile),
+                    "tone": style_profile.get("tone", "professional"),
+                    "voice": style_profile.get("voice", "authoritative")
+                },
                 "planning_metadata": {
                     "confidence_score": confidence_score,
                     "planning_time_ms": planning_time_ms,
@@ -376,7 +469,7 @@ class IntelligentPlannerAgent:
                 },
                 "planning_result": {
                     "status": "completed",
-                    "reasoning": self._generate_reasoning(content_plan, analysis_result),
+                    "reasoning": self._generate_reasoning(content_plan, analysis_result, template_config, style_profile),
                     "recommendations": recommendations
                 },
                 "research_guidance": {
@@ -404,12 +497,12 @@ class IntelligentPlannerAgent:
                 }
             }
             
-            logger.info(f"Planning completed successfully in {planning_time_ms}ms with confidence {confidence_score:.2f}")
+            logger.info(f"✅ Planning completed successfully in {planning_time_ms}ms with confidence {confidence_score:.2f}")
             return response
             
         except Exception as e:
-            logger.error(f"Planning failed: {e}")
-            return {**state, 
+            logger.error(f"❌ Planning failed: {e}")
+            return {
                 "content_plan": {},
                 "planning_metadata": {
                     "confidence_score": 0.0,
@@ -423,9 +516,83 @@ class IntelligentPlannerAgent:
                 }
             }
     
-    def _generate_structure(self, content_plan: ContentPlan) -> ContentStructure:
-        """Generate content structure"""
+    def _load_template_config(self, template_id: str) -> Dict[str, Any]:
+        """✅ FIXED: Load template configuration from template loader"""
+        try:
+            from langgraph_app.template_loader import template_loader
+            template_config = template_loader.get_template(template_id)
+            if template_config:
+                logger.info(f"✅ Loaded template config for '{template_id}'")
+                return template_config
+            else:
+                logger.warning(f"⚠️ Template '{template_id}' not found in template loader")
+                return {}
+        except Exception as e:
+            logger.error(f"❌ Failed to load template '{template_id}': {e}")
+            return {}
+    
+    def _load_style_profile(self, style_profile_id: str) -> Dict[str, Any]:
+        """✅ FIXED: Load style profile configuration from style profile loader"""
+        try:
+            from langgraph_app.style_profile_loader import style_profile_loader
+            style_profile = style_profile_loader.get_profile(style_profile_id)
+            if style_profile:
+                logger.info(f"✅ Loaded style profile for '{style_profile_id}'")
+                return style_profile
+            else:
+                logger.warning(f"⚠️ Style profile '{style_profile_id}' not found in style profile loader")
+                return {}
+        except Exception as e:
+            logger.error(f"❌ Failed to load style profile '{style_profile_id}': {e}")
+            return {}
+    
+    def _get_default_template_config(self, template_id: str) -> Dict[str, Any]:
+        """Provide sensible default template configuration"""
+        return {
+            "id": template_id,
+            "name": template_id.replace("_", " ").title(),
+            "category": "general",
+            "difficulty": "intermediate",
+            "estimatedLength": "10-15 min",
+            "description": f"Content template for {template_id.replace('_', ' ')}"
+        }
+    
+    def _get_default_style_profile(self, style_profile_id: str) -> Dict[str, Any]:
+        """Provide sensible default style profile"""
+        return {
+            "id": style_profile_id,
+            "name": style_profile_id.replace("_", " ").title(),
+            "category": "general",
+            "tone": "professional",
+            "voice": "authoritative",
+            "system_prompt": f"Write in a {style_profile_id.replace('_', ' ')} style.",
+            "settings": {
+                "use_analogies": True,
+                "avoid_jargon": False,
+                "include_examples": True,
+                "conversational_tone": False
+            }
+        }
+    
+    def _generate_structure(self, content_plan: ContentPlan, template_config: Dict[str, Any]) -> ContentStructure:
+        """Generate content structure with template guidance"""
         structure = ContentStructure()
+        
+        # Use template suggested sections if available
+        suggested_sections = template_config.get("suggested_sections", [])
+        if suggested_sections:
+            structure.main_sections = []
+            for section in suggested_sections:
+                section_dict = {
+                    "title": section.get("name", "Section").replace("_", " ").title(),
+                    "description": section.get("description", ""),
+                    "type": section.get("name", "content"),
+                    "estimated_length": content_plan.estimated_length // max(len(suggested_sections), 1)
+                }
+                structure.main_sections.append(section_dict)
+        else:
+            # Use default structure generation logic
+            structure = self._generate_default_structure(content_plan)
         
         structure.introduction = {
             "hook": {"type": "question" if content_plan.target_audience in [Audience.BEGINNER, Audience.GENERAL_PUBLIC] else "statement"},
@@ -433,20 +600,6 @@ class IntelligentPlannerAgent:
             "preview": {"what_readers_will_learn": True},
             "estimated_length": min(200, content_plan.estimated_length // 10)
         }
-        
-        # Generate main sections based on approach
-        if content_plan.approach == PlanningApproach.TUTORIAL_BASED:
-            structure.main_sections = [
-                {"title": "Prerequisites and Setup", "type": "preparation", "estimated_length": content_plan.estimated_length // 8},
-                {"title": "Step-by-Step Implementation", "type": "implementation", "estimated_length": content_plan.estimated_length // 2},
-                {"title": "Testing and Validation", "type": "validation", "estimated_length": content_plan.estimated_length // 6}
-            ]
-        else:
-            structure.main_sections = [
-                {"title": "Understanding the Basics", "type": "fundamentals", "estimated_length": content_plan.estimated_length // 4},
-                {"title": "Practical Applications", "type": "application", "estimated_length": content_plan.estimated_length // 3},
-                {"title": "Best Practices", "type": "guidance", "estimated_length": content_plan.estimated_length // 3}
-            ]
         
         structure.conclusion = {
             "summary": {"key_points_recap": True, "main_takeaways": True},
@@ -457,8 +610,42 @@ class IntelligentPlannerAgent:
         structure.metadata = {
             "total_sections": len(structure.main_sections),
             "estimated_length": content_plan.estimated_length,
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
+            "template_guided": bool(suggested_sections)
         }
+        
+        return structure
+    
+    def _generate_default_structure(self, content_plan: ContentPlan) -> ContentStructure:
+        """Generate default structure when template doesn't provide suggestions"""
+        structure = ContentStructure()
+        
+        if content_plan.approach == PlanningApproach.TUTORIAL_BASED:
+            structure.main_sections = [
+                {"title": "Prerequisites and Setup", "type": "preparation", "estimated_length": content_plan.estimated_length // 8},
+                {"title": "Step-by-Step Implementation", "type": "implementation", "estimated_length": content_plan.estimated_length // 2},
+                {"title": "Testing and Validation", "type": "validation", "estimated_length": content_plan.estimated_length // 6}
+            ]
+        elif content_plan.content_type == ContentType.BUSINESS_PROPOSAL:
+            structure.main_sections = [
+                {"title": "Executive Summary", "type": "overview", "estimated_length": content_plan.estimated_length // 5},
+                {"title": "Problem Statement", "type": "problem", "estimated_length": content_plan.estimated_length // 4},
+                {"title": "Proposed Solution", "type": "solution", "estimated_length": content_plan.estimated_length // 3},
+                {"title": "Timeline and Budget", "type": "logistics", "estimated_length": content_plan.estimated_length // 6}
+            ]
+        elif content_plan.content_type == ContentType.TECHNICAL_DOCUMENTATION:
+            structure.main_sections = [
+                {"title": "Getting Started", "type": "introduction", "estimated_length": content_plan.estimated_length // 6},
+                {"title": "API Reference", "type": "reference", "estimated_length": content_plan.estimated_length // 2},
+                {"title": "Examples and Use Cases", "type": "examples", "estimated_length": content_plan.estimated_length // 4},
+                {"title": "Troubleshooting", "type": "support", "estimated_length": content_plan.estimated_length // 8}
+            ]
+        else:
+            structure.main_sections = [
+                {"title": "Understanding the Basics", "type": "fundamentals", "estimated_length": content_plan.estimated_length // 4},
+                {"title": "Practical Applications", "type": "application", "estimated_length": content_plan.estimated_length // 3},
+                {"title": "Best Practices", "type": "guidance", "estimated_length": content_plan.estimated_length // 3}
+            ]
         
         return structure
     
@@ -479,20 +666,37 @@ class IntelligentPlannerAgent:
             recency_requirement="within_1_year",
             credibility_threshold="moderate"
         )
-
+    
     def _generate_style_requirements(self, content_plan: ContentPlan, style_profile: Dict[str, Any]) -> StyleRequirements:
-        """Generate style requirements"""
+        """✅ FIXED: Generate style requirements with proper style profile integration"""
         requirements = StyleRequirements()
         
         # Apply style profile overrides if available
         if style_profile:
-            if "writing_style" in style_profile:
-                requirements.writing_style = style_profile["writing_style"]
+            # Map style profile fields to requirements
             if "tone" in style_profile:
                 requirements.tone = style_profile["tone"]
+            if "voice" in style_profile:
+                requirements.writing_style = style_profile["voice"]
+            
+            # Apply settings if available
+            settings = style_profile.get("settings", {})
+            if isinstance(settings, dict):
+                requirements.use_examples = settings.get("include_examples", True)
+                requirements.include_code_snippets = settings.get("code_blocks", "minimal") != "minimal"
+                requirements.include_citations = not settings.get("avoid_jargon", False)
+            
+            # Apply length limits if specified
+            length_limits = style_profile.get("length_limit", {})
+            if isinstance(length_limits, dict):
+                if "words" in length_limits:
+                    # Adjust estimated length based on style profile
+                    target_words = length_limits["words"]
+                    if target_words != content_plan.estimated_length:
+                        logger.info(f"Adjusting length from {content_plan.estimated_length} to {target_words} words based on style profile")
         
         return requirements
-
+    
     def _generate_seo_requirements(self, content_plan: ContentPlan, dynamic_params: Dict[str, Any]) -> SEORequirements:
         """Generate SEO requirements"""
         keywords = [content_plan.topic]
@@ -538,34 +742,59 @@ class IntelligentPlannerAgent:
             "engagement": {"estimated_read_time": content_plan.estimated_read_time, "examples_required": True}
         }
     
-    def _generate_recommendations(self, content_plan: ContentPlan) -> List[str]:
-        """Generate recommendations"""
+    def _generate_recommendations(self, content_plan: ContentPlan, template_config: Dict[str, Any], style_profile: Dict[str, Any]) -> List[str]:
+        """✅ ENHANCED: Generate recommendations with template and style awareness"""
         recommendations = []
         
+        # Template-specific recommendations
+        template_category = template_config.get("category", "").lower()
+        if template_category == "business":
+            recommendations.append("Include specific metrics and ROI projections for business impact")
+        elif template_category == "technical writing":
+            recommendations.append("Provide code examples and clear API documentation")
+        elif template_category == "social media":
+            recommendations.append("Optimize for platform-specific engagement and hashtags")
+        
+        # Content length recommendations
         if content_plan.estimated_length > 3000:
             recommendations.append("Consider breaking into multiple sections for better readability")
         
+        # Audience-specific recommendations
         if content_plan.target_audience == Audience.BEGINNER:
             recommendations.append("Include plenty of examples and avoid jargon")
+        elif content_plan.target_audience == Audience.TECHNICAL_PROFESSIONALS:
+            recommendations.append("Include technical details and implementation specifics")
         
+        # Content type recommendations
         if content_plan.content_type == ContentType.TUTORIAL:
             recommendations.append("Include step-by-step instructions with examples")
+        elif content_plan.content_type == ContentType.BUSINESS_PROPOSAL:
+            recommendations.append("Focus on clear value proposition and actionable next steps")
+        
+        # Style profile recommendations
+        if style_profile:
+            tone = style_profile.get("tone", "")
+            if "scientific" in tone:
+                recommendations.append("Maintain objectivity and include proper citations")
+            elif "educational" in tone:
+                recommendations.append("Use clear explanations and learning objectives")
         
         return recommendations
     
-    # Fix for enhanced_planner.py - Variable Scope Issue
-
-    # Fix for enhanced_planner.py - Variable Scope Issue
-
-# The issue is in the enhanced_planner.py file where style_profile variable is not properly initialized
-# Here's the fix for the variable scope error:
-
-    def _generate_reasoning(self, content_plan: ContentPlan, analysis_result: Dict[str, Any]) -> str:
-        """Generate reasoning explanation"""
-        return (f"Based on topic analysis, this content is best suited as a {content_plan.content_type.value} "
-                f"targeting {content_plan.target_audience.value} audience with {content_plan.complexity.value} complexity. "
-                f"Estimated {content_plan.estimated_length} words for approximately {content_plan.estimated_read_time} minute read.")
-
+    def _generate_reasoning(self, content_plan: ContentPlan, analysis_result: Dict[str, Any], template_config: Dict[str, Any], style_profile: Dict[str, Any]) -> str:
+        """✅ ENHANCED: Generate reasoning explanation with template and style context"""
+        template_name = template_config.get("name", "Unknown Template")
+        style_name = style_profile.get("name", "Unknown Style")
+        
+        reasoning = (
+            f"Based on template '{template_name}' and style profile '{style_name}', "
+            f"this content is optimized as a {content_plan.content_type.value} "
+            f"targeting {content_plan.target_audience.value} audience with {content_plan.complexity.value} complexity. "
+            f"Estimated {content_plan.estimated_length} words for approximately {content_plan.estimated_read_time} minute read."
+        )
+        
+        return reasoning
+    
     def _serialize_content_plan(self, content_plan: ContentPlan) -> Dict[str, Any]:
         """Serialize content plan to dictionary"""
         return {
@@ -580,8 +809,10 @@ class IntelligentPlannerAgent:
             "success_metrics": content_plan.success_metrics,
             "creation_metadata": content_plan.creation_metadata
         }
+
+# Export the agent function
 async def _enhanced_planner_fn(state: dict) -> dict:
-    """Enhanced planner agent function for LangGraph workflow"""
+    """✅ FIXED: Enhanced planner agent function for LangGraph workflow"""
     planner_agent = IntelligentPlannerAgent()
     return await planner_agent.intelligent_plan(state)
 

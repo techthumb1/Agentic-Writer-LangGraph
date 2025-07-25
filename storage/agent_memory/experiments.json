@@ -2734,5 +2734,370 @@
       "word_count": 730,
       "model_used": "gpt-4o"
     }
+  },
+  {
+    "timestamp": "2025-07-18T18:00:33.582723",
+    "context": {
+      "topic_category": "technology",
+      "audience": "general",
+      "intent": "teach",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "analytical",
+      "structure": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Technical Documentation with technical dive style",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "teach",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "analytical",
+      "structure_pattern": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-18T18:00:33.582596",
+      "word_count": 733,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-18T20:36:13.499321",
+    "context": {
+      "topic_category": "technology",
+      "audience": "general",
+      "intent": "teach",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "analytical",
+      "structure": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Technical Documentation with phd academic style",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "teach",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "analytical",
+      "structure_pattern": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-18T20:36:13.499183",
+      "word_count": 801,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-19T02:22:36.563878",
+    "context": {
+      "topic_category": "general",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "technical",
+      "structure": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "research paper template content using methodology paper approach",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "technical",
+      "structure_pattern": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-19T02:22:36.563754",
+      "word_count": 783,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-19T23:42:20.935103",
+    "context": {
+      "topic_category": "business",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 5,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "creative",
+      "structure": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Strategic Business Proposal in startup usecases approach",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 5,
+      "innovation_level": "balanced",
+      "writing_mode": "creative",
+      "structure_pattern": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.3,
+        "conversational": 0.5,
+        "technical": 0.2,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-19T23:42:20.934529",
+      "word_count": 854,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-20T03:14:29.908843",
+    "context": {
+      "topic_category": "business",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "technical",
+      "structure": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Strategic Business Proposal in system architecture approach",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "technical",
+      "structure_pattern": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-20T03:14:29.908713",
+      "word_count": 737,
+      "model_used": "gpt-4o"
+    }
+  },
+  {
+    "timestamp": "2025-07-20T11:01:04.256995",
+    "context": {
+      "topic_category": "business",
+      "audience": "general",
+      "intent": "teach",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "analytical",
+      "structure": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Strategic Business Proposal in venture capital pitch approach",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "teach",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "analytical",
+      "structure_pattern": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-20T11:01:04.256340",
+      "word_count": 834,
+      "model_used": "gpt-4o",
+      "template_used": "none"
+    }
+  },
+  {
+    "timestamp": "2025-07-20T17:58:25.776965",
+    "context": {
+      "topic_category": "business",
+      "audience": "general",
+      "intent": "teach",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "analytical",
+      "structure": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Strategic Business Proposal in venture capital pitch approach",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "teach",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "analytical",
+      "structure_pattern": "problem \u2192 solution \u2192 examples \u2192 practice",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-20T17:58:25.776821",
+      "word_count": 797,
+      "model_used": "gpt-4o",
+      "template_used": "none"
+    }
+  },
+  {
+    "timestamp": "2025-07-20T18:05:40.148504",
+    "context": {
+      "topic_category": "technology",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 3,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "creative",
+      "structure": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Social Media Campaign using social media voice voice",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 3,
+      "innovation_level": "balanced",
+      "writing_mode": "creative",
+      "structure_pattern": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.3,
+        "conversational": 0.5,
+        "technical": 0.2,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-20T18:05:40.148357",
+      "word_count": 948,
+      "model_used": "gpt-4o",
+      "template_used": "none"
+    }
+  },
+  {
+    "timestamp": "2025-07-24T19:00:25.463049",
+    "context": {
+      "topic_category": "business",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "technical",
+      "structure": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Strategic Business Proposal in roi analysis approach",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "technical",
+      "structure_pattern": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-24T19:00:25.462486",
+      "word_count": 837,
+      "model_used": "gpt-4o",
+      "template_used": "none"
+    }
+  },
+  {
+    "timestamp": "2025-07-24T19:40:45.012400",
+    "context": {
+      "topic_category": "business",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 8,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "technical",
+      "structure": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Strategic Business Proposal in venture capital pitch approach",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 8,
+      "innovation_level": "balanced",
+      "writing_mode": "technical",
+      "structure_pattern": "overview \u2192 deep_dive \u2192 implementation \u2192 implications",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.5,
+        "conversational": 0.5,
+        "technical": 0.7,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-24T19:40:45.012304",
+      "word_count": 663,
+      "model_used": "gpt-4o",
+      "template_used": "none"
+    }
   }
 ]

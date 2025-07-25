@@ -22,7 +22,7 @@ export default function CustomersPage() {
       company: "TechFlow Solutions",
       image: "SC",
       rating: 5,
-      quote: "AgentWrite Pro has revolutionized our content creation process. We're producing 3x more high-quality content in half the time. The AI understands our brand voice perfectly.",
+      quote: "WriterzRoom has revolutionized our content creation process. We're producing 3x more high-quality content in half the time. The AI understands our brand voice perfectly.",
       industry: "Technology"
     },
     {
@@ -40,7 +40,7 @@ export default function CustomersPage() {
       company: "GreenTech Startup",
       image: "EW",
       rating: 5,
-      quote: "As a startup founder, time is everything. AgentWrite Pro helps me create professional content for investors, customers, and partners without hiring a full marketing team.",
+      quote: "As a startup founder, time is everything. WriterzRoom helps me create professional content for investors, customers, and partners without hiring a full marketing team.",
       industry: "Startup"
     },
     {
@@ -48,7 +48,7 @@ export default function CustomersPage() {
       title: "Senior Analyst",
       company: "Financial Insights Corp",
       image: "JP",
-      rating: 4.5,
+      rating: 4.0,
       quote: "The business intelligence features are outstanding. Our reports are more comprehensive and data-driven than ever before. Clients love the improved quality.",
       industry: "Finance"
     },
@@ -57,7 +57,7 @@ export default function CustomersPage() {
       title: "Technical Writer",
       company: "DevTools Inc",
       image: "LT",
-      rating: 5,
+      rating: 4.5,
       quote: "Creating technical documentation used to be a bottleneck. Now our developer docs are always up-to-date and user-friendly. The AI understands complex technical concepts.",
       industry: "Software"
     },
@@ -67,7 +67,7 @@ export default function CustomersPage() {
       company: "E-commerce Giant",
       image: "DK",
       rating: 4.5,
-      quote: "We manage thousands of product descriptions and marketing campaigns. AgentWrite Pro scales with us perfectly, maintaining quality across all our content.",
+      quote: "We manage thousands of product descriptions and marketing campaigns. WriterzRoom scales with us perfectly, maintaining quality across all our content.",
       industry: "E-commerce"
     }
   ];
@@ -166,7 +166,7 @@ export default function CustomersPage() {
             </span>
           </h1>
           <p className="text-xl text-gray-300 leading-relaxed max-w-3xl mx-auto">
-            See how organizations across industries are transforming their content creation with AgentWrite Pro.
+            See how organizations across industries are transforming their content creation with WriterzRoom.
           </p>
         </header>
 
@@ -248,7 +248,7 @@ export default function CustomersPage() {
                 <h2 className="text-2xl sm:text-3xl font-bold mb-4">Success Story: TechFlow Solutions</h2>
                 <p className="text-gray-300 mb-4">
                   See how TechFlow Solutions increased their content output by 300% while maintaining 
-                  quality and reducing costs by 40% using AgentWrite Pro.
+                  quality and reducing costs by 40% using WriterzRoom.
                 </p>
                 <ul className="space-y-2 mb-6">
                   <li className="flex items-center text-sm">
@@ -288,7 +288,7 @@ export default function CustomersPage() {
           </h2>
           <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
             Ready to transform your content creation process? Join thousands of satisfied customers 
-            who are already creating exceptional content with AgentWrite Pro.
+            who are already creating exceptional content with WriterzRoom.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth/signin" passHref>

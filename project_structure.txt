@@ -31,47 +31,93 @@
 │   └── pre-commit
 ├── backups
 │   └── 20250618_235827
+├── CATEGORY_SYSTEM_README.md
 ├── check_existing.sh
 ├── data
 │   ├── .DS_Store
+│   ├── category_overview.yaml
 │   ├── content_templates
+│   │   ├── api_documentation_template.yaml
 │   │   ├── blog_article_generator.yaml
-│   │   ├── business_proposal.yaml
-│   │   ├── email_newsletter.yaml
+│   │   ├── business_proposal_template.yaml
 │   │   ├── press_release.yaml
-│   │   ├── social_media_campaign.yaml
+│   │   ├── research_paper_template.yaml
+│   │   └── social_media_campaign.yaml
+│   ├── old_templates
+│   │   ├── beginner_friendly.yaml
+│   │   ├── business_proposal.yaml
+│   │   ├── debate_position.yaml
+│   │   ├── educational_expert.yaml
+│   │   ├── email_newsletter.yaml
 │   │   └── technical_documents.yaml
-│   ├── old_content_templates.yaml
-│   │   ├── analytical_authoritative.yaml
-│   │   ├── approachable_engaging.yaml
-│   │   ├── assertive_friendly.yaml
-│   │   ├── blog_post.yaml
-│   │   ├── decision_trees.yaml
-│   │   ├── federated_learning_101.yaml
-│   │   ├── future_of_llms.yaml
-│   │   ├── introduction_to_contrastive_learning.yaml
-│   │   ├── startup_trends_brief.yaml
-│   │   └── week_2.yaml
 │   └── style_profiles
 │       ├── .DS_Store
+│       ├── academic_book_chapter.yaml
+│       ├── academic_textbook.yaml
+│       ├── advanced_masterclass.yaml
 │       ├── ai_in_healthcare.yaml
 │       ├── ai_news_brief.yaml
-│       ├── beginner_friendly.yaml
-│       ├── debate_position.yaml
-│       ├── educational_expert.yaml
+│       ├── api_documentation.yaml
+│       ├── beginner_tutorial.yaml
+│       ├── board_presentation.yaml
+│       ├── brand_storytelling.yaml
+│       ├── business_case_analysis.yaml
+│       ├── certification_prep.yaml
+│       ├── code_review_standards.yaml
+│       ├── competitive_analysis.yaml
+│       ├── conference_abstract.yaml
+│       ├── content_marketing.yaml
+│       ├── conversion_optimization.yaml
+│       ├── corporate_training.yaml
+│       ├── customer_success.yaml
+│       ├── deployment_guide.yaml
+│       ├── email_campaign.yaml
+│       ├── executive_summary.yaml
 │       ├── experimental_lab_log.yaml
 │       ├── founder_storytelling.yaml
 │       ├── future_of_llms.yaml
+│       ├── grant_application.yaml
+│       ├── implementation_guide.yaml
+│       ├── influencer_collaboration.yaml
+│       ├── integration_manual.yaml
+│       ├── investor_presentation.yaml
 │       ├── jason.yaml
+│       ├── knowledge_base.yaml
+│       ├── learning_pathway.yaml
+│       ├── literature_review.yaml
 │       ├── market_flash.yaml
+│       ├── market_research_report.yaml
+│       ├── merger_acquisition.yaml
+│       ├── methodology_paper.yaml
+│       ├── online_course.yaml
+│       ├── peer_review_article.yaml
+│       ├── performance_analysis.yaml
+│       ├── phd_academic copy.yaml
 │       ├── phd_academic.yaml
+│       ├── phd_dissertation.yaml
 │       ├── phd_lit_review.yaml
 │       ├── policy_watch.yaml
 │       ├── popular_sci.yaml
+│       ├── product_launch.yaml
+│       ├── research_proposal.yaml
+│       ├── roi_analysis.yaml
+│       ├── sales_enablement.yaml
+│       ├── scholarly_commentary.yaml
+│       ├── security_protocol.yaml
+│       ├── skill_assessment.yaml
+│       ├── social_media_voice.yaml
 │       ├── startup_trends_brief.yaml
 │       ├── startup_usecases.yaml
+│       ├── strategic_planning.yaml
+│       ├── system_architecture.yaml
 │       ├── technical_dive.yaml
-│       └── technical_tutor.yaml
+│       ├── technical_specification.yaml
+│       ├── technical_tutor.yaml
+│       ├── thesis_defense.yaml
+│       ├── thought_leadership.yaml
+│       ├── troubleshooting_manual.yaml
+│       ├── venture_capital_pitch.yaml
+│       └── workshop_facilitator.yaml
 ├── deployment
 │   └── render.yaml
 ├── docker-compose.yaml
@@ -101,15 +147,14 @@
 │   │   │   │   ├── .DS_Store
 │   │   │   │   ├── [contentID]
 │   │   │   │   ├── export
-│   │   │   │   ├── route.bk.ts
 │   │   │   │   └── route.ts
 │   │   │   ├── dashboard
+│   │   │   │   ├── .DS_Store
 │   │   │   │   └── stats
 │   │   │   ├── generate
 │   │   │   │   ├── .DS_Store
 │   │   │   │   ├── route copy.ts
 │   │   │   │   ├── route.ts
-│   │   │   │   ├── route.ts.backup
 │   │   │   │   └── status
 │   │   │   ├── generate-content
 │   │   │   │   ├── .DS_Store
@@ -180,8 +225,7 @@
 │   │   │   ├── [template_id]
 │   │   │   │   └── page.tsx
 │   │   │   ├── layout.tsx
-│   │   │   ├── page.tsx
-│   │   │   └── page.tsx.backup
+│   │   │   └── page.tsx
 │   │   ├── globals.css
 │   │   ├── help
 │   │   │   └── page.tsx
@@ -199,8 +243,7 @@
 │   │   │   └── page.tsx
 │   │   ├── providers.tsx
 │   │   ├── settings
-│   │   │   ├── page.tsx
-│   │   │   └── page1.tsx
+│   │   │   └── page.tsx
 │   │   ├── solutions
 │   │   │   └── page.tsx
 │   │   ├── status
@@ -230,11 +273,15 @@
 │   │   │   ├── mcp_dashboard.tsx
 │   │   │   └── MCPToolToaster.tsx
 │   │   ├── NavigationClient.tsx
+│   │   ├── PageHeader.tsx
+│   │   ├── ProfessionalCategories.tsx
 │   │   ├── PublishingManager.tsx
 │   │   ├── ResponsiveNavigation.tsx
 │   │   ├── SimpleThemeSwitcher.tsx
 │   │   ├── StyleProfilesSelector.tsx
+│   │   ├── TemplateSelector copy.tsx
 │   │   ├── TemplateSelector.tsx
+│   │   ├── ThemeBackground.tsx
 │   │   ├── ThemeSelector.tsx
 │   │   ├── ToastProvider.tsx
 │   │   ├── ui
@@ -340,6 +387,7 @@
 │   │   ├── content.ts
 │   │   ├── index.ts
 │   │   ├── models.ts
+│   │   ├── professional-categories.ts
 │   │   ├── template.ts
 │   │   └── theme.ts
 │   ├── utils
@@ -352,103 +400,81 @@
 │   └── zz_launch_enterprise.py
 ├── generated_content
 │   ├── .DS_Store
-│   ├── preview-federated-learning-for-beginners.html
-│   ├── preview-understanding-decision-trees.html
-│   └── week_1
-│       └── federated_learning_101.md
+│   └── week_2025_29
+│       ├── algorithmic_trading_20250717_d0726c00.json
+│       ├── algorithmic_trading_20250717_d0726c00.md
+│       ├── future_of_llms_20250717_9f5b89fa.json
+│       ├── future_of_llms_20250717_9f5b89fa.md
+│       ├── future_of_llms_20250717_f08e5e7d.json
+│       ├── future_of_llms_20250717_f08e5e7d.md
+│       ├── future_of_llms_20250718_61c724ec.json
+│       ├── future_of_llms_20250718_61c724ec.md
+│       ├── research_paper_template_content_using_methodology__20250719_6aaa6529.json
+│       ├── research_paper_template_content_using_methodology__20250719_6aaa6529.md
+│       ├── technical_documentation_with_phd_academic_style_20250719_78ec959a.json
+│       ├── technical_documentation_with_phd_academic_style_20250719_78ec959a.md
+│       ├── technical_documentation_with_technical_dive_style_20250718_dfee2ab8.json
+│       ├── technical_documentation_with_technical_dive_style_20250718_dfee2ab8.md
+│       ├── the_math_behind_data_science_an_overview_of_your_f_20250718_ff9ec3d9.json
+│       └── the_math_behind_data_science_an_overview_of_your_f_20250718_ff9ec3d9.md
 ├── langgraph_app
 │   ├── __init__.py
-│   ├── __main__2.py
 │   ├── .DS_Store
+│   ├── agent_coordination.py
 │   ├── agents
 │   │   ├── __init__.py
 │   │   ├── .DS_Store
-│   │   ├── call_writer_agent_mock.py
-│   │   ├── call_writer_agent_mock.py.bak
 │   │   ├── enhanced_call_writer.py
-│   │   ├── enhanced_call_writer.py.bak
-│   │   ├── enhanced_code_agent.bak
 │   │   ├── enhanced_code_agent.py
-│   │   ├── enhanced_code_agent.py.bak
-│   │   ├── enhanced_editor.bak
 │   │   ├── enhanced_editor.py
-│   │   ├── enhanced_editor.py.bak
-│   │   ├── enhanced_formatter.bak
 │   │   ├── enhanced_formatter.py
-│   │   ├── enhanced_formatter.py.bak
 │   │   ├── enhanced_image_agent.py
-│   │   ├── enhanced_image_agent.py.bak
+│   │   ├── enhanced_planner copy.py
 │   │   ├── enhanced_planner.py
-│   │   ├── enhanced_planner.py.bak
 │   │   ├── enhanced_publisher.py
-│   │   ├── enhanced_publisher.py.bak
-│   │   ├── enhanced_researcher.bak
 │   │   ├── enhanced_researcher.py
-│   │   ├── enhanced_researcher.py.bak
 │   │   ├── enhanced_seo_agent.py
-│   │   ├── enhanced_seo_agent.py.bak
 │   │   ├── mcp_enhanced_agents.py
-│   │   ├── writer.py
-│   │   └── writer.py.bak
-│   ├── cache_system.bak
+│   │   └── writer.py
 │   ├── cache_system.py
-│   ├── cache_system.py.bak
 │   ├── content_generation_workflow.py
-│   ├── content_generation_workflow.py.bak
 │   ├── Dockerfile
 │   ├── enhanced_graph.py
-│   ├── enhanced_graph.py.bak
 │   ├── enhanced_model_registry.py
-│   ├── enhanced_model_registry.py.bak
 │   ├── enhanced_orchestration.py
-│   ├── enhanced_orchestration.py.bak
 │   ├── generate_template.py
-│   ├── generate_template.py.bak
 │   ├── graph.py
-│   ├── graph.py.bak
 │   ├── integrated_server_mcp.py
-│   ├── integrated_server.bak
 │   ├── integrated_server.py
-│   ├── integrated_server.py.bakup
 │   ├── integrated_servers.py
 │   ├── integrated_workflow.py
-│   ├── integrated_workflow.py.bak
-│   ├── integration_coordinator.bak
 │   ├── integration_coordinator.py
-│   ├── integration_coordinator.py.bak
 │   ├── job_queue.py
-│   ├── job_queue.py.bak
 │   ├── main.py
-│   ├── main.py.bak
 │   ├── mcp_enhanced_graph.py
 │   ├── mcp_integration.py
 │   ├── mcp_server_extension.py
 │   ├── mcp_server_integration.py
 │   ├── publish_trigger.py
-│   ├── publish_trigger.py.bak
-│   ├── semantic_search.bak
 │   ├── semantic_search.py
-│   ├── server.bak
 │   ├── server.py
-│   ├── server.py.bak
+│   ├── style_category_system.py
+│   ├── style_enforcement.py
+│   ├── style_patch.py
+│   ├── style_profile_loader copy.py
 │   ├── style_profile_loader.py
-│   ├── style_profile_loader.py.bak
 │   ├── template_loader.py
-│   ├── template_loader.py.bak
-│   ├── utils.bak
+│   ├── universal_style_enhancer.py
 │   ├── utils.py
-│   ├── utils.py.bak
 │   ├── zz_enhanced_orchestration
-│   ├── zz_monitoring_server.bak
 │   ├── zz_monitoring_server.py
-│   ├── zz_monitoring_server.py.bak
-│   ├── zz_start_enterprise.py
-│   └── zz_start_enterprise.py.bak
+│   └── zz_start_enterprise.py
 ├── LICENSE
 ├── migration.sh
 ├── package-lock.json
 ├── package.json
 ├── pnpm-lock.yaml
+├── PROFESSIONAL_CATEGORIES_GUIDE.md
 ├── project_structure.txt
 ├── prompts
 │   ├── .DS_Store
@@ -472,6 +498,7 @@
 │   ├── cleanup-script.sh
 │   ├── deploy.sh
 │   ├── dev.sh
+│   ├── generate_professional_categories.py
 │   ├── requestId-cleanup.sh
 │   ├── rotate-api-key.py
 │   ├── run_server.sh
@@ -731,4 +758,4 @@
     │           └── zstandard-0.23.0.dist-info
     └── pyvenv.cfg
 
-307 directories, 425 files
+307 directories, 452 files

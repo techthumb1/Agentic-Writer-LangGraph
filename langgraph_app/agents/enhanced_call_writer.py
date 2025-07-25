@@ -1,9 +1,10 @@
-# langgraph_app/agents/enhanced_call_writer.py
-# Complete version maintaining all functionality while removing duplication
+# File: langgraph_app/agents/enhanced_call_writer.py
+# Enhanced Call Writer Agent with Export Function Fix
 
 import sys
 import json
 import os
+import asyncio
 from datetime import datetime
 from langchain_core.runnables import RunnableLambda
 
@@ -86,70 +87,74 @@ def create_fallback_content(state: dict, error_msg: str) -> dict:
         "error": True
     }
 
-async def _enhanced_call_writer_fn(state: dict) -> dict:
-    """Enhanced call writer agent function for LangGraph workflow"""
-    try:
-        if not USE_ENHANCED_WRITER or not innovative_writer_agent:
-            raise ImportError("Enhanced writer not available")
-        
-        print(">> Using enhanced writer system...", file=sys.stderr)
-        
-        # Enhance the state for better context
-        enhanced_state = enhance_state_for_writer(state)
-        
-        # Use the enhanced writer
-        result = innovative_writer_agent.generate_adaptive_content(enhanced_state)
-        
-        # Validate result structure
-        if not isinstance(result, dict):
-            raise ValueError("Writer function returned invalid result")
-        
-        if "draft" not in result or not result["draft"]:
-            raise ValueError("Writer function did not return valid 'draft' content")
-
-        # Add innovation report to output if available
-        if "innovation_report" in result:
-            print(f">> Innovation techniques used: {result['innovation_report']['techniques_used']}", file=sys.stderr)
-            print(f">> Innovation level: {result['innovation_report']['innovation_level']}", file=sys.stderr)
-
-        # Add success metrics
-        if "draft" in result:
-            word_count = len(result["draft"].split())
-            result["word_count"] = word_count
-            print(f">> Generated {word_count} words", file=sys.stderr)
-
-        # Add writer type metadata
-        if "metadata" not in result:
-            result["metadata"] = {}
-        result["metadata"]["writer_type"] = "enhanced"
-        result["metadata"]["generation_timestamp"] = datetime.now().isoformat()
-
-        print(">> Content generation completed successfully", file=sys.stderr)
-        return result
-        
-    except Exception as e:
-        error_msg = f"Content generation failed: {str(e)}"
-        print(f"[WRITER_AGENT_ERROR] {error_msg}", file=sys.stderr)
-        
-        # Return error response instead of just failing
-        return create_fallback_content(state, str(e))
-
-# Export the function for LangGraph
-call_writer = RunnableLambda(_enhanced_call_writer_fn)
-
-# For direct instantiation
 class EnhancedCallWriterAgent:
-    """Enhanced call writer agent class"""
+    """Enhanced call writer agent class with proper async/sync support"""
     
     def __init__(self):
         self.writer_agent = innovative_writer_agent if USE_ENHANCED_WRITER else None
     
     async def intelligent_call_write(self, state: dict) -> dict:
-        """Intelligent content writing with enhanced capabilities"""
-        return await _enhanced_call_writer_fn(state)
+        """Intelligent content writing with enhanced capabilities - async version"""
+        try:
+            if not USE_ENHANCED_WRITER or not self.writer_agent:
+                raise ImportError("Enhanced writer not available")
+            
+            print(">> Using enhanced writer system...", file=sys.stderr)
+            
+            # Enhance the state for better context
+            enhanced_state = enhance_state_for_writer(state)
+            
+            # Use the enhanced writer
+            result = self.writer_agent.generate_adaptive_content(enhanced_state)
+            
+            # Validate result structure
+            if not isinstance(result, dict):
+                raise ValueError("Writer function returned invalid result")
+            
+            if "draft" not in result or not result["draft"]:
+                raise ValueError("Writer function did not return valid 'draft' content")
+
+            # Add innovation report to output if available
+            if "innovation_report" in result:
+                print(f">> Innovation techniques used: {result['innovation_report']['techniques_used']}", file=sys.stderr)
+                print(f">> Innovation level: {result['innovation_report']['innovation_level']}", file=sys.stderr)
+
+            # Add success metrics
+            if "draft" in result:
+                word_count = len(result["draft"].split())
+                result["word_count"] = word_count
+                print(f">> Generated {word_count} words", file=sys.stderr)
+
+            # Add writer type metadata
+            if "metadata" not in result:
+                result["metadata"] = {}
+            result["metadata"]["writer_type"] = "enhanced"
+            result["metadata"]["generation_timestamp"] = datetime.now().isoformat()
+
+            print(">> Content generation completed successfully", file=sys.stderr)
+            return result
+            
+        except Exception as e:
+            error_msg = f"Content generation failed: {str(e)}"
+            print(f"[WRITER_AGENT_ERROR] {error_msg}", file=sys.stderr)
+            
+            # Return error response instead of just failing
+            return create_fallback_content(state, str(e))
+    
+    def intelligent_call_write_sync(self, state: dict) -> dict:
+        """Synchronous wrapper for content generation"""
+        try:
+            # Run async method in sync context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(self.intelligent_call_write(state))
+            loop.close()
+            return result
+        except Exception as e:
+            return create_fallback_content(state, str(e))
     
     def generate_content(self, state: dict) -> dict:
-        """Synchronous content generation"""
+        """Synchronous content generation (backward compatibility)"""
         if not self.writer_agent:
             return create_fallback_content(state, "Enhanced writer not available")
         
@@ -158,6 +163,28 @@ class EnhancedCallWriterAgent:
             return self.writer_agent.generate_adaptive_content(enhanced_state)
         except Exception as e:
             return create_fallback_content(state, str(e))
+
+# LangGraph integration functions
+async def _enhanced_call_writer_async_fn(state: dict) -> dict:
+    """Enhanced call writer agent function for LangGraph workflow - async version"""
+    call_writer_agent = EnhancedCallWriterAgent()
+    return await call_writer_agent.intelligent_call_write(state)
+
+def _enhanced_call_writer_sync_fn(state: dict) -> dict:
+    """Enhanced call writer agent function for LangGraph workflow - sync version"""
+    call_writer_agent = EnhancedCallWriterAgent()
+    return call_writer_agent.intelligent_call_write_sync(state)
+
+# ✅ FIXED: Export functions for orchestration
+enhanced_call_writer_agent = RunnableLambda(_enhanced_call_writer_async_fn)
+enhanced_call_writer_agent_sync = RunnableLambda(_enhanced_call_writer_sync_fn)
+
+# Create instance for direct use
+intelligent_call_writer_agent = EnhancedCallWriterAgent()
+
+# Backward compatibility exports
+CallWriterAgent = EnhancedCallWriterAgent
+call_writer = RunnableLambda(_enhanced_call_writer_sync_fn)
 
 # CLI compatibility for command line execution
 if __name__ == "__main__":

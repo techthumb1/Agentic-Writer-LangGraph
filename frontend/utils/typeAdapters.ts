@@ -1,11 +1,36 @@
 // utils/typeAdapters.ts - Enterprise Type Transformation Layer
 // Enhanced with safety checks and null handling
+// Updated to handle array-based parameters from YAML templates
+// Compatible with existing ContentTemplate interface
 
 import type { ContentTemplate, StyleProfile, TemplateParameter } from '@/types/content';
 
+// Raw template structure from YAML files (what we receive from backend)
+interface RawYAMLTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  difficulty?: string;
+  estimatedLength?: string;
+  targetAudience?: string;
+  icon?: string;
+  tags?: string[];
+  complexity?: string;
+  // YAML files have array-based parameters
+  parameters?: ParameterArrayItem[];
+  suggested_sections?: Array<{
+    name: string;
+    description: string;
+  }>;
+  instructions?: string;
+  metadata?: Record<string, unknown>;
+}
+
+// Backend template interface (existing structure)
 interface BackendTemplate {
   id: string;
-  slug: string;
+  slug?: string;
   name: string;
   description?: string;
   category?: string;
@@ -14,7 +39,8 @@ interface BackendTemplate {
   system_prompt?: string;
   structure?: Record<string, unknown>;
   research?: Record<string, unknown>;
-  parameters?: Record<string, TemplateParameter>; // ← Changed from array to object
+  // Can be either object (legacy) or array (new YAML)
+  parameters?: Record<string, TemplateParameter> | ParameterArrayItem[];
   metadata?: {
     version: string;
     created_by: string;
@@ -33,25 +59,31 @@ interface ExtendedStyleProfile {
   metadata?: Record<string, unknown>;
 }
 
-// Add interface for templates with suggested parameters
-interface SuggestedParameter {
+// Parameter array type for conversion
+interface ParameterArrayItem {
   name: string;
-  type: "text" | "textarea" | "number" | "select" | "checkbox" | "multiselect" | "range" | "date";
+  type: string;
   label: string;
-  description: string;
-  commonly_used: boolean;
-  options: string[] | undefined;
-  default?: string | number | boolean;
+  description?: string;
+  options?: string[];
+  commonly_used?: boolean;
   required?: boolean;
+  placeholder?: string;
+  default?: string | number | boolean | string[];
 }
 
-interface TemplateWithSuggestedParams {
-  suggested_parameters?: SuggestedParameter[];
+// Template collection response interfaces
+interface TemplateCollectionResponse {
+  templates?: unknown[];
+  data?: {
+    items?: unknown[];
+  } | unknown[];
+  results?: unknown[];
 }
 
-// Extend ContentTemplate to include suggested_parameters
-interface ExtendedContentTemplate extends ContentTemplate {
-  suggested_parameters?: SuggestedParameter[];
+// Type guard for template collection response
+function isTemplateCollectionResponse(obj: unknown): obj is TemplateCollectionResponse {
+  return typeof obj === 'object' && obj !== null;
 }
 
 /**
@@ -65,7 +97,6 @@ function safeGet<T>(obj: unknown, path: string, defaultValue: T): T {
   
   for (const key of keys) {
     if (current && typeof current === 'object' && current !== null && key in current) {
-      // Use type assertion to access property
       current = (current as Record<string, unknown>)[key];
     } else {
       return defaultValue;
@@ -78,25 +109,67 @@ function safeGet<T>(obj: unknown, path: string, defaultValue: T): T {
 // Helper function to validate and convert parameter type
 function validateParameterType(type: string): "text" | "textarea" | "number" | "select" | "checkbox" | "multiselect" | "range" | "date" {
   const validTypes = ["text", "textarea", "number", "select", "checkbox", "multiselect", "range", "date"] as const;
+  // Handle "string" and "boolean" type conversions
+  if (type === "string") {
+    return "text";
+  }
+  if (type === "boolean") {
+    return "checkbox";
+  }
   return validTypes.includes(type as typeof validTypes[number]) ? type as typeof validTypes[number] : "text";
 }
 
-// Helper function to convert suggested parameter to template parameter
-function convertToTemplateParameter(suggestedParam: SuggestedParameter): TemplateParameter {
-  return {
-    name: suggestedParam.name,
-    type: suggestedParam.type,
-    label: suggestedParam.label,
-    options: suggestedParam.options,
-    default: suggestedParam.default,
-    required: suggestedParam.required,
-  };
+// Helper function to convert array-based parameters to object-based parameters (for ContentTemplate)
+function convertParametersArrayToObject(
+  parametersArray?: ParameterArrayItem[]
+): Record<string, TemplateParameter> {
+  if (!parametersArray || !Array.isArray(parametersArray)) {
+    return {};
+  }
+
+  const parametersObject: Record<string, TemplateParameter> = {};
+
+  console.log(`🔍 Converting ${parametersArray.length} parameters from array to object format`);
+
+  parametersArray.forEach(param => {
+    if (!param.name) {
+      console.warn('Parameter missing name, skipping:', param);
+      return;
+    }
+
+    // Ensure default value is compatible with TemplateParameter
+    let defaultValue: string | number | boolean | undefined = undefined;
+    if (param.default !== undefined) {
+      if (Array.isArray(param.default)) {
+        // Convert array to first element or undefined
+        defaultValue = param.default.length > 0 ? param.default[0] : undefined;
+        console.warn(`Parameter ${param.name} has array default value, using first element:`, defaultValue);
+      } else {
+        defaultValue = param.default;
+      }
+    }
+
+    parametersObject[param.name] = {
+      name: param.name,
+      label: param.label || param.name,
+      type: validateParameterType(param.type),
+      options: param.options,
+      required: param.required ?? false,
+      placeholder: param.placeholder,
+      default: defaultValue,
+      // Remove description field since it's not in TemplateParameter interface
+    };
+
+    console.log(`✅ Converted parameter: ${param.name} (${param.type} → ${parametersObject[param.name].type})`);
+  });
+
+  return parametersObject;
 }
 
 /**
  * Transform backend template to frontend ContentTemplate format with safety
  */
-export function adaptBackendTemplate(backendTemplate: BackendTemplate): ContentTemplate {
+export function adaptBackendTemplate(backendTemplate: BackendTemplate | RawYAMLTemplate): ContentTemplate {
   // Ensure we have required fields
   if (!backendTemplate || typeof backendTemplate !== 'object') {
     throw new Error('Invalid backend template: not an object');
@@ -109,37 +182,44 @@ export function adaptBackendTemplate(backendTemplate: BackendTemplate): ContentT
     throw new Error(`Invalid backend template: missing required fields - id: ${id}, name: ${name}`);
   }
 
-  // Convert parameters object to array format expected by frontend
-  const parametersArray: TemplateParameter[] = [];
-  if (backendTemplate.parameters && typeof backendTemplate.parameters === 'object') {
-    Object.entries(backendTemplate.parameters).forEach(([key, param]) => {
-      if (param && typeof param === 'object') {
-        parametersArray.push({
-          ...param,
-          name: key, // Override any existing name with the key
-        });
-      }
-    });
+  // Convert parameters (both array and object formats) to object format expected by ContentTemplate
+  let parametersObject: Record<string, TemplateParameter> = {};
+  
+  if (backendTemplate.parameters) {
+    if (Array.isArray(backendTemplate.parameters)) {
+      // New YAML format with array-based parameters
+      console.log(`🔍 Converting array-based parameters for template: ${name}`);
+      parametersObject = convertParametersArrayToObject(backendTemplate.parameters);
+    } else if (typeof backendTemplate.parameters === 'object') {
+      // Legacy object format
+      console.log(`🔍 Using existing object-based parameters for template: ${name}`);
+      parametersObject = backendTemplate.parameters as Record<string, TemplateParameter>;
+    }
   }
 
-  return {
+  console.log(`✅ Template "${name}" has ${Object.keys(parametersObject).length} parameters:`, Object.keys(parametersObject));
+
+  // Convert to ContentTemplate format (matching your existing interface)
+  const contentTemplate: ContentTemplate = {
     id,
     title: name,
-    description: safeGet(backendTemplate, 'description', undefined),
+    description: safeGet(backendTemplate, 'description', ''),
     category: safeGet(backendTemplate, 'category', 'general'),
-    difficulty: safeGet(backendTemplate, 'category', undefined),
-    estimatedLength: undefined,
-    targetAudience: undefined,
-    icon: undefined,
-    tags: safeGet(backendTemplate, 'sections', []),
-    parameters: parametersArray, // Use converted array
+    difficulty: safeGet(backendTemplate, 'difficulty', undefined),
+    estimatedLength: safeGet(backendTemplate, 'estimatedLength', undefined),
+    targetAudience: safeGet(backendTemplate, 'targetAudience', undefined),
+    icon: safeGet(backendTemplate, 'icon', undefined),
+    tags: safeGet(backendTemplate, 'tags', []),
+    parameters: Object.values(parametersObject), // ContentTemplate expects array of TemplateParameter
     templateData: {
-      parameters: parametersArray,
+      parameters: Object.values(parametersObject),
       metadata: safeGet(backendTemplate, 'metadata', {}),
       filename: safeGet(backendTemplate, 'filename', undefined),
       sections: safeGet(backendTemplate, 'sections', undefined),
+      suggested_sections: safeGet(backendTemplate, 'suggested_sections', undefined),
+      instructions: safeGet(backendTemplate, 'instructions', undefined),
     },
-    instructions: '',
+    instructions: safeGet(backendTemplate, 'instructions', ''),
     metadata: {
       ...safeGet(backendTemplate, 'metadata', {}),
       parameter_flexibility: safeGet(backendTemplate, 'metadata.parameter_flexibility', 'default'),
@@ -149,6 +229,8 @@ export function adaptBackendTemplate(backendTemplate: BackendTemplate): ContentT
     createdAt: new Date(),
     updatedAt: new Date(),
   };
+
+  return contentTemplate;
 }
 
 /**
@@ -187,74 +269,116 @@ export function adaptExtendedStyleProfile(extendedProfile: ExtendedStyleProfile)
 /**
  * Batch transform arrays of backend data with safety and filtering
  */
-export function adaptTemplateCollection(backendTemplates: unknown[]): ContentTemplate[] {
-  if (!Array.isArray(backendTemplates)) {
-    console.warn('adaptTemplateCollection: Expected array, got:', typeof backendTemplates);
+export function adaptTemplateCollection(backendTemplates: unknown): ContentTemplate[] {
+  console.log('🔍 adaptTemplateCollection called with:', typeof backendTemplates, Array.isArray(backendTemplates));
+  
+  // Handle different possible response formats
+  let templatesArray: unknown[];
+  
+  if (Array.isArray(backendTemplates)) {
+    templatesArray = backendTemplates;
+  } else if (isTemplateCollectionResponse(backendTemplates)) {
+    // Check for common API response formats
+    const response = backendTemplates as TemplateCollectionResponse;
+    if (Array.isArray(response.templates)) {
+      templatesArray = response.templates;
+    } else if (response.data && Array.isArray((response.data as { items?: unknown[] }).items)) {
+      templatesArray = (response.data as { items: unknown[] }).items;
+    } else if (Array.isArray(response.data)) {
+      templatesArray = response.data;
+    } else if (Array.isArray(response.results)) {
+      templatesArray = response.results;
+    } else {
+      console.warn('adaptTemplateCollection: Unknown template response format:', backendTemplates);
+      console.warn('Available keys:', Object.keys(response));
+      return [];
+    }
+  } else {
+    console.warn('adaptTemplateCollection: Expected array or object, got:', typeof backendTemplates);
     return [];
   }
 
+  console.log(`🔍 Processing ${templatesArray.length} raw templates`);
+
   const results: ContentTemplate[] = [];
+  let successCount = 0;
+  let errorCount = 0;
   
-  for (let i = 0; i < backendTemplates.length; i++) {
-    const template = backendTemplates[i];
+  for (let i = 0; i < templatesArray.length; i++) {
+    const template = templatesArray[i];
     
     try {
-      // Validate before adapting
-      if (isValidBackendTemplate(template)) {
-        const adapted = adaptBackendTemplate(template);
+      // Check if this is a backend template (with object parameters) or YAML template (with array parameters)
+      const templateObj = template as Record<string, unknown>;
+      const hasObjectParameters = templateObj && typeof templateObj === 'object' && 
+        templateObj.parameters && typeof templateObj.parameters === 'object' && !Array.isArray(templateObj.parameters);
+      
+      if (hasObjectParameters) {
+        // Backend template with object-based parameters - convert to array format
+        const backendTemplate = template as BackendTemplate;
+        const parametersArray: ParameterArrayItem[] = [];
         
-        // Add backward compatibility for suggested_parameters
-        if (template && typeof template === 'object' && 'suggested_parameters' in template) {
-          const templateWithParams = template as Record<string, unknown> & TemplateWithSuggestedParams;
-          const rawSuggestedParams = templateWithParams.suggested_parameters;
-          
-          if (Array.isArray(rawSuggestedParams)) {
-            // Type-safe conversion of suggested parameters
-            const suggestedParams: SuggestedParameter[] = rawSuggestedParams
-              .filter(p => p && typeof p === 'object')
-              .map(p => ({
-                name: String(p.name || ''),
-                type: validateParameterType(String(p.type || 'text')),
-                label: String(p.label || ''),
-                description: String(p.description || ''),
-                commonly_used: Boolean(p.commonly_used),
-                options: Array.isArray(p.options) ? p.options.map(String) : undefined,
-                default: p.default as string | number | boolean | undefined,
-                required: Boolean(p.required),
-              }))
-              .filter(
-                (p) =>
-                  typeof p.name === 'string' && p.name.length > 0 &&
-                  typeof p.label === 'string' && p.label.length > 0
-              );
-
-            // Add suggested_parameters to the adapted template
-            const extendedAdapted = adapted as ExtendedContentTemplate;
-            extendedAdapted.suggested_parameters = suggestedParams;
-            
-            // Override parameters with commonly used ones for main UI
-            const commonParams = suggestedParams
-              .filter(p => p.commonly_used)
-              .map(convertToTemplateParameter);
-              
-            if (commonParams.length > 0) {
-              adapted.parameters = commonParams;
+        if (backendTemplate.parameters && typeof backendTemplate.parameters === 'object' && !Array.isArray(backendTemplate.parameters)) {
+          Object.entries(backendTemplate.parameters as Record<string, TemplateParameter>).forEach(([key, param]) => {
+            // Ensure default value compatibility
+            let defaultValue: string | number | boolean | undefined = undefined;
+            if (param.default !== undefined) {
+              if (Array.isArray(param.default)) {
+                defaultValue = param.default.length > 0 ? param.default[0] : undefined;
+                console.warn(`Parameter ${key} has array default value, using first element:`, defaultValue);
+              } else {
+                defaultValue = param.default;
+              }
             }
-            
-            console.log(`Adapted template "${adapted.title}" with ${suggestedParams.length} suggested parameters (${commonParams.length} commonly used)`);
-          }
+
+            parametersArray.push({
+              name: key,
+              label: param.label || key,
+              type: param.type || 'text',
+              description: undefined, // TemplateParameter doesn't have description
+              options: param.options,
+              required: param.required || false,
+              placeholder: param.placeholder,
+              default: defaultValue,
+              commonly_used: false // Default value
+            });
+          });
         }
         
-        results.push(adapted);
+        // Create a YAML-like template structure
+        const yamlLikeTemplate: RawYAMLTemplate = {
+          ...backendTemplate,
+          parameters: parametersArray
+        };
+        
+        console.log(`🔄 Converted backend template "${backendTemplate.name}" with ${parametersArray.length} parameters`);
+        
+        if (isValidBackendTemplate(yamlLikeTemplate)) {
+          const adapted = adaptBackendTemplate(yamlLikeTemplate);
+          results.push(adapted);
+          successCount++;
+        }
       } else {
-        console.warn(`adaptTemplateCollection: Invalid template at index ${i}:`, template);
+        // YAML template with array-based parameters (existing logic)
+        if (isValidBackendTemplate(template)) {
+          const adapted = adaptBackendTemplate(template);
+          results.push(adapted);
+          successCount++;
+        }
       }
+      
     } catch (error) {
-      console.error(`adaptTemplateCollection: Error adapting template at index ${i}:`, error, template);
+      errorCount++;
+      console.error(`🚨 Error adapting template at index ${i}:`, error, template);
     }
   }
   
-  console.log(`adaptTemplateCollection: Successfully adapted ${results.length} out of ${backendTemplates.length} templates`);
+  console.log(`✅ adaptTemplateCollection: Successfully adapted ${successCount} out of ${templatesArray.length} templates`);
+  
+  if (errorCount > 0) {
+    console.warn(`⚠️  ${errorCount} templates failed to adapt`);
+  }
+  
   return results;
 }
 
@@ -292,7 +416,7 @@ export function adaptStyleProfileCollection(extendedProfiles: unknown[]): StyleP
 /**
  * Type guard to check if object has required template properties
  */
-export function isValidBackendTemplate(obj: unknown): obj is BackendTemplate {
+export function isValidBackendTemplate(obj: unknown): obj is BackendTemplate | RawYAMLTemplate {
   if (!obj || typeof obj !== 'object') {
     return false;
   }
@@ -303,8 +427,11 @@ export function isValidBackendTemplate(obj: unknown): obj is BackendTemplate {
   const hasId = typeof template.id === 'string' && template.id.length > 0;
   const hasName = typeof template.name === 'string' && template.name.length > 0;
   
-  // Check optional parameters field
-  const hasValidParameters = !template.parameters || (typeof template.parameters === 'object' && template.parameters !== null && !Array.isArray(template.parameters));
+  // Check optional parameters field (now supports both array and object)
+  const hasValidParameters = !template.parameters || 
+    Array.isArray(template.parameters) ||
+    (typeof template.parameters === 'object' && template.parameters !== null && !Array.isArray(template.parameters));
+    
   return hasId && hasName && hasValidParameters;
 }
 

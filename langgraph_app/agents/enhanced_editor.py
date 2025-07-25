@@ -1,7 +1,10 @@
 # File: langgraph_app/agents/enhanced_editor.py
+# Enhanced Editor Agent with Export Function Fix
+
 import os
+import asyncio
 from typing import Dict, List
-from openai import OpenAI, AsyncOpenAI  # ADD AsyncOpenAI
+from openai import OpenAI, AsyncOpenAI
 from langchain_core.runnables import RunnableLambda
 from dotenv import load_dotenv
 
@@ -14,7 +17,7 @@ class IntelligentEditorAgent:
     
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # ADD THIS
+        self.async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.editing_strategies = {
             "technical_precision": "Focus on technical accuracy, clarity of complex concepts, and logical flow",
             "creative_enhancement": "Enhance storytelling, emotional connection, and narrative flow",
@@ -78,7 +81,7 @@ EDITING TASKS:
 Please provide the edited version that maximizes impact while preserving the author's voice and innovative insights.
 """
     
-    async def intelligent_edit(self, state: Dict) -> Dict:  # MAKE ASYNC
+    async def intelligent_edit(self, state: Dict) -> Dict:
         """Main editing function with adaptive strategy"""
         
         draft = state.get("draft", "")
@@ -95,7 +98,7 @@ Please provide the edited version that maximizes impact while preserving the aut
         # Get system prompt
         system_prompt = self._get_editing_system_prompt(strategy, state)
         
-        response = await self.async_client.chat.completions.create(  # MAKE ASYNC
+        response = await self.async_client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -132,32 +135,37 @@ Please provide the edited version that maximizes impact while preserving the aut
         
         return strategy_prompts.get(strategy, base_prompt)
 
-# Legacy compatibility function
-def _editor_fn(state: dict) -> dict:
-    """Legacy wrapper for backward compatibility"""
-    editor = IntelligentEditorAgent()
-    # For legacy sync usage, run async method in sync context
-    import asyncio
-    try:
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(editor.intelligent_edit(state))
-    except RuntimeError:
-        # If no event loop, create one
-        return asyncio.run(editor.intelligent_edit(state))
+    # Synchronous wrapper for backward compatibility
+    def intelligent_edit_sync(self, state: Dict) -> Dict:
+        """Synchronous wrapper for intelligent editing"""
+        try:
+            # Run async method in sync context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(self.intelligent_edit(state))
+            loop.close()
+            return result
+        except Exception as e:
+            return {**state, "edited_draft": f"Editing failed: {str(e)}"}
 
-# Exports for compatibility
-editor: RunnableLambda = RunnableLambda(_editor_fn)
-
-# Class export for advanced usage
-EditorAgent = IntelligentEditorAgent
-
-# enhanced_editor.py - Add to the very end:
-from langchain_core.runnables import RunnableLambda
-
-async def _enhanced_editor_fn(state: dict) -> dict:
-    """Enhanced editor agent function for LangGraph workflow"""
+# LangGraph integration functions
+async def _enhanced_editor_async_fn(state: dict) -> dict:
+    """Enhanced editor agent function for LangGraph workflow - async version"""
     editor_agent = IntelligentEditorAgent()
     return await editor_agent.intelligent_edit(state)
 
-# Export the function
-editor = RunnableLambda(_enhanced_editor_fn)
+def _enhanced_editor_sync_fn(state: dict) -> dict:
+    """Enhanced editor agent function for LangGraph workflow - sync version"""
+    editor_agent = IntelligentEditorAgent()
+    return editor_agent.intelligent_edit_sync(state)
+
+# ✅ FIXED: Export functions for orchestration
+enhanced_editor_agent = RunnableLambda(_enhanced_editor_async_fn)
+enhanced_editor_agent_sync = RunnableLambda(_enhanced_editor_sync_fn)
+
+# Create instance for direct use
+intelligent_editor_agent = IntelligentEditorAgent()
+
+# Backward compatibility exports
+EditorAgent = IntelligentEditorAgent
+editor = RunnableLambda(_enhanced_editor_sync_fn)

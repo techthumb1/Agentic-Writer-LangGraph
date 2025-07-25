@@ -1,4 +1,6 @@
 // frontend/app/api/generate/route.ts
+// ✅ FIXED VERSION - Proper Template/Style Profile Separation
+
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import fs from 'fs/promises';
@@ -12,12 +14,12 @@ if (!FASTAPI_API_KEY) {
   console.warn('⚠️ FASTAPI_API_KEY not found in environment variables. Add to .env.local');
 }
 
-// Enterprise request tracking interface
+// ✅ FIXED: Enhanced request interface with proper template/style separation
 interface GenerationRequest {
   requestId: string;
-  template: string;
-  style_profile: string;
-  topic: string;
+  template: string;           // Template ID (e.g., "business_proposal", "technical_documentation")
+  style_profile: string;      // Style Profile ID (e.g., "phd_academic", "popular_sci")
+  topic: string;              // Actual content topic - NO MORE "Future of LLMs" default!
   audience?: string;
   platform?: string;
   length?: string;
@@ -62,11 +64,19 @@ interface BackendResponse {
   content?: string;
 }
 
-// ✅ NEW: Helper function to infer content type from template
+// ✅ ENHANCED: Better content type inference from actual template names
 function inferContentType(template: string): string {
   const templateLower = template.toLowerCase();
   
-  if (templateLower.includes('blog')) return 'Blog Article';
+  // Map to actual template IDs from your system
+  if (templateLower.includes('business_proposal') || templateLower.includes('business')) return 'Business Proposal';
+  if (templateLower.includes('technical_documentation') || templateLower.includes('technical_documents')) return 'Technical Documentation';
+  if (templateLower.includes('social_media_campaign') || templateLower.includes('social')) return 'Social Media Campaign';
+  if (templateLower.includes('email_newsletter') || templateLower.includes('newsletter')) return 'Email Newsletter';
+  if (templateLower.includes('press_release') || templateLower.includes('press')) return 'Press Release';
+  if (templateLower.includes('blog_article_generator') || templateLower.includes('blog')) return 'Blog Article';
+  
+  // Legacy fallbacks
   if (templateLower.includes('learning') || templateLower.includes('tutorial')) return 'Educational';
   if (templateLower.includes('decision') || templateLower.includes('tree')) return 'Data Science';
   if (templateLower.includes('future') || templateLower.includes('trend')) return 'Analysis';
@@ -74,6 +84,33 @@ function inferContentType(template: string): string {
   if (templateLower.includes('ai') || templateLower.includes('ml')) return 'AI/ML';
   
   return 'Article';
+}
+
+// ✅ ENHANCED: Generate meaningful topic from template and style when not provided
+function generateTopicFromTemplate(template: string, styleProfile: string, providedTopic?: string): string {
+  if (providedTopic && providedTopic.trim().length > 0) {
+    return providedTopic.trim();
+  }
+  
+  // Generate topic based on template and style combination
+  const templateName = template.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
+  const styleName = styleProfile.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
+  
+  // Template-specific topic generation
+  if (template.includes('business_proposal')) {
+    return `Strategic Business Proposal in ${styleName} approach`;
+  } else if (template.includes('technical_documentation')) {
+    return `Technical Documentation with ${styleName} style`;
+  } else if (template.includes('social_media_campaign')) {
+    return `Social Media Campaign using ${styleName} voice`;
+  } else if (template.includes('blog_article')) {
+    return `Blog Article: ${styleName} perspective`;
+  } else if (template.includes('newsletter')) {
+    return `Newsletter content in ${styleName} format`;
+  } else {
+    // Generic but meaningful fallback
+    return `${templateName} content using ${styleName} approach`;
+  }
 }
 
 // ✅ ENHANCED: Auto-save functionality with better directory structure
@@ -465,36 +502,50 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Enterprise request validation
-    if (!body.template) {
+    // ✅ FIXED: Enhanced validation with proper error messages
+    if (!body.template && !body.templateId) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Template ID is required',
-          request_id: requestId
+          error: 'Template ID is required (use "template" or "templateId" field)',
+          request_id: requestId,
+          available_templates: ['business_proposal', 'technical_documentation', 'social_media_campaign', 'blog_article_generator', 'email_newsletter', 'press_release']
         },
         { status: 400 }
       );
     }
     
-    if (!body.style_profile) {
+    if (!body.style_profile && !body.styleProfileId) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Style Profile ID is required',
-          request_id: requestId
+          error: 'Style Profile ID is required (use "style_profile" or "styleProfileId" field)',
+          request_id: requestId,
+          available_styles: ['popular_sci', 'phd_academic', 'technical_dive', 'beginner_friendly', 'experimental_lab_log', 'phd_lit_review']
         },
         { status: 400 }
       );
     }
     
-    // Enterprise payload transformation - Enhanced for backend planning agent
+    // ✅ FIXED: Normalize field names for backward compatibility
+    const templateId = body.template || body.templateId;
+    const styleProfileId = body.style_profile || body.styleProfileId;
+    
+    // ✅ FIXED: Generate meaningful topic - NO MORE "Future of LLMs" default!
+    const generatedTopic = generateTopicFromTemplate(
+      templateId, 
+      styleProfileId, 
+      body.topic || body.dynamic_parameters?.topic
+    );
+    
+    console.log(`🎯 [GENERATION] Template: '${templateId}', Style: '${styleProfileId}', Topic: '${generatedTopic}'`);
+    
+    // ✅ ENHANCED: Enterprise payload transformation with proper template/style separation
     const enterprisePayload: GenerationRequest = {
       requestId: requestId, // Frontend requestId that backend will use
-      template: body.template,
-      style_profile: body.style_profile,
-      // Add ALL fields that the planning agent expects
-      topic: body.topic || body.dynamic_parameters?.topic || body.templateId || 'Future of LLMs',
+      template: templateId,  // Content template (structure/format)
+      style_profile: styleProfileId,  // Style profile (tone/voice/approach)
+      topic: generatedTopic,  // Meaningful topic based on template + style
       audience: body.audience || body.dynamic_parameters?.audience || 'general',
       platform: body.platform || body.dynamic_parameters?.platform || 'blog',
       length: body.length || body.dynamic_parameters?.length || 'medium',
@@ -502,10 +553,20 @@ export async function POST(request: NextRequest) {
       tags: body.tags || body.dynamic_parameters?.tags || [],
       tone: body.tone || body.dynamic_parameters?.tone || 'professional',
       code: body.code || body.dynamic_parameters?.code || false,
-      dynamic_parameters: body.dynamic_parameters || {},
+      // ✅ ENHANCED: Pass through ALL dynamic parameters while ensuring required fields
+      dynamic_parameters: {
+        ...body.dynamic_parameters,
+        template_id: templateId,  // Ensure template is in dynamic params
+        style_profile_id: styleProfileId,  // Ensure style is in dynamic params
+        topic: generatedTopic,  // Ensure topic is available
+        // Template-specific parameters
+        template_category: body.dynamic_parameters?.template_category || 'general',
+        style_tone: body.dynamic_parameters?.style_tone || 'professional',
+        content_structure: body.dynamic_parameters?.content_structure || 'standard'
+      },
       priority: body.priority || 1,
       timeout_seconds: body.timeout_seconds || 300,
-      generation_mode: body.generation_mode || "standard",
+      generation_mode: body.generation_mode || "enhanced",  // Use enhanced mode by default
       created_at: new Date().toISOString(),
       user_id: body.user_id // Enterprise user tracking
     };
@@ -527,13 +588,14 @@ export async function POST(request: NextRequest) {
       frontend_request_id: requestId,
       template: enterprisePayload.template,
       style_profile: enterprisePayload.style_profile,
+      topic: enterprisePayload.topic,
       generation_mode: enterprisePayload.generation_mode,
       priority: enterprisePayload.priority,
       backend_url: FASTAPI_BASE_URL,
       has_api_key: !!FASTAPI_API_KEY
     }, requestId);
     
-    // UPDATED: Use enhanced fetch with comprehensive error handling
+    // ✅ ENHANCED: Use enhanced fetch with comprehensive error handling
     try {
       const response = await performFetchWithRetry(
         `${FASTAPI_BASE_URL}/api/generate`,
@@ -603,7 +665,7 @@ export async function POST(request: NextRequest) {
       // Extract backend's request_id
       const backendRequestId = data?.data?.requestId || data?.requestId || data?.generation_id || requestId;
       
-      // **FIX: Poll for completion if status is pending**
+      // **✅ ENHANCED: Poll for completion if status is pending**
       let finalData: BackendResponse = data;
       if (data?.data?.status === 'pending' || data?.status === 'pending') {
         console.log(`⏳ [POLLING] Generation ${backendRequestId} is pending, polling for completion...`);
@@ -644,10 +706,10 @@ export async function POST(request: NextRequest) {
       
       const processingTime = Date.now() - startTime;
       
-      // ENHANCED CONTENT EXTRACTION
+      // ✅ ENHANCED CONTENT EXTRACTION
       const extractedContent = extractContentFromBackendResponse(finalData);
       
-      // ✅ NEW: Auto-save generated content
+      // ✅ ENHANCED: Auto-save generated content with proper metadata
       let saveResult = { saved_path: '', content_id: '' };
       if (extractedContent && extractedContent.length > 50) {
         saveResult = await saveGeneratedContent(extractedContent, {
@@ -659,7 +721,7 @@ export async function POST(request: NextRequest) {
         });
       }
       
-      // Enterprise response formatting
+      // ✅ ENHANCED: Enterprise response formatting with template/style metadata
       const enterpriseResponse: GenerationResponse = {
         success: true,
         generation_id: finalData?.data?.requestId || finalData?.generation_id || backendRequestId,
@@ -672,18 +734,32 @@ export async function POST(request: NextRequest) {
           frontend_request_id: requestId, // Keep frontend ID for logging
           processing_time_ms: processingTime,
           backend_generation_id: finalData?.data?.requestId || finalData?.generation_id,
+          
+          // ✅ ENHANCED: Template/Style metadata for tracking
           template_used: enterprisePayload.template,
           style_profile_used: enterprisePayload.style_profile,
+          topic_generated: enterprisePayload.topic,
           generation_mode: enterprisePayload.generation_mode,
-          // ✅ NEW: Include save information
+          
+          // Content metadata
+          content_type: inferContentType(enterprisePayload.template),
+          word_count: extractedContent ? extractedContent.split(' ').length : 0,
+          estimated_read_time: extractedContent ? Math.ceil(extractedContent.split(' ').length / 200) : 0,
+          
+          // ✅ ENHANCED: Auto-save metadata
           saved_path: saveResult.saved_path,
           content_id: saveResult.content_id,
           auto_saved: !!saveResult.content_id,
-          // Enhanced metadata
+          
+          // Backend metadata
           innovation_report: finalData?.innovation_report || finalData?.metadata?.innovation_report,
           content_quality: finalData?.metadata?.content_quality,
-          word_count: extractedContent ? extractedContent.split(' ').length : 0,
-          content_extraction_method: extractedContent ? 'enhanced' : 'fallback'
+          content_extraction_method: extractedContent ? 'enhanced' : 'fallback',
+          
+          // ✅ NEW: Template/Style combination tracking for debugging
+          template_style_combination: `${enterprisePayload.template}__${enterprisePayload.style_profile}`,
+          generation_success: !!extractedContent,
+          content_length_chars: extractedContent ? extractedContent.length : 0
         },
         estimated_completion: finalData?.estimated_completion,
         progress: (finalData?.progress as number) || 100
@@ -693,10 +769,14 @@ export async function POST(request: NextRequest) {
         generation_id: enterpriseResponse.generation_id,
         backend_request_id: backendRequestId,
         processing_time_ms: processingTime,
+        template: enterprisePayload.template,
+        style_profile: enterprisePayload.style_profile,
+        topic: enterprisePayload.topic,
         content_length: extractedContent ? extractedContent.length : 0,
         content_found: !!extractedContent,
         auto_saved: !!saveResult.content_id,
-        content_id: saveResult.content_id
+        content_id: saveResult.content_id,
+        template_style_combo: `${enterprisePayload.template}__${enterprisePayload.style_profile}`
       }, requestId);
       
       return NextResponse.json(enterpriseResponse);
@@ -712,7 +792,9 @@ export async function POST(request: NextRequest) {
         error_message: error.message,
         processing_time_ms: processingTime,
         backend_url: FASTAPI_BASE_URL,
-        timeout_seconds: enterprisePayload.timeout_seconds
+        timeout_seconds: enterprisePayload.timeout_seconds,
+        template: enterprisePayload.template,
+        style_profile: enterprisePayload.style_profile
       }, requestId);
       
       // Return appropriate error based on category
@@ -792,7 +874,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Enterprise status checking with enhanced tracking
+// ✅ ENHANCED: Enterprise status checking with enhanced tracking
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -912,7 +994,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Enterprise generation cancellation
+// ✅ ENHANCED: Enterprise generation cancellation
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

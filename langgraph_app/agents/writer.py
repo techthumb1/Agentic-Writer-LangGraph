@@ -2,9 +2,8 @@
 import os
 import yaml
 import json
-import asyncio
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Any
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -260,21 +259,440 @@ class InnovativeWriterAgent:
             return prompt + experimental_section
             
         return prompt
+
+    def load_style_profile(self, name: str) -> Dict:
+        """Load style profile with FIXED YAML content handling"""
+        
+        # Validate style profile name
+        if not name or len(name) > 50 or '/' in name or '\\' in name:
+            print(f"Warning: Invalid style profile name '{name}', using default")
+            name = "jason"
+
+        try:
+            # Try multiple possible paths for style profiles
+            style_paths = [
+                f"data/style_profiles/{name}.yaml",
+                f"style_profile/{name}.yaml",  # Your actual location!
+                f"langgraph_app/data/style_profiles/{name}.yaml"
+            ]
+            
+            for style_path in style_paths:
+                if os.path.exists(style_path):
+                    with open(style_path, "r", encoding="utf-8") as f:
+                        profile = yaml.safe_load(f)
+                        print(f"✅ Successfully loaded style profile: {style_path}")
+                        
+                        # CRITICAL FIX: Ensure system_prompt is treated as content, not filename
+                        if 'system_prompt' in profile:
+                            system_prompt = profile['system_prompt']
+                            
+                            # ✅ Keep system_prompt as-is - it's YAML content, not a filename!
+                            if isinstance(system_prompt, str) and system_prompt.strip():
+                                print(f"✅ Using system_prompt content from YAML ({len(system_prompt)} chars)")
+                            else:
+                                # Fallback if system_prompt is empty or invalid
+                                profile['system_prompt'] = self._get_default_system_prompt_for_profile(name)
+                                print(f"⚠️ Empty system_prompt in {name}, using default")
+                        else:
+                            # Add default system_prompt if missing
+                            profile['system_prompt'] = self._get_default_system_prompt_for_profile(name)
+                            print(f"⚠️ No system_prompt in {name}, added default")
+
+                        return profile
+            
+            # If no profile found, create adaptive default
+            print(f"⚠️ Style profile not found: {name}, creating adaptive default")
+            return self._create_adaptive_default_profile(name)
+
+        except Exception as e:
+            print(f"❌ Error loading style profile '{name}': {e}")
+            return self._create_adaptive_default_profile(name)
+
+    def load_system_prompt(self, prompt_source: str) -> str:
+        """FIXED: Load system prompt - handles both YAML content AND file references"""
+        
+        # CRITICAL FIX: Check if this is already content (from YAML) vs filename
+        if self._is_yaml_content(prompt_source):
+            print(f"✅ Using YAML system_prompt content ({len(prompt_source)} chars)")
+            return prompt_source.strip()
+        
+        # Otherwise, treat as filename and try to load from prompts directory
+        if not prompt_source.endswith('.txt'):
+            prompt_source += '.txt'
+
+        prompt_path = os.path.join("prompts", "writer", prompt_source)
+
+        try:
+            if os.path.exists(prompt_path):
+                with open(prompt_path, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    print(f"✅ Loaded system prompt from file: {prompt_path}")
+                    return content
+            else:
+                print(f"⚠️ Prompt file not found: {prompt_path}, using default")
+                return self._get_fallback_system_prompt()
+
+        except Exception as e:
+            print(f"❌ Error loading system prompt file '{prompt_source}': {e}")
+            return self._get_fallback_system_prompt()
+
+    def _is_yaml_content(self, text: str) -> bool:
+        """Determine if text is YAML content vs filename"""
+        if not isinstance(text, str):
+            return False
+        
+        # If it's multi-line, it's content
+        if '\n' in text:
+            return True
+        
+        # If it's very long, it's likely content
+        if len(text) > 100:
+            return True
+        
+        # If it contains style-specific words, it's content
+        style_indicators = [
+            'you are', 'write', 'create', 'structure', 'tone', 'format',
+            'business proposal', 'academic', 'technical', 'startup'
+        ]
+        
+        text_lower = text.lower()
+        if any(indicator in text_lower for indicator in style_indicators):
+            return True
+        
+        # If it looks like a filename
+        if text.endswith('.txt') or ('/' not in text and '\\' not in text and len(text) < 50):
+            return False
+        
+        # Default to treating as content
+        return True
+
+    def _get_default_system_prompt_for_profile(self, profile_name: str) -> str:
+        """Generate appropriate default system prompt based on profile name"""
+        
+        profile_lower = profile_name.lower()
+        
+        if 'business' in profile_lower or 'startup' in profile_lower or 'venture' in profile_lower:
+            return """You are a business content specialist. Create professional business content with:
+- Clear value propositions
+- Strategic insights
+- Actionable recommendations
+- Professional business language
+- Structured sections with headers
+Avoid casual greetings. Start with authoritative statements."""
+        
+        elif 'academic' in profile_lower or 'phd' in profile_lower:
+            return """You are an academic writing specialist. Create scholarly content with:
+- Clear thesis statements
+- Evidence-based arguments
+- Rigorous analysis
+- Formal academic tone
+- Proper citation methodology
+- Logical structure and flow
+Avoid casual language. Use formal academic discourse."""
+        
+        elif 'technical' in profile_lower:
+            return """You are a technical writing specialist. Create precise technical content with:
+- Clear technical explanations
+- Step-by-step procedures
+- Accurate technical terminology
+- Implementation details
+- Best practices and standards
+- Structured documentation format
+Focus on clarity and technical accuracy."""
+        
+        elif 'storytelling' in profile_lower or 'founder' in profile_lower:
+            return """You are a narrative content specialist. Create compelling stories with:
+- Engaging narrative structure
+- Character development
+- Emotional connection
+- Vivid imagery and examples
+- Clear story arc
+- Relatable insights
+Build authentic connections through storytelling."""
+        
+        else:
+            return """You are an expert content writer. Create engaging, well-structured content that:
+- Serves the reader's needs
+- Maintains appropriate tone and style
+- Uses clear, compelling language
+- Follows logical structure
+- Provides valuable insights
+- Matches the specified format and requirements
+Write with authority and clarity."""
+
+    def _create_adaptive_default_profile(self, profile_name: str) -> Dict:
+        """Create intelligent default profile when none exists"""
+        
+        return {
+            "id": profile_name,
+            "name": profile_name.replace('_', ' ').title(),
+            "description": f"Adaptive profile for {profile_name}",
+            "system_prompt": self._get_default_system_prompt_for_profile(profile_name),
+            "structure": "discovery → insight → application → impact",
+            "voice": "professional and authoritative", 
+            "tone": "engaging and informative",
+            "settings": {
+                "use_analogies": True,
+                "avoid_jargon": False,
+                "include_examples": True,
+                "conversational_tone": False
+            },
+            "enhanced_version": True,
+            "fallback": True,
+            "created_dynamically": True
+        }
+
+    def _get_fallback_system_prompt(self) -> str:
+        """Fallback system prompt when all else fails"""
+        return """You are an innovative AI writing assistant that adapts to context and pushes creative boundaries.
+Your goal is to create compelling, valuable content that serves the reader while exploring fresh perspectives.
+Write with clarity, insight, and engagement while maintaining high quality standards."""
+
+    def _get_template_structure_requirements(self, state: Dict) -> str:
+        """Extract template structure requirements - THIS IS THE KEY METHOD FOR TEMPLATE ENFORCEMENT"""
+        
+        template_config = state.get("template_config", {})
+        template_id = state.get("template", "")
+        
+        print(f"🔍 Checking template structure for: {template_id}")
+        
+        # Check for specific template structure requirements
+        if "business_proposal" in template_id.lower():
+            print("✅ Applying BUSINESS PROPOSAL structure")
+            return """MANDATORY STRUCTURE - Business Proposal Format:
+1. Executive Summary (150-200 words)
+   - Problem statement
+   - Solution overview  
+   - Key benefits
+   - Financial summary
+
+2. Problem Statement & Market Opportunity (300-400 words)
+   - Current market pain points
+   - Market size and opportunity
+   - Target audience definition
+   - Competitive landscape
+
+3. Proposed Solution & Value Proposition (400-500 words)
+   - Detailed solution description
+   - Unique value proposition
+   - Key features and benefits
+   - Competitive advantages
+
+4. Financial Projections & ROI Analysis (300-400 words)
+   - Revenue projections
+   - Cost structure
+   - Break-even analysis
+   - Return on investment
+
+5. Implementation Timeline & Next Steps (200-300 words)
+   - Project phases
+   - Key milestones
+   - Resource requirements
+   - Immediate action items
+
+CRITICAL: Use professional business language throughout. Include specific metrics, financial data, and quantifiable benefits. Start with authoritative statements, not casual greetings."""
+        
+        elif "technical_documentation" in template_id.lower():
+            print("✅ Applying TECHNICAL DOCUMENTATION structure")
+            return """MANDATORY STRUCTURE - Technical Documentation Format:
+1. Overview & Prerequisites (200 words)
+   - System overview
+   - Technical requirements
+   - Prerequisites
+
+2. Technical Specifications (400-600 words)
+   - Architecture details
+   - System components
+   - Technical requirements
+
+3. Implementation Guide (600-800 words)
+   - Step-by-step procedures
+   - Configuration details
+   - Code examples
+
+4. Code Examples & Best Practices (400-600 words)
+   - Working code samples
+   - Best practices
+   - Common patterns
+
+5. Troubleshooting & Support (200-400 words)
+   - Common issues
+   - Solutions
+   - Support resources
+
+Use precise technical language. Include code examples and implementation details."""
+        
+        elif "research_paper" in template_id.lower():
+            print("✅ Applying RESEARCH PAPER structure")
+            return """MANDATORY STRUCTURE - Research Paper Format:
+1. Abstract (150-200 words)
+   - Research problem
+   - Methodology
+   - Key findings
+   - Conclusions
+
+2. Introduction & Literature Review (400-500 words)
+   - Problem definition
+   - Current research landscape
+   - Research gap
+   - Research questions
+
+3. Methodology (300-400 words)
+   - Research approach
+   - Data collection methods
+   - Analysis techniques
+   - Limitations
+
+4. Results & Analysis (500-600 words)
+   - Key findings
+   - Data analysis
+   - Statistical results
+   - Interpretation
+
+5. Discussion & Conclusions (300-400 words)
+   - Implications
+   - Future research
+   - Limitations
+   - Conclusions
+
+Use formal academic language with proper citations and evidence-based arguments."""
+        
+        elif template_config.get("suggested_sections"):
+            # Use template-defined sections
+            sections = template_config["suggested_sections"]
+            structure_parts = []
+            for i, section in enumerate(sections, 1):
+                section_name = section.get("name", f"Section {i}").replace("_", " ").title()
+                description = section.get("description", "")
+                structure_parts.append(f"{i}. {section_name}" + (f" - {description}" if description else ""))
+            
+            return "MANDATORY STRUCTURE:\n" + "\n".join(structure_parts)
+        
+        print("⚠️ No specific template structure found, using default")
+        return ""
+
+    def _get_style_enforcement_requirements(self, style: Dict, context: WritingContext) -> str:
+        """Extract style enforcement requirements"""
+        
+        requirements = []
+        
+        # Voice and tone requirements
+        voice = style.get('voice', '')
+        tone = style.get('tone', '')
+        
+        if voice:
+            requirements.append(f"Voice: {voice}")
+        if tone:
+            requirements.append(f"Tone: {tone}")
+        
+        # Style-specific requirements
+        style_id = style.get('id', '').lower()
+        
+        if 'business' in style_id or 'startup' in style_id or 'venture' in style_id:
+            requirements.extend([
+                "Use professional business language",
+                "Include specific metrics and ROI data where relevant", 
+                "Start with authoritative statements, not casual greetings",
+                "Focus on strategic insights and actionable recommendations"
+            ])
+        
+        elif 'academic' in style_id or 'phd' in style_id:
+            requirements.extend([
+                "Use formal academic discourse",
+                "Start with clear thesis statements",
+                "Support arguments with evidence",
+                "Avoid casual language and colloquialisms",
+                "Maintain scholarly objectivity"
+            ])
+        
+        elif 'technical' in style_id:
+            requirements.extend([
+                "Use precise technical terminology", 
+                "Include implementation details and code examples",
+                "Focus on practical applications and best practices",
+                "Structure information logically for technical audiences"
+            ])
+        
+        # Forbidden patterns (if any)
+        forbidden = style.get('forbidden_patterns', [])
+        if forbidden:
+            requirements.append(f"FORBIDDEN PHRASES: Never use: {', '.join(forbidden)}")
+        
+        return "\n".join([f"- {req}" for req in requirements]) if requirements else ""
+
+    def _create_base_prompt(self, context: WritingContext, strategy: WritingStrategy, 
+                          style: Dict, state: Dict) -> str:
+        """ENHANCED: Create base writing prompt with template structure enforcement"""
+        
+        # Platform-specific length instructions
+        platform = context.platform
+        if platform == "medium":
+            length_instruction = "Write a comprehensive long-form article between 1600-2200 words, optimized for an 8-12 minute read."
+        elif platform == "twitter":
+            length_instruction = "Write a compelling Twitter thread with 5-8 tweets, each under 280 characters."
+        elif platform == "linkedin":
+            length_instruction = "Write a professional LinkedIn post between 800-1200 words that sparks meaningful discussion."
+        else:
+            length_instruction = "Write an engaging document between 800-1200 words."
+        
+        # Extract research context
+        research = state.get("research", "")
+        research_instruction = f"\n\nRELEVANT RESEARCH TO INCORPORATE:\n{research}" if research else ""
+        
+        # ✅ CRITICAL: Get template structure requirements
+        template_structure = self._get_template_structure_requirements(state)
+        template_instruction = ""
+        if template_structure:
+            template_instruction = f"\n\n{template_structure}"
+        
+        # ✅ Get style enforcement requirements  
+        style_requirements = self._get_style_enforcement_requirements(style, context)
+        style_instruction = ""
+        if style_requirements:
+            style_instruction = f"\n\nSTYLE REQUIREMENTS:\n{style_requirements}"
+        
+        # Build enhanced prompt
+        prompt = f"""
+{length_instruction}
+
+WRITING CONTEXT:
+- Topic: {context.topic}
+- Target Audience: {context.audience} 
+- Intent: {context.intent}
+- Complexity Level: {context.complexity_level}/10
+- Platform: {context.platform}
+
+ADAPTIVE STRATEGY:
+- Writing Mode: {strategy.mode.value}
+- Structure Pattern: {strategy.structure_pattern}
+- Innovation Level: {context.innovation_preference.value}
+
+STYLE REQUIREMENTS:
+- Voice: {style.get('voice', 'conversational')}
+- Tone: {style.get('tone', 'engaging')}
+- Structure Flow: {style.get('structure', strategy.structure_pattern)}
+
+{template_instruction}
+{style_instruction}
+{research_instruction}
+
+INNOVATION CHALLENGE:
+Find a fresh angle or unexpected insight that adds genuine value to the reader's understanding.
+
+CRITICAL INSTRUCTION:
+You MUST follow the specified template structure exactly. Do not deviate from the required sections and format. Each section must contain the specified word count and content type.
+"""
+        
+        return prompt
     
     def generate_adaptive_content(self, state: Dict) -> Dict:
         """Main content generation with adaptive intelligence"""
-        
-        # Check mock mode
-        use_mock = state.get("use_mock", False)
-        if use_mock:
-            return self._generate_mock_content(state)
         
         # Analyze context and select strategy
         context = self.analyze_context(state)
         strategy = self.select_writing_strategy(context)
         
         # Load style profile
-        # Load system prompt from style profile
         style_profile_input = state.get("style_profile", "jason")
         if isinstance(style_profile_input, str):
             style = self.load_style_profile(style_profile_input)
@@ -293,16 +711,27 @@ class InnovativeWriterAgent:
         # Get system prompt - handle both inline content and filenames
         system_prompt_source = style.get("system_prompt", "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience.")
         system_prompt = self.load_system_prompt(system_prompt_source)
-            
         
         # Add innovation instructions to system prompt
         if context.innovation_preference in [AdaptiveLevel.INNOVATIVE, AdaptiveLevel.EXPERIMENTAL]:
             innovation_instruction = """
-        You are an innovative writer who pushes creative boundaries while maintaining quality.
-        Take calculated creative risks. Challenge conventional wisdom. Find unexpected angles.
-        Be bold in your approach while serving the reader's needs.
-        """
+You are an innovative writer who pushes creative boundaries while maintaining quality.
+Take calculated creative risks. Challenge conventional wisdom. Find unexpected angles.
+Be bold in your approach while serving the reader's needs.
+"""
             system_prompt = innovation_instruction + "\n\n" + system_prompt
+        
+        # CRITICAL: Add template enforcement to system prompt
+        template_id = state.get("template", "")
+        if template_id:
+            template_enforcement = f"""
+CRITICAL TEMPLATE ENFORCEMENT:
+You are generating content for template: {template_id}
+You MUST follow the exact structure and format specified in the user prompt.
+Do not deviate from the required sections, word counts, or formatting.
+This is not a blog post - follow the specific template requirements exactly.
+"""
+            system_prompt = template_enforcement + "\n\n" + system_prompt
         
         # Generate content
         model = get_model("writer")
@@ -331,7 +760,8 @@ class InnovativeWriterAgent:
             "tone_adaptations": strategy.tone_adaptation,
             "generation_timestamp": datetime.now().isoformat(),
             "word_count": len(generated_content.split()),
-            "model_used": model
+            "model_used": model,
+            "template_used": state.get("template", "none")
         }
         
         # Store for future learning (async)
@@ -347,54 +777,6 @@ class InnovativeWriterAgent:
             }
         }
     
-    def _create_base_prompt(self, context: WritingContext, strategy: WritingStrategy, 
-                          style: Dict, state: Dict) -> str:
-        """Create the base writing prompt"""
-        
-        # Platform-specific length instructions
-        platform = context.platform
-        if platform == "medium":
-            length_instruction = "Write a comprehensive long-form article between 1600-2200 words, optimized for an 8-12 minute read."
-        elif platform == "twitter":
-            length_instruction = "Write a compelling Twitter thread with 5-8 tweets, each under 280 characters."
-        elif platform == "linkedin":
-            length_instruction = "Write a professional LinkedIn post between 800-1200 words that sparks meaningful discussion."
-        else:
-            length_instruction = "Write an engaging blog post between 600-1000 words."
-        
-        # Extract research context
-        research = state.get("research", "")
-        research_instruction = f"\n\nRELEVANT RESEARCH TO INCORPORATE:\n{research}" if research else ""
-        
-        # Build adaptive prompt
-        prompt = f"""
-{length_instruction}
-
-WRITING CONTEXT:
-- Topic: {context.topic}
-- Target Audience: {context.audience} 
-- Intent: {context.intent}
-- Complexity Level: {context.complexity_level}/10
-- Platform: {context.platform}
-
-ADAPTIVE STRATEGY:
-- Writing Mode: {strategy.mode.value}
-- Structure Pattern: {strategy.structure_pattern}
-- Innovation Level: {context.innovation_preference.value}
-
-STYLE REQUIREMENTS:
-- Voice: {style.get('voice', 'conversational')}
-- Tone: {style.get('tone', 'engaging')}
-- Structure Flow: {style.get('structure', strategy.structure_pattern)}
-
-{research_instruction}
-
-INNOVATION CHALLENGE:
-Find a fresh angle or unexpected insight that adds genuine value to the reader's understanding.
-"""
-        
-        return prompt
-    
     def _calculate_temperature(self, innovation_level: AdaptiveLevel) -> float:
         """Calculate model temperature based on innovation preference"""
         temp_map = {
@@ -404,19 +786,6 @@ Find a fresh angle or unexpected insight that adds genuine value to the reader's
             AdaptiveLevel.EXPERIMENTAL: 0.9
         }
         return temp_map.get(innovation_level, 0.5)
-    
-    def _generate_mock_content(self, state: Dict) -> Dict:
-        """Generate mock content with innovation metadata"""
-        topic = state.get("topic", "Innovative Content")
-        return {**state, 
-            "draft": f"# {topic}\n\n🚀 This is an innovative placeholder that adapts to your needs.\n\nExperimental features engaged.",
-            "metadata": {"topic": topic, "mode": "mock"},
-            "innovation_report": {
-                "techniques_used": ["placeholder_innovation"],
-                "innovation_level": "experimental",
-                "creative_risk_score": 0.1
-            }
-        }
     
     def _record_generation_attempt(self, context: WritingContext, strategy: WritingStrategy, metadata: Dict):
         """Record generation attempt for future learning"""
@@ -466,80 +835,7 @@ Find a fresh angle or unexpected insight that adds genuine value to the reader's
                     self.failure_patterns.append(exp)
                     self._save_memory(self.failure_patterns, "failure_patterns.json")
                 break
-    
-    def load_style_profile(self, name: str) -> Dict:
-        """Load style profile with error handling and validation"""
 
-        # Validate style profile name
-        if not name or len(name) > 50 or '/' in name or '\\' in name:
-            print(f"Warning: Invalid style profile name '{name}', using default")
-            name = "jason"
-
-        try:
-            style_path = f"data/style_profiles/{name}.yaml"
-            if os.path.exists(style_path):
-                with open(style_path, "r", encoding="utf-8") as f:
-                    profile = yaml.safe_load(f)
-
-                    # NEW - Keep the system_prompt content as-is (don't "fix" it)
-                    if 'system_prompt' in profile:
-                        system_prompt = profile['system_prompt']
-                        # Your YAML system_prompts ARE content - that's correct!
-                        # Remove the validation that was forcing grad_level_writer.txt
-                        print(f"Using system_prompt from style profile: {name}")
-                    else:
-                        # Only set fallback if no system_prompt exists
-                        profile['system_prompt'] = "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience."
-
-                    return profile
-            else:
-                print(f"Warning: Style profile not found: {style_path}, using adaptive default")
-                return {
-                    "structure": "discovery → insight → application → impact",
-                    "voice": "innovative and authentic", 
-                    "tone": "inspiring",
-                    "system_prompt": "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience."
-                }
-
-        except Exception as e:
-            print(f"Error loading style profile '{name}': {e}")
-            return {
-                "structure": "discovery → insight → application → impact",
-                "voice": "innovative and authentic", 
-                "tone": "inspiring",
-                "system_prompt": "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience."
-            }
-
-    def load_system_prompt(self, prompt_name: str) -> str:
-        """Load system prompt with fallback and filename validation"""
-
-        # If prompt_name contains newlines or is very long, it's already content
-        if '\n' in prompt_name or len(prompt_name) > 100:
-            print(f"Using inline system prompt content ({len(prompt_name)} chars)")
-            return prompt_name.strip()
-
-        # Ensure it has .txt extension for file loading
-        if not prompt_name.endswith('.txt'):
-            prompt_name += '.txt'
-
-        prompt_path = os.path.join("prompts", "writer", prompt_name)
-
-        try:
-            if os.path.exists(prompt_path):
-                with open(prompt_path, "r", encoding="utf-8") as f:
-                    content = f.read().strip()
-                    print(f"Loaded system prompt from file: {prompt_path}")
-                    return content
-            else:
-                print(f"Warning: Prompt file not found: {prompt_path}, using default")
-                # Return a default system prompt
-                return """You are an innovative AI writing assistant that adapts to context and pushes creative boundaries.
-    Your goal is to create compelling, valuable content that serves the reader while exploring fresh perspectives.
-    Write with clarity, insight, and engagement while maintaining high quality standards."""
-
-        except Exception as e:
-            print(f"Error loading system prompt file '{prompt_name}': {e}")
-            return """You are an innovative AI writing assistant. Create compelling, valuable content that serves the reader while exploring fresh perspectives."""
 
 # Export both the class and the legacy function for compatibility
 innovative_writer_agent = InnovativeWriterAgent()
@@ -552,15 +848,3 @@ def _legacy_writer_fn(state: dict) -> dict:
 # Exports
 WriterAgent = InnovativeWriterAgent  # Class export
 writer = RunnableLambda(_legacy_writer_fn)  # Function export
-
-# writer.py - Add to the very end:
-from langchain_core.runnables import RunnableLambda
-
-def _writer_fn(state: dict) -> dict:
-    """Writer agent function for LangGraph workflow"""
-    writer_agent = InnovativeWriterAgent()  # Adjust to match your actual class name
-    return writer_agent.generate_adaptive_content(state)
-  # Adjust to match your actual method name
-
-# Export the function
-writer = RunnableLambda(_writer_fn)

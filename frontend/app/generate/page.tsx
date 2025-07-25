@@ -19,12 +19,12 @@ import {
   Check, 
   Copy, 
   Download, 
-  Save, 
+  Save,
+  Palette, 
   Eye, 
   FileText, 
   Loader2, 
   Sparkles, 
-  Settings, 
   Zap, 
   AlertCircle 
 } from "lucide-react";
@@ -35,11 +35,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import GeneratingDialog from "@/components/GeneratingDialog";
 import { useTemplates } from "@/hooks/useTemplates";
 import { Template } from "@/types/template";
+import StyleProfilesSelector from "@/components/StyleProfilesSelector";
 import { useStyleProfiles } from "@/hooks/useStyleProfiles";
 import { 
-  adaptTemplateCollection, 
-  adaptStyleProfileCollection 
-} from "@/utils/typeAdapters";
+  adaptTemplateCollection} from "@/utils/typeAdapters";
 import { z } from "zod";
 
 // Schema Definition
@@ -490,6 +489,13 @@ export default function GeneratePage() {
   const selectedTemplate: Template | null = templates && Array.isArray(templates) && watchedTemplateId
     ? templates.find((t: Template) => t && t.id === watchedTemplateId) || null
     : null;
+    console.log('🔍 Debug Template Selection:', {
+      watchedTemplateId,
+      templatesCount: templates?.length,
+      selectedTemplate,
+      selectedTemplateParams: selectedTemplate?.parameters,
+      adaptedTemplates: adaptTemplateCollection(templates || [])?.slice(0, 2), // Show first 2
+    });
     
   const selectedStyleProfile: ExtendedStyleProfile | null = styleProfiles && Array.isArray(styleProfiles) && watchedStyleProfileId
     ? styleProfiles.find((sp: ExtendedStyleProfile) => sp && sp.id === watchedStyleProfileId) || null
@@ -633,8 +639,7 @@ export default function GeneratePage() {
         </div>
       </div>
     );
-  }
-
+}
 
 const onSubmit: SubmitHandler<GenerateContentFormValues> = (values) => {
   console.log('🔍 Form submitted with values:', values);
@@ -656,10 +661,10 @@ const onSubmit: SubmitHandler<GenerateContentFormValues> = (values) => {
   });
 };
 
-  type GenerationResultMetadata = {
-    saved_path?: string;
-    [key: string]: unknown;
-  };
+type GenerationResultMetadata = {
+  saved_path?: string;
+  [key: string]: unknown;
+};
 
   const handleSaveContent = () => {
     if (result && 'metadata' in result && result.metadata) {
@@ -712,9 +717,7 @@ const onSubmit: SubmitHandler<GenerateContentFormValues> = (values) => {
                 <TemplateSelector
                   form={form}
                   templates={adaptTemplateCollection(templates || [])}
-                  styleProfiles={adaptStyleProfileCollection(styleProfiles || [])}
                   isLoadingTemplates={templatesLoading}
-                  isLoadingStyleProfiles={profilesLoading}
                 />
                 {selectedTemplate && (
                   <div className="mt-4">
@@ -728,11 +731,10 @@ const onSubmit: SubmitHandler<GenerateContentFormValues> = (values) => {
                 )}
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-purple-600" />
+                <Palette className="h-5 w-5 text-purple-600" />
                   Style Profile
                 </CardTitle>
                 <CardDescription>
@@ -740,16 +742,14 @@ const onSubmit: SubmitHandler<GenerateContentFormValues> = (values) => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {selectedStyleProfile && (
-                  <div className="mt-4">
-                    <Badge variant="secondary" className="mb-2">
-                      Selected Style
-                    </Badge>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      {selectedStyleProfile.description || selectedStyleProfile.name}
-                    </p>
-                  </div>
-                )}
+                <StyleProfilesSelector
+                  value={watchedStyleProfileId}
+                  onChange={(styleId) => form.setValue('styleProfileId', styleId)}
+                  label=""
+                  required={true}
+                  showDescription={true}
+                  disabled={profilesLoading}
+                />
               </CardContent>
             </Card>
           </div>

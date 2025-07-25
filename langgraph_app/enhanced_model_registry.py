@@ -32,8 +32,8 @@ def get_model(agent_name: str) -> str:
         "editor": "gpt-4o-mini",
         "seo": "gpt-4o-mini",
         "image": "dall-e-3",
-        "code": "gpt-4o",
-        "researcher": "gpt-4o-mini",
+        "code": "gpt-4.1",
+        "researcher": "gpt-4.5",
     }
 
     env_key = f"{agent_name.upper()}_MODEL"
@@ -222,6 +222,20 @@ class AnthropicProvider(BaseModelProvider):
             logger.error(f"Anthropic health check failed: {e}")
             return False
 
+def get_optimal_model_for_style(style_profile: str, agent_type: str = "writer") -> str:
+    """Get optimal model based on style profile requirements"""
+    
+    # Premium models for academic/technical content
+    if style_profile in ['phd_academic', 'technical_dive']:
+        return "claude-3-5-sonnet-20241022"  # Best for analytical content
+    
+    # Creative models for storytelling
+    elif style_profile in ['startup_storytelling', 'founder_storytelling']:
+        return "gpt-4o"  # Best for narrative content
+    
+    # Balanced for professional content
+    else:
+        return "gpt-4o" if agent_type == "writer" else "gpt-4o-mini"
 class EnhancedModelRegistry:
     """Enhanced model registry with multi-provider support and failover"""
     
