@@ -1,0 +1,117 @@
+# data/style_profiles/social_media_voice.yaml
+# Professional Style Profile - Social Media Voice
+# Category: Marketing Communications
+
+id: social_media_voice
+name: Social Media Voice
+description: Engaging social media content
+category: marketing_communications
+subcategory: beginner
+platform: professional
+tone: friendly
+voice: helpful
+structure: introduction → main_content → conclusion
+audience: social_followers
+
+system_prompt: >
+  Write in the social media voice style for social followers audience. 
+        Focus on persuasive marketing content for brand building and customer engagement. 
+        Maintain beginner complexity level throughout. 
+        Ensure content aligns with professional marketing communications standards.
+        CRITICAL: Avoid casual language and maintain strict professional tone.
+
+writing_style:
+  tone: friendly
+  voice: helpful
+  formality: moderate
+  technical_level: beginner
+  objectivity: high
+  evidence_based: False
+
+# Strict enforcement rules
+forbidden_patterns:
+  - "hey there"
+  - "hi there"
+  - "awesome"
+  - "cool"
+
+required_opening_patterns:
+  - "This analysis presents"
+  - "The following examination"
+  - "This discussion covers"
+
+required_elements:
+  - "clear objectives"
+  - "structured content"
+  - "practical examples"
+  - "actionable insights"
+
+# Content structure requirements
+content_structure:
+  opening_style: "direct_introduction"
+  paragraph_style: "structured"
+  transition_style: "clear_connectors"
+  conclusion_style: "summary_and_next_steps"
+  evidence_requirement: "optional"
+
+# Language precision requirements
+language_requirements:
+  vocabulary_level: beginner
+  sentence_complexity: simple
+  use_jargon: False
+  technical_precision: moderate
+  objectivity_level: high
+
+length_limit:
+  words: 1500
+  min: 1200
+  max: 1800
+
+settings:
+  use_analogies: True
+  avoid_jargon: True
+  include_examples: true
+  conversational_tone: False
+  encourage_questions: False
+  reading_level: "beginner"
+  eliminate_casual_language: False
+  enforce_professional_standards: true
+  require_evidence_support: False
+
+formatting:
+  use_headers: true
+  use_bullet_points: False
+  use_callouts: False
+  code_blocks: minimal
+  academic_structure: False
+  professional_layout: true
+
+# Quality thresholds
+quality_requirements:
+  formality_score: 75
+  objectivity_score: 80
+  analytical_depth: 75
+  evidence_support: 75
+  style_consistency: 95
+  pattern_compliance: 100
+  audience_alignment: 90
+  complexity_match: 85
+
+# Violation detection patterns
+violation_detection:
+  casual_greetings: ["hey", "hi", "hello", "greetings", "what's up"]
+  weak_transitions: ["so,", "well,", "now,", "anyway,"]
+  opinion_markers: ['i think', 'i believe']
+  casual_intensifiers: ["really", "super", "totally", "absolutely amazing"]
+
+metadata:
+  version: "2.0.0"
+  created_by: "professional_category_system"
+  last_updated: "2025-07-18"
+  use_cases: ['social media voice content']
+  target_audience: "social_followers"
+  complexity_level: "beginner"
+  category: "Marketing Communications"
+  enforcement_level: "strict"
+  anti_generic: true
+  professional_grade: true

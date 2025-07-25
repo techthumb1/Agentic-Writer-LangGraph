@@ -1,0 +1,117 @@
+# data/style_profiles/learning_pathway.yaml
+# Professional Style Profile - Learning Pathway
+# Category: Educational Content
+
+id: learning_pathway
+name: Learning Pathway
+description: Structured learning progression
+category: educational_content
+subcategory: intermediate
+platform: professional
+tone: professional
+voice: confident
+structure: introduction → main_content → conclusion
+audience: guided_learners
+
+system_prompt: >
+  Write in the learning pathway style for guided learners audience. 
+        Focus on instructional content for learning, training, and knowledge transfer. 
+        Maintain intermediate complexity level throughout. 
+        Ensure content aligns with professional educational content standards.
+        CRITICAL: Avoid casual language and maintain strict professional tone.
+
+writing_style:
+  tone: professional
+  voice: confident
+  formality: high
+  technical_level: intermediate
+  objectivity: high
+  evidence_based: False
+
+# Strict enforcement rules
+forbidden_patterns:
+  - "hey there"
+  - "hi there"
+  - "awesome"
+  - "cool"
+
+required_opening_patterns:
+  - "This analysis presents"
+  - "The following examination"
+  - "This discussion covers"
+
+required_elements:
+  - "clear objectives"
+  - "structured content"
+  - "practical examples"
+  - "actionable insights"
+
+# Content structure requirements
+content_structure:
+  opening_style: "direct_introduction"
+  paragraph_style: "structured"
+  transition_style: "clear_connectors"
+  conclusion_style: "summary_and_next_steps"
+  evidence_requirement: "optional"
+
+# Language precision requirements
+language_requirements:
+  vocabulary_level: intermediate
+  sentence_complexity: mixed
+  use_jargon: True
+  technical_precision: moderate
+  objectivity_level: high
+
+length_limit:
+  words: 2000
+  min: 1600
+  max: 2400
+
+settings:
+  use_analogies: True
+  avoid_jargon: False
+  include_examples: true
+  conversational_tone: False
+  encourage_questions: False
+  reading_level: "intermediate"
+  eliminate_casual_language: False
+  enforce_professional_standards: true
+  require_evidence_support: False
+
+formatting:
+  use_headers: true
+  use_bullet_points: False
+  use_callouts: False
+  code_blocks: minimal
+  academic_structure: False
+  professional_layout: true
+
+# Quality thresholds
+quality_requirements:
+  formality_score: 75
+  objectivity_score: 80
+  analytical_depth: 75
+  evidence_support: 75
+  style_consistency: 95
+  pattern_compliance: 100
+  audience_alignment: 90
+  complexity_match: 85
+
+# Violation detection patterns
+violation_detection:
+  casual_greetings: ["hey", "hi", "hello", "greetings", "what's up"]
+  weak_transitions: ["so,", "well,", "now,", "anyway,"]
+  opinion_markers: ['i think', 'i believe']
+  casual_intensifiers: ["really", "super", "totally", "absolutely amazing"]
+
+metadata:
+  version: "2.0.0"
+  created_by: "professional_category_system"
+  last_updated: "2025-07-18"
+  use_cases: ['learning pathway content']
+  target_audience: "guided_learners"
+  complexity_level: "intermediate"
+  category: "Educational Content"
+  enforcement_level: "strict"
+  anti_generic: true
+  professional_grade: true

@@ -1,0 +1,124 @@
+# data/style_profiles/academic_book_chapter.yaml
+# Professional Style Profile - Academic Book Chapter
+# Category: Academic & Research
+
+id: academic_book_chapter
+name: Academic Book Chapter
+description: Scholarly writing for academic publications
+category: academic_and_research
+subcategory: expert
+platform: professional
+tone: scholarly
+voice: authoritative
+structure: introduction → methodology → findings → discussion → conclusion
+audience: academic_readers
+
+system_prompt: >
+  Write in the academic book chapter style for academic readers audience. 
+        Focus on scholarly writing for academic institutions, research papers, and peer-reviewed publications. 
+        Maintain expert complexity level throughout. 
+        Ensure content aligns with professional academic & research standards.
+        CRITICAL: Avoid casual language and maintain strict professional tone.
+
+writing_style:
+  tone: scholarly
+  voice: authoritative
+  formality: high
+  technical_level: expert
+  objectivity: high
+  evidence_based: True
+
+# Strict enforcement rules
+forbidden_patterns:
+  - "hey there"
+  - "hi there"
+  - "awesome"
+  - "cool"
+  - "greetings"
+  - "let's dive in"
+  - "amazing"
+  - "totally"
+  - "trust me"
+
+required_opening_patterns:
+  - "This analysis examines"
+  - "This research investigates"
+  - "This study explores"
+  - "Contemporary literature suggests"
+
+required_elements:
+  - "clear thesis"
+  - "evidence-based arguments"
+  - "scholarly citations"
+  - "methodological rigor"
+  - "analytical depth"
+
+# Content structure requirements
+content_structure:
+  opening_style: "thesis_statement"
+  paragraph_style: "analytical"
+  transition_style: "formal_logical"
+  conclusion_style: "synthesis"
+  evidence_requirement: "mandatory"
+
+# Language precision requirements
+language_requirements:
+  vocabulary_level: expert
+  sentence_complexity: complex
+  use_jargon: True
+  technical_precision: high
+  objectivity_level: high
+
+length_limit:
+  words: 3000
+  min: 2400
+  max: 3600
+
+settings:
+  use_analogies: False
+  avoid_jargon: False
+  include_examples: true
+  conversational_tone: False
+  encourage_questions: False
+  reading_level: "expert"
+  eliminate_casual_language: True
+  enforce_professional_standards: true
+  require_evidence_support: True
+
+formatting:
+  use_headers: true
+  use_bullet_points: False
+  use_callouts: False
+  code_blocks: moderate
+  academic_structure: True
+  professional_layout: true
+
+# Quality thresholds
+quality_requirements:
+  formality_score: 95
+  objectivity_score: 90
+  analytical_depth: 90
+  evidence_support: 95
+  style_consistency: 95
+  pattern_compliance: 100
+  audience_alignment: 90
+  complexity_match: 85
+
+# Violation detection patterns
+violation_detection:
+  casual_greetings: ["hey", "hi", "hello", "greetings", "what's up"]
+  weak_transitions: ["so,", "well,", "now,", "anyway,"]
+  opinion_markers: ['i think', 'i believe', 'in my opinion', 'personally', 'i feel']
+  casual_intensifiers: ["really", "super", "totally", "absolutely amazing"]
+
+metadata:
+  version: "2.0.0"
+  created_by: "professional_category_system"
+  last_updated: "2025-07-18"
+  use_cases: ['academic book chapter content', 'academic papers', 'research articles', 'scholarly publications']
+  target_audience: "academic_readers"
+  complexity_level: "expert"
+  category: "Academic & Research"
+  enforcement_level: "strict"
+  anti_generic: true
+  professional_grade: true
