@@ -3,15 +3,17 @@ import os
 import yaml
 import json
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from types import SimpleNamespace
 
 from dotenv import load_dotenv
 from openai import OpenAI
 from langchain_core.runnables import RunnableLambda
 from langgraph_app.enhanced_model_registry import get_model
+#from langgraph_app.content_quality import ContentOriginalityEngine
 
 load_dotenv()
 
@@ -24,10 +26,10 @@ class WritingMode(Enum):
     EXPERIMENTAL = "experimental"
 
 class AdaptiveLevel(Enum):
-    CONSERVATIVE = "conservative"  # Stick to proven patterns
-    BALANCED = "balanced"         # Mix proven with experimental
-    INNOVATIVE = "innovative"     # Push boundaries
-    EXPERIMENTAL = "experimental" # Maximum creativity
+    CONSERVATIVE = "conservative"
+    BALANCED = "balanced"
+    INNOVATIVE = "innovative"
+    EXPERIMENTAL = "experimental"
 
 @dataclass
 class WritingContext:
@@ -35,8 +37,8 @@ class WritingContext:
     topic: str
     audience: str
     platform: str
-    intent: str  # inform, persuade, entertain, teach, inspire
-    complexity_level: int = 5  # 1-10 scale
+    intent: str
+    complexity_level: int = 5
     innovation_preference: AdaptiveLevel = AdaptiveLevel.BALANCED
     constraints: Dict[str, Any] = field(default_factory=dict)
     success_patterns: List[Dict] = field(default_factory=list)
@@ -51,40 +53,90 @@ class WritingStrategy:
     experimental_techniques: List[str]
     confidence_threshold: float = 0.7
 
-class InnovativeWriterAgent:
-    """
-    Next-generation writer agent that adapts, learns, and innovates
+def safe_config_access(config):
+    """Safely access config that might be string, dict, or SimpleNamespace"""
+    if isinstance(config, str):
+        try:
+            return json.loads(config)
+        except:
+            return {}
+    elif isinstance(config, dict):
+        return config
+    elif hasattr(config, '__dict__'):  # SimpleNamespace
+        return vars(config)
+    else:
+        return {}
     
-    Features:
-    - Multi-modal writing strategies
-    - Real-time adaptation based on feedback
-    - Experimental technique injection
-    - Pattern learning from successes/failures
-    - Context-aware creativity scaling
-    """
+class TemplateAwareWriterAgent:
+    """FIXED: Universal Configuration-Driven Writer Agent - NO HARDCODED TEMPLATES"""
     
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.memory_path = Path("storage/agent_memory")
         self.memory_path.mkdir(parents=True, exist_ok=True)
+   
+        
+        # Dynamic template configuration paths
+        self.template_paths = [
+            "data/content_templates",
+            "content_templates", 
+            "templates"
+        ]
+        
+        # Dynamic writer prompt paths
+        self.prompt_paths = [
+            "prompts/writer",
+            "writer_prompts",
+            "prompts"
+        ]
         
         # Load accumulated knowledge
         self.success_patterns = self._load_memory("success_patterns.json")
         self.failure_patterns = self._load_memory("failure_patterns.json") 
         self.innovation_experiments = self._load_memory("experiments.json")
-        
-        # Experimental techniques to inject creativity
-        self.experimental_techniques = {
-            "contrarian_perspective": "Challenge conventional wisdom in the topic",
-            "analogy_bridging": "Create unexpected analogies between disparate fields",
-            "temporal_shifting": "Examine the topic from past/future perspectives",
-            "stakeholder_rotation": "Tell the story from multiple viewpoints",
-            "constraint_inversion": "What if the opposite constraint was true?",
-            "emergence_patterns": "Look for unexpected connections and patterns",
-            "question_layering": "Ask questions about your questions",
-            "assumption_archaeology": "Dig up and examine hidden assumptions"
-        }
-        
+    
+    
+    def execute(self, state) -> Dict:
+        """Execute method - safely converts state to dict"""
+        print(f"DEBUG writer execute: state type = {type(state)}")
+
+        # Handle EnrichedContentState properly
+        if hasattr(state, 'template_config'):
+            template_config = state.template_config
+            template_id = getattr(state, 'template_id', '')
+
+            # Create state dict for internal processing
+            state_dict = {
+                "template": template_id,
+                "template_config": template_config,
+                "style_profile": getattr(state, 'style_config', {}),
+                "dynamic_parameters": {},
+                "planning_output": getattr(state, 'planning_output', None),
+                "research_findings": getattr(state, 'research_findings', None)
+            }
+
+            # Add content spec info if available
+            if hasattr(state, 'content_spec'):
+                state_dict["topic"] = state.content_spec.topic
+                state_dict["audience"] = state.content_spec.audience
+                state_dict["platform"] = state.content_spec.platform
+
+            print(f"DEBUG writer template_id: {template_id}")
+            print(f"DEBUG writer template_config type: {type(template_config)}")
+
+        elif isinstance(state, dict):
+            state_dict = state
+            template_id = state_dict.get("template", "")
+            template_config = state_dict.get("template_config", {})
+        else:
+            # Fallback handling
+            state_dict = {"template": "", "dynamic_parameters": {}}
+            template_id = ""
+            template_config = {}
+
+        return self.generate_adaptive_content(state_dict)
+
+
     def _load_memory(self, filename: str) -> List[Dict]:
         """Load agent memory from storage"""
         file_path = self.memory_path / filename
@@ -98,181 +150,277 @@ class InnovativeWriterAgent:
         file_path = self.memory_path / filename
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=2, default=str)
+
+    def load_template_config(self, template_id: str) -> Dict[str, Any]:
+        """UNIVERSAL: Load template configuration from YAML files"""
+        if not template_id:
+            print("⚠️ No template_id provided")
+            return {}
+            
+        print(f"🔍 Loading template config for: {template_id}")
+        
+        template_files = [
+            f"{template_id}.yaml",
+            f"{template_id}.yml", 
+            f"{template_id}_template.yaml",
+            f"{template_id}_template.yml"
+        ]
+        
+        for template_path in self.template_paths:
+            for template_file in template_files:
+                full_path = os.path.join(template_path, template_file)
+                
+                if os.path.exists(full_path):
+                    try:
+                        with open(full_path, 'r', encoding='utf-8') as f:
+                            config = yaml.safe_load(f)
+                            print(f"✅ Loaded template config: {full_path}")
+                            return config
+                    except Exception as e:
+                        print(f"❌ Error loading template {full_path}: {e}")
+                        continue
+        
+        print(f"⚠️ Template config not found for: {template_id}")
+        return {}
+
+    def get_template_specific_prompt(self, template_config: Dict[str, Any], template_id: str) -> str:
+        """UNIVERSAL: Generate template-specific writer prompt from configuration"""
+        
+        # PRIORITY 1: Generate from template configuration
+        if template_config:
+            dynamic_prompt = self._generate_prompt_from_config(template_config, template_id)
+            if dynamic_prompt:
+                print(f"✅ Generated dynamic prompt from template config")
+                return dynamic_prompt
+        
+        # PRIORITY 2: Try to find matching prompt file as fallback
+        template_type = template_config.get('template_type', template_id)
+        print(f"🔍 Looking for fallback prompt file for: {template_type}")
+        
+        prompt_files = [
+            f"{template_type}_writer.txt",
+            f"{template_id}_writer.txt",
+            f"{template_type}.txt",
+            f"{template_id}.txt"
+        ]
+        
+        for prompt_file in prompt_files:
+            prompt_content = self._load_prompt_file(prompt_file)
+            if prompt_content:
+                print(f"✅ Using fallback prompt file: {prompt_file}")
+                return prompt_content
+        
+        # PRIORITY 3: Generate universal prompt
+        print(f"⚠️ No prompt file found, generating universal prompt")
+        return self._generate_universal_prompt(template_config, template_type)
+
+    def _generate_prompt_from_config(self, template_config: Dict[str, Any], template_id: str) -> str:
+        """Generate prompt dynamically from template configuration"""
+        
+        if not template_config:
+            return ""
+        
+        # Extract configuration elements
+        purpose = template_config.get('purpose', 'Create high-quality content')
+        template_type = template_config.get('template_type', template_id)
+        target_audience = template_config.get('target_audience', 'general audience')
+        tone_config = template_config.get('tone', {})
+        content_requirements = template_config.get('content_requirements', [])
+        section_order = template_config.get('section_order', [])
+        instructions = template_config.get('instructions', '')
+        
+        # Build dynamic prompt
+        prompt_parts = []
+        
+        # Header
+        prompt_parts.append(f"You are a professional content writer specializing in {template_type.replace('_', ' ')}.")
+        prompt_parts.append(f"PURPOSE: {purpose}")
+        prompt_parts.append(f"TARGET AUDIENCE: {target_audience}")
+        
+        # Tone and style from config
+        if tone_config:
+            tone_parts = []
+            if tone_config.get('formality'):
+                tone_parts.append(f"Formality: {tone_config['formality']}")
+            if tone_config.get('voice'):
+                tone_parts.append(f"Voice: {tone_config['voice']}")
+            if tone_config.get('persuasiveness'):
+                tone_parts.append(f"Persuasiveness: {tone_config['persuasiveness']}")
+            
+            if tone_parts:
+                prompt_parts.append(f"TONE AND STYLE: {', '.join(tone_parts)}")
+        
+        # Required sections from config
+        if section_order:
+            prompt_parts.append("REQUIRED SECTIONS (IN ORDER):")
+            for i, section in enumerate(section_order, 1):
+                prompt_parts.append(f"{i}. {section.replace('_', ' ').title()}")
+        
+        # Content requirements from config
+        if content_requirements:
+            prompt_parts.append("CONTENT REQUIREMENTS:")
+            for req in content_requirements:
+                prompt_parts.append(f"- {req}")
+        
+        # Template-specific instructions from config
+        if instructions:
+            prompt_parts.append("SPECIFIC INSTRUCTIONS:")
+            prompt_parts.append(instructions)
+        
+        # Template enforcement
+        prompt_parts.append(f"CRITICAL: Generate content specifically for {template_type}. Follow the exact requirements and structure specified above.")
+        
+        return "\n".join(prompt_parts)
     
+    def _load_prompt_file(self, filename: str) -> Optional[str]:
+        """Load prompt file from multiple possible locations"""
+        for prompt_path in self.prompt_paths:
+            full_path = os.path.join(prompt_path, filename)
+            
+            if os.path.exists(full_path):
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as f:
+                        content = f.read().strip()
+                        print(f"✅ Loaded prompt file: {full_path}")
+                        return content
+                except Exception as e:
+                    print(f"❌ Error loading prompt {full_path}: {e}")
+                    continue
+        
+        return None
+
+    def _generate_universal_prompt(self, template_config: Dict[str, Any], template_type: str) -> str:
+        """Generate universal prompt based on template configuration"""
+        purpose = template_config.get('purpose', 'Create high-quality content')
+        target_audience = template_config.get('target_audience', 'general audience')
+        tone = template_config.get('tone', {})
+        
+        prompt = f"""You are an expert content writer specializing in {template_type.replace('_', ' ')}.
+
+PURPOSE: {purpose}
+
+TARGET AUDIENCE: {target_audience}
+
+WRITING STYLE:
+- Tone: {tone.get('formality', 'professional')} formality
+- Approach: {tone.get('persuasiveness', 'informative')} 
+- Voice: {tone.get('voice', 'authoritative')}
+
+CONTENT REQUIREMENTS:
+"""
+        
+        # Add requirements from template config
+        if 'content_requirements' in template_config:
+            for req in template_config['content_requirements']:
+                prompt += f"- {req}\n"
+        else:
+            prompt += "- Create valuable, actionable content\n- Use clear, engaging language\n- Provide specific examples\n"
+        
+        return prompt
+
     def analyze_context(self, state: Dict) -> WritingContext:
         """Extract and enrich context from state"""
         params = state.get("dynamic_parameters", {})
 
-        # Determine intent from various clues
-        intent = "inform"  # default
-        if any(word in str(params).lower() for word in ["persuade", "convince", "argue"]):
-            intent = "persuade"
-        elif any(word in str(params).lower() for word in ["story", "narrative", "journey"]):
-            intent = "entertain"
-        elif any(word in str(params).lower() for word in ["learn", "teach", "guide", "tutorial"]):
-            intent = "teach"
-        elif any(word in str(params).lower() for word in ["inspire", "motivate", "vision"]):
-            intent = "inspire"
-            
-        # Assess complexity
-        complexity = 5
-        if "technical" in str(state).lower() or "advanced" in str(state).lower():
-            complexity = 8
-        elif "beginner" in str(state).lower() or "simple" in str(state).lower():
-            complexity = 3
-            
+        # FIX: Safe template_config and style_config access
+        raw_template_config = state.get('template_config', {})
+        raw_style_config = state.get('style_profile', {})  # Note: it's style_profile in state
+
+        # Ensure they are dictionaries, not strings
+        template_config = safe_config_access(raw_template_config)
+        if hasattr(template_config, '__dict__') and not hasattr(template_config, 'get'):
+            template_config = vars(template_config)
+
+        print(f"DEBUG analyze_context template_config: {type(template_config)} -> {template_config}")
+
+        # Now safely use .get() on template_config and style_config
+        topic = (template_config.get("topic") or 
+                 params.get("topic") or 
+                 params.get("primary_topic") or
+                 state.get("topic", "Untitled"))
+
+        audience = (template_config.get("target_audience") or
+                   params.get("target_audience") or 
+                   params.get("audience") or
+                   state.get("audience", "General"))
+
+        # Analyze intent from available data
+        intent = self._analyze_intent_from_context(template_config, params, state)
+        
+        # Analyze complexity from context
+        complexity = self._analyze_complexity_from_context(template_config, params, state)
+
         return WritingContext(
-            topic=params.get("topic", state.get("topic", "Untitled")),
-            audience=params.get("audience", state.get("audience", "General")),
+            topic=topic,
+            audience=audience,
             platform=state.get("platform", "substack"),
             intent=intent,
             complexity_level=complexity,
             innovation_preference=AdaptiveLevel(
-                state.get("innovation_level", "balanced")
+                template_config.get("innovation_level", "balanced")
             )
         )
-    
-    def select_writing_strategy(self, context: WritingContext) -> WritingStrategy:
-        """Adaptively select writing strategy based on context and learned patterns"""
+
+    def _analyze_intent_from_context(self, template_config: Dict, params: Dict, state: Dict) -> str:
+        """Analyze intent from context data"""
+        # Check template config first
+        if template_config.get("intent"):
+            return template_config["intent"]
         
-        # Base strategy selection
-        if context.intent == "teach":
-            mode = WritingMode.ANALYTICAL
-            base_structure = "problem → solution → examples → practice"
-        elif context.intent == "inspire":
-            mode = WritingMode.NARRATIVE
-            base_structure = "vision → challenge → transformation → call_to_action"
-        elif context.intent == "persuade":
-            mode = WritingMode.PERSUASIVE
-            base_structure = "problem → consequences → solution → benefits"
-        elif context.complexity_level > 7:
-            mode = WritingMode.TECHNICAL
-            base_structure = "overview → deep_dive → implementation → implications"
-        else:
-            mode = WritingMode.CREATIVE
-            base_structure = "hook → exploration → insight → application"
-            
-        # Adaptive modifications based on innovation preference
-        experimental_techniques = []
-        if context.innovation_preference in [AdaptiveLevel.INNOVATIVE, AdaptiveLevel.EXPERIMENTAL]:
-            # Select experimental techniques based on context
-            if context.complexity_level > 6:
-                experimental_techniques.extend(["assumption_archaeology", "emergence_patterns"])
-            if "startup" in context.topic.lower():
-                experimental_techniques.extend(["contrarian_perspective", "temporal_shifting"])
-            if context.intent == "inspire":
-                experimental_techniques.extend(["analogy_bridging", "stakeholder_rotation"])
-                
-        # Learn from past successes/failures
-        similar_contexts = self._find_similar_contexts(context)
-        if similar_contexts:
-            # Adapt based on what worked before
-            successful_patterns = [p for p in similar_contexts if p.get("success_score", 0) > 0.7]
-            if successful_patterns:
-                # Extract successful structure patterns
-                successful_structures = [p.get("structure") for p in successful_patterns]
-                if successful_structures:
-                    base_structure = max(set(successful_structures), key=successful_structures.count)
+        # Analyze from available text
+        all_text = str(template_config) + str(params) + str(state)
+        text_lower = all_text.lower()
         
-        return WritingStrategy(
-            mode=mode,
-            structure_pattern=base_structure,
-            tone_adaptation=self._calculate_tone_adaptation(context),
-            experimental_techniques=experimental_techniques
-        )
-    
-    def _find_similar_contexts(self, context: WritingContext) -> List[Dict]:
-        """Find similar past contexts to learn from"""
-        similar = []
-        for pattern in self.success_patterns + self.failure_patterns:
-            # Simple similarity scoring
-            similarity = 0
-            if pattern.get("topic_category") == self._categorize_topic(context.topic):
-                similarity += 0.3
-            if pattern.get("audience") == context.audience:
-                similarity += 0.2
-            if pattern.get("intent") == context.intent:
-                similarity += 0.3
-            if abs(pattern.get("complexity", 5) - context.complexity_level) <= 2:
-                similarity += 0.2
-                
-            if similarity > 0.5:
-                pattern["similarity"] = similarity
-                similar.append(pattern)
-                
-        return sorted(similar, key=lambda x: x["similarity"], reverse=True)[:5]
-    
-    def _categorize_topic(self, topic: str) -> str:
-        """Categorize topic for pattern matching"""
-        topic_lower = topic.lower()
-        if any(word in topic_lower for word in ["ai", "ml", "tech", "software", "code"]):
-            return "technology"
-        elif any(word in topic_lower for word in ["startup", "business", "company", "market"]):
-            return "business"
-        elif any(word in topic_lower for word in ["learn", "skill", "education", "guide"]):
-            return "education"
-        else:
-            return "general"
-    
-    def _calculate_tone_adaptation(self, context: WritingContext) -> Dict[str, float]:
-        """Calculate tone adaptations based on context"""
-        base_tones = {
-            "formal": 0.3,
-            "conversational": 0.5,
-            "technical": 0.2,
-            "inspiring": 0.3,
-            "provocative": 0.1
+        # Intent detection based on content analysis
+        intent_indicators = {
+            'persuade': ['convince', 'argue', 'persuade', 'sell', 'promote'],
+            'teach': ['learn', 'teach', 'guide', 'tutorial', 'education', 'explain'],
+            'inspire': ['inspire', 'motivate', 'vision', 'transform', 'empower'],
+            'entertain': ['story', 'narrative', 'journey', 'experience'],
+            'analyze': ['analyze', 'research', 'study', 'examine', 'investigate']
         }
         
-        # Adapt based on context
-        if context.platform == "linkedin":
-            base_tones["professional"] = 0.6
-            base_tones["conversational"] = 0.4
-        elif context.platform == "twitter":
-            base_tones["provocative"] = 0.4
-            base_tones["conversational"] = 0.6
-        elif context.complexity_level > 7:
-            base_tones["technical"] = 0.7
-            base_tones["formal"] = 0.5
-            
-        if context.intent == "inspire":
-            base_tones["inspiring"] = 0.8
-            
-        return base_tones
-    
-    def inject_experimental_techniques(self, prompt: str, techniques: List[str]) -> str:
-        """Inject experimental writing techniques into the prompt"""
-        if not techniques:
-            return prompt
-            
-        technique_instructions = []
-        for technique in techniques:
-            if technique in self.experimental_techniques:
-                technique_instructions.append(
-                    f"🧪 EXPERIMENTAL TECHNIQUE - {technique.replace('_', ' ').title()}: "
-                    f"{self.experimental_techniques[technique]}"
-                )
+        for intent, indicators in intent_indicators.items():
+            if any(indicator in text_lower for indicator in indicators):
+                return intent
         
-        if technique_instructions:
-            experimental_section = "\n\nEXPERIMENTAL WRITING DIRECTIVES:\n" + "\n".join(technique_instructions)
-            experimental_section += "\n\nIntegrate these experimental approaches naturally into your writing."
-            return prompt + experimental_section
-            
-        return prompt
+        return "inform"  # Default
+
+    def _analyze_complexity_from_context(self, template_config: Dict, params: Dict, state: Dict) -> int:
+        """Analyze complexity level from context"""
+        # Check template config first
+        if template_config.get("complexity_level"):
+            return template_config["complexity_level"]
+        
+        # Analyze from available text
+        all_text = str(template_config) + str(params) + str(state)
+        text_lower = all_text.lower()
+        
+        complexity_indicators = {
+            9: ['phd', 'doctorate', 'expert', 'advanced', 'research'],
+            8: ['professional', 'technical', 'specialist', 'enterprise'],
+            7: ['experienced', 'intermediate', 'business'],
+            6: ['educated', 'college', 'university'],
+            4: ['beginner', 'basic', 'simple', 'introduction'],
+            3: ['elementary', 'fundamental', 'starter']
+        }
+        
+        for complexity, indicators in complexity_indicators.items():
+            if any(indicator in text_lower for indicator in indicators):
+                return complexity
+        
+        return 5  # Default
 
     def load_style_profile(self, name: str) -> Dict:
-        """Load style profile with FIXED YAML content handling"""
-        
-        # Validate style profile name
+        """Load style profile with universal handling"""
         if not name or len(name) > 50 or '/' in name or '\\' in name:
             print(f"Warning: Invalid style profile name '{name}', using default")
             name = "jason"
 
         try:
-            # Try multiple possible paths for style profiles
             style_paths = [
                 f"data/style_profiles/{name}.yaml",
-                f"style_profile/{name}.yaml",  # Your actual location!
+                f"style_profile/{name}.yaml",
                 f"langgraph_app/data/style_profiles/{name}.yaml"
             ]
             
@@ -282,569 +430,540 @@ class InnovativeWriterAgent:
                         profile = yaml.safe_load(f)
                         print(f"✅ Successfully loaded style profile: {style_path}")
                         
-                        # CRITICAL FIX: Ensure system_prompt is treated as content, not filename
                         if 'system_prompt' in profile:
                             system_prompt = profile['system_prompt']
                             
-                            # ✅ Keep system_prompt as-is - it's YAML content, not a filename!
                             if isinstance(system_prompt, str) and system_prompt.strip():
                                 print(f"✅ Using system_prompt content from YAML ({len(system_prompt)} chars)")
                             else:
-                                # Fallback if system_prompt is empty or invalid
-                                profile['system_prompt'] = self._get_default_system_prompt_for_profile(name)
-                                print(f"⚠️ Empty system_prompt in {name}, using default")
+                                profile['system_prompt'] = self._generate_universal_system_prompt(name, profile)
+                                print(f"⚠️ Empty system_prompt in {name}, generated universal")
                         else:
-                            # Add default system_prompt if missing
-                            profile['system_prompt'] = self._get_default_system_prompt_for_profile(name)
-                            print(f"⚠️ No system_prompt in {name}, added default")
+                            profile['system_prompt'] = self._generate_universal_system_prompt(name, profile)
+                            print(f"⚠️ No system_prompt in {name}, added universal")
 
                         return profile
             
-            # If no profile found, create adaptive default
-            print(f"⚠️ Style profile not found: {name}, creating adaptive default")
-            return self._create_adaptive_default_profile(name)
+            print(f"⚠️ Style profile not found: {name}, creating universal default")
+            return self._create_universal_default_profile(name)
 
         except Exception as e:
             print(f"❌ Error loading style profile '{name}': {e}")
-            return self._create_adaptive_default_profile(name)
+            return self._create_universal_default_profile(name)
 
-    def load_system_prompt(self, prompt_source: str) -> str:
-        """FIXED: Load system prompt - handles both YAML content AND file references"""
-        
-        # CRITICAL FIX: Check if this is already content (from YAML) vs filename
-        if self._is_yaml_content(prompt_source):
-            print(f"✅ Using YAML system_prompt content ({len(prompt_source)} chars)")
-            return prompt_source.strip()
-        
-        # Otherwise, treat as filename and try to load from prompts directory
-        if not prompt_source.endswith('.txt'):
-            prompt_source += '.txt'
-
-        prompt_path = os.path.join("prompts", "writer", prompt_source)
-
-        try:
-            if os.path.exists(prompt_path):
-                with open(prompt_path, "r", encoding="utf-8") as f:
-                    content = f.read().strip()
-                    print(f"✅ Loaded system prompt from file: {prompt_path}")
-                    return content
-            else:
-                print(f"⚠️ Prompt file not found: {prompt_path}, using default")
-                return self._get_fallback_system_prompt()
-
-        except Exception as e:
-            print(f"❌ Error loading system prompt file '{prompt_source}': {e}")
-            return self._get_fallback_system_prompt()
-
-    def _is_yaml_content(self, text: str) -> bool:
-        """Determine if text is YAML content vs filename"""
-        if not isinstance(text, str):
-            return False
-        
-        # If it's multi-line, it's content
-        if '\n' in text:
-            return True
-        
-        # If it's very long, it's likely content
-        if len(text) > 100:
-            return True
-        
-        # If it contains style-specific words, it's content
-        style_indicators = [
-            'you are', 'write', 'create', 'structure', 'tone', 'format',
-            'business proposal', 'academic', 'technical', 'startup'
-        ]
-        
-        text_lower = text.lower()
-        if any(indicator in text_lower for indicator in style_indicators):
-            return True
-        
-        # If it looks like a filename
-        if text.endswith('.txt') or ('/' not in text and '\\' not in text and len(text) < 50):
-            return False
-        
-        # Default to treating as content
-        return True
-
-    def _get_default_system_prompt_for_profile(self, profile_name: str) -> str:
-        """Generate appropriate default system prompt based on profile name"""
-        
+    def _generate_universal_system_prompt(self, profile_name: str, profile_data: Dict) -> str:
+        """Generate universal system prompt based on profile data"""
+        # Try to load existing prompts first
         profile_lower = profile_name.lower()
         
-        if 'business' in profile_lower or 'startup' in profile_lower or 'venture' in profile_lower:
-            return """You are a business content specialist. Create professional business content with:
-- Clear value propositions
-- Strategic insights
-- Actionable recommendations
-- Professional business language
-- Structured sections with headers
-Avoid casual greetings. Start with authoritative statements."""
+        # Look for existing prompt files
+        existing_prompts = [f"{profile_name}_system.txt", f"{profile_name}_prompt.txt"]
+        for prompt_file in existing_prompts:
+            prompt_content = self._load_prompt_file(prompt_file)
+            if prompt_content:
+                return prompt_content
         
-        elif 'academic' in profile_lower or 'phd' in profile_lower:
-            return """You are an academic writing specialist. Create scholarly content with:
-- Clear thesis statements
-- Evidence-based arguments
-- Rigorous analysis
-- Formal academic tone
-- Proper citation methodology
-- Logical structure and flow
-Avoid casual language. Use formal academic discourse."""
+        # Generate based on profile characteristics
+        tone = profile_data.get('tone', {})
+        expertise = profile_data.get('expertise_areas', [])
+        writing_style = profile_data.get('writing_style', {})
         
-        elif 'technical' in profile_lower:
-            return """You are a technical writing specialist. Create precise technical content with:
-- Clear technical explanations
-- Step-by-step procedures
-- Accurate technical terminology
-- Implementation details
-- Best practices and standards
-- Structured documentation format
-Focus on clarity and technical accuracy."""
+        prompt_parts = [
+            f"You are {profile_name}, an expert content writer with the following characteristics:"
+        ]
         
-        elif 'storytelling' in profile_lower or 'founder' in profile_lower:
-            return """You are a narrative content specialist. Create compelling stories with:
-- Engaging narrative structure
-- Character development
-- Emotional connection
-- Vivid imagery and examples
-- Clear story arc
-- Relatable insights
-Build authentic connections through storytelling."""
+        if expertise:
+            prompt_parts.append(f"EXPERTISE AREAS: {', '.join(expertise)}")
         
-        else:
-            return """You are an expert content writer. Create engaging, well-structured content that:
-- Serves the reader's needs
-- Maintains appropriate tone and style
-- Uses clear, compelling language
-- Follows logical structure
-- Provides valuable insights
-- Matches the specified format and requirements
-Write with authority and clarity."""
+        if tone:
+            formality = tone.get('formality', 'professional')
+            voice = tone.get('voice', 'authoritative')
+            prompt_parts.append(f"TONE: {formality} formality with {voice} voice")
+        
+        if writing_style:
+            prompt_parts.append(f"WRITING STYLE: {writing_style}")
+        
+        prompt_parts.extend([
+            "Create high-quality, valuable content that:",
+            "- Provides actionable insights and practical value",
+            "- Uses clear, engaging language appropriate for the audience",
+            "- Includes specific examples and real-world applications",
+            "- Maintains consistent voice and expertise throughout"
+        ])
+        
+        return "\n".join(prompt_parts)
 
-    def _create_adaptive_default_profile(self, profile_name: str) -> Dict:
-        """Create intelligent default profile when none exists"""
-        
+    def _create_universal_default_profile(self, name: str) -> Dict:
+        """Create universal default profile"""
         return {
-            "id": profile_name,
-            "name": profile_name.replace('_', ' ').title(),
-            "description": f"Adaptive profile for {profile_name}",
-            "system_prompt": self._get_default_system_prompt_for_profile(profile_name),
-            "structure": "discovery → insight → application → impact",
-            "voice": "professional and authoritative", 
-            "tone": "engaging and informative",
-            "settings": {
-                "use_analogies": True,
-                "avoid_jargon": False,
-                "include_examples": True,
-                "conversational_tone": False
+            'name': name,
+            'system_prompt': self._generate_universal_system_prompt(name, {}),
+            'tone': {
+                'formality': 'professional',
+                'voice': 'authoritative',
+                'persuasiveness': 'balanced'
             },
-            "enhanced_version": True,
-            "fallback": True,
-            "created_dynamically": True
+            'writing_style': {
+                'approach': 'analytical',
+                'structure': 'logical',
+                'examples': 'practical'
+            },
+            'expertise_areas': ['general content creation'],
+            'generated': True
         }
 
-    def _get_fallback_system_prompt(self) -> str:
-        """Fallback system prompt when all else fails"""
-        return """You are an innovative AI writing assistant that adapts to context and pushes creative boundaries.
-Your goal is to create compelling, valuable content that serves the reader while exploring fresh perspectives.
-Write with clarity, insight, and engagement while maintaining high quality standards."""
-
-    def _get_template_structure_requirements(self, state: Dict) -> str:
-        """Extract template structure requirements - THIS IS THE KEY METHOD FOR TEMPLATE ENFORCEMENT"""
+    def _extract_guaranteed_template_config(self, state: Dict) -> dict:
+        """Extract guaranteed template configuration"""
+        template_config = {}
         
-        template_config = state.get("template_config", {})
-        template_id = state.get("template", "")
+        if 'template_config' in state and state['template_config']:
+            template_config = state['template_config']
+        elif 'content_spec' in state and hasattr(state['content_spec'], 'business_context'):
+            template_config = state['content_spec'].business_context.get('template_config', {})
         
-        print(f"🔍 Checking template structure for: {template_id}")
+        if not template_config:
+            template_config = self._create_template_config_from_state(state)
         
-        # Check for specific template structure requirements
-        if "business_proposal" in template_id.lower():
-            print("✅ Applying BUSINESS PROPOSAL structure")
-            return """MANDATORY STRUCTURE - Business Proposal Format:
-1. Executive Summary (150-200 words)
-   - Problem statement
-   - Solution overview  
-   - Key benefits
-   - Financial summary
+        return template_config
 
-2. Problem Statement & Market Opportunity (300-400 words)
-   - Current market pain points
-   - Market size and opportunity
-   - Target audience definition
-   - Competitive landscape
+    def _create_template_config_from_state(self, state: Dict) -> Dict:
+        """Create template config from available state data - FULLY DYNAMIC"""
+        params = state.get("dynamic_parameters", {})
 
-3. Proposed Solution & Value Proposition (400-500 words)
-   - Detailed solution description
-   - Unique value proposition
-   - Key features and benefits
-   - Competitive advantages
+        # Dynamic template type analysis
+        template = state.get('template', '')
+        template_type = self._analyze_template_type_from_context(template, params, state)
 
-4. Financial Projections & ROI Analysis (300-400 words)
-   - Revenue projections
-   - Cost structure
-   - Break-even analysis
-   - Return on investment
+        # Dynamic topic extraction
+        topic = (params.get('topic') or
+                 state.get('topic') or
+                 self._extract_topic_from_context(params, state))
 
-5. Implementation Timeline & Next Steps (200-300 words)
-   - Project phases
-   - Key milestones
-   - Resource requirements
-   - Immediate action items
+        # Dynamic audience analysis
+        audience = (params.get('audience') or
+                    params.get('target_audience') or
+                    state.get('audience') or
+                    self._analyze_audience_from_context(params, state))
 
-CRITICAL: Use professional business language throughout. Include specific metrics, financial data, and quantifiable benefits. Start with authoritative statements, not casual greetings."""
+        # Dynamic word count based on content type and complexity
+        word_count = self._calculate_dynamic_word_count(template_type, topic, audience, params)
+
+        # Dynamic tone analysis
+        tone = self._analyze_tone_requirements(template_type, audience, params)
+
+        return {
+            'template_type': template_type,
+            'topic': topic,
+            'target_audience': audience,
+            'min_word_count': word_count,
+            'tone': tone,
+            'generated_from_state': True
+        }
+
+    def _analyze_template_type_from_context(self, template: str, params: Dict, state: Dict) -> str:
+        """Analyze template type from available context"""
+        if template:
+            return template
+
+        # Analyze from content patterns
+        all_context = str(params) + str(state)
+        context_lower = all_context.lower()
+
+        if any(word in context_lower for word in ['business', 'proposal', 'strategy']):
+            return 'business_content'
+        elif any(word in context_lower for word in ['technical', 'api', 'code', 'documentation']):
+            return 'technical_content'
+        elif any(word in context_lower for word in ['blog', 'article', 'story']):
+            return 'editorial_content'
+        elif any(word in context_lower for word in ['email', 'newsletter']):
+            return 'email_content'
+        else:
+            return 'general_content'
+
+    def _extract_topic_from_context(self, params: Dict, state: Dict) -> str:
+        """Extract topic from available context"""
+        # Look for topic-like content in various fields
+        possible_topics = [
+            params.get('subject'),
+            params.get('title'),
+            state.get('subject'),
+            state.get('title')
+        ]
+
+        for topic in possible_topics:
+            if topic and len(str(topic).strip()) > 0:
+                return str(topic).strip()
+        return 'Strategic Analysis'
+
+    def _analyze_audience_from_context(self, params: Dict, state: Dict) -> str:
+        """Analyze audience from available context"""
+        # Look for audience indicators in the data
+        all_context = str(params) + str(state)
+        context_lower = all_context.lower()
+
+        if any(word in context_lower for word in ['executive', 'c-level', 'leadership']):
+            return 'executive_audience'
+        elif any(word in context_lower for word in ['technical', 'developer', 'engineer']):
+            return 'technical_audience'
+        elif any(word in context_lower for word in ['beginner', 'new', 'introduction']):
+            return 'beginner_audience'
+        elif any(word in context_lower for word in ['professional', 'business']):
+            return 'professional_audience'
+        else:
+            return 'general_audience'
+
+    def _calculate_dynamic_word_count(self, template_type: str, topic: str, audience: str, params: Dict) -> int:
+        """Calculate word count based on content characteristics"""
+        base_count = 800  # Minimum viable content
+
+        # Template type multiplier
+        type_multipliers = {
+            'business_content': 1.8,
+            'technical_content': 2.2,
+            'editorial_content': 1.5,
+            'email_content': 0.6,
+            'general_content': 1.0
+        }
+
+        # Audience complexity multiplier
+        audience_multipliers = {
+            'executive_audience': 1.3,
+            'technical_audience': 1.6,
+            'professional_audience': 1.2,
+            'beginner_audience': 1.4,
+            'general_audience': 1.0
+        }
+
+        # Topic complexity (length as proxy)
+        topic_multiplier = min(1.0 + (len(topic.split()) * 0.1), 1.5)
+
+        # User-specified word count takes priority
+        if params.get('word_count'):
+            return params['word_count']
+
+        calculated = int(base_count *
+                         type_multipliers.get(template_type, 1.0) *
+                         audience_multipliers.get(audience, 1.0) *
+                         topic_multiplier)
+        return max(400, min(calculated, 4000))  # Bounds: 400-4000 words
+
+    def _analyze_tone_requirements(self, template_type: str, audience: str, params: Dict) -> Dict:
+        """Analyze tone requirements from context"""
+        base_tone = {'formality': 'professional', 'persuasiveness': 'balanced'}
+
+        # Template-based tone
+        if template_type == 'business_content':
+            base_tone.update({'formality': 'high', 'persuasiveness': 'strong'})
+        elif template_type == 'technical_content':
+            base_tone.update({'formality': 'high', 'persuasiveness': 'informative'})
+        elif template_type == 'email_content':
+            base_tone.update({'formality': 'medium', 'persuasiveness': 'conversational'})
+
+        # Audience-based adjustments
+        if 'executive' in audience:
+            base_tone['formality'] = 'very_high'
+        elif 'beginner' in audience:
+            base_tone['formality'] = 'medium'
+            base_tone['persuasiveness'] = 'supportive'
+        return base_tone
+
+    def _create_enhanced_prompt(self, context: WritingContext, template_config: Dict[str, Any],
+                                 style: Dict, state: Dict) -> str:
+        """UNIVERSAL: Create comprehensive writing prompt - NO HARDCODED FALLBACKS"""
+        if hasattr(template_config, '__dict__') and not hasattr(template_config, 'get'):
+            template_config = vars(template_config)
+        if not template_config:
+            template_config = self._extract_guaranteed_template_config(state)
+
+        planning = state.get('planning_output')
+        if planning and hasattr(planning, '__dict__') and not hasattr(planning, 'get'):
+            planning = vars(planning)
+            state['planning_output'] = planning
+
+        template_type = template_config.get('template_type', context.platform).lower()
+        section_order = template_config.get('section_order', [])
+        min_words = template_config.get('min_word_count', 2500)
+        tone_config = template_config.get('tone', {})
+
+        prompt_parts = []
+
+        # 1. STRUCTURE SECTION - Universal from config or analysis
+        if section_order:
+            prompt_parts.append("**REQUIRED SECTIONS (IN ORDER):**")
+            prompt_parts.append("\n".join([f"## {section}" for section in section_order]))
+        elif planning and hasattr(planning, 'estimated_sections'):
+            sections = [section.get('name', f'Section {i+1}') for i, section in enumerate(planning.estimated_sections)]
+            prompt_parts.append("**REQUIRED SECTIONS (IN ORDER):**")
+            prompt_parts.append("\n".join([f"## {section}" for section in sections]))
+        else:
+            dynamic_sections = self._generate_universal_sections(context, template_config)
+            prompt_parts.append("**REQUIRED SECTIONS (IN ORDER):**")
+            prompt_parts.append("\n".join([f"## {section}" for section in dynamic_sections]))
+
+        # 2. REQUIREMENTS SECTION - Universal from config
+        requirements = [f"- Minimum {min_words} words total", "- Each section must be substantial and complete"]
+
+        template_requirements = template_config.get('content_requirements', [])
+        if template_requirements:
+            requirements.extend([f"- {req}" for req in template_requirements])
+        else:
+            dynamic_requirements = self._generate_universal_requirements(context, template_config)
+            requirements.extend(dynamic_requirements)
+
+        prompt_parts.append("**CONTENT REQUIREMENTS:**")
+        prompt_parts.append("\n".join(requirements))
+
+        # 3. TONE SECTION - Universal from config
+        tone_guidance = self._generate_universal_tone_guidance(context, template_config, tone_config)
+        prompt_parts.append(f"**TONE AND STYLE:** {tone_guidance}")
+
+        # 4. CONTEXT SECTION
+        prompt_parts.extend([
+            f"**TOPIC:** {context.topic}",
+            f"**AUDIENCE:** {context.audience}",
+            f"**COMPLEXITY LEVEL:** {context.complexity_level}/10"
+        ])
+
+        # 5. FINAL INSTRUCTION - Universal
+        final_instruction = self._generate_universal_final_instruction(context, template_config)
+        prompt_parts.append(final_instruction)
+
+        return "\n".join(prompt_parts)
+
+    def _generate_universal_sections(self, context: WritingContext, template_config: Dict[str, Any]) -> List[str]:
+        """Generate universal sections based on content analysis"""
+        topic_words = context.topic.lower().split()
+        audience_lower = context.audience.lower()
         
-        elif "technical_documentation" in template_id.lower():
-            print("✅ Applying TECHNICAL DOCUMENTATION structure")
-            return """MANDATORY STRUCTURE - Technical Documentation Format:
-1. Overview & Prerequisites (200 words)
-   - System overview
-   - Technical requirements
-   - Prerequisites
-
-2. Technical Specifications (400-600 words)
-   - Architecture details
-   - System components
-   - Technical requirements
-
-3. Implementation Guide (600-800 words)
-   - Step-by-step procedures
-   - Configuration details
-   - Code examples
-
-4. Code Examples & Best Practices (400-600 words)
-   - Working code samples
-   - Best practices
-   - Common patterns
-
-5. Troubleshooting & Support (200-400 words)
-   - Common issues
-   - Solutions
-   - Support resources
-
-Use precise technical language. Include code examples and implementation details."""
+        sections = [f"{context.topic} Overview"]
         
-        elif "research_paper" in template_id.lower():
-            print("✅ Applying RESEARCH PAPER structure")
-            return """MANDATORY STRUCTURE - Research Paper Format:
-1. Abstract (150-200 words)
-   - Research problem
-   - Methodology
-   - Key findings
-   - Conclusions
-
-2. Introduction & Literature Review (400-500 words)
-   - Problem definition
-   - Current research landscape
-   - Research gap
-   - Research questions
-
-3. Methodology (300-400 words)
-   - Research approach
-   - Data collection methods
-   - Analysis techniques
-   - Limitations
-
-4. Results & Analysis (500-600 words)
-   - Key findings
-   - Data analysis
-   - Statistical results
-   - Interpretation
-
-5. Discussion & Conclusions (300-400 words)
-   - Implications
-   - Future research
-   - Limitations
-   - Conclusions
-
-Use formal academic language with proper citations and evidence-based arguments."""
+        # Analyze topic for section generation
+        topic_analysis = self._analyze_topic_characteristics(context.topic, context.audience)
         
-        elif template_config.get("suggested_sections"):
-            # Use template-defined sections
-            sections = template_config["suggested_sections"]
-            structure_parts = []
-            for i, section in enumerate(sections, 1):
-                section_name = section.get("name", f"Section {i}").replace("_", " ").title()
-                description = section.get("description", "")
-                structure_parts.append(f"{i}. {section_name}" + (f" - {description}" if description else ""))
-            
-            return "MANDATORY STRUCTURE:\n" + "\n".join(structure_parts)
+        if topic_analysis['is_business_focused']:
+            sections.extend([
+                "Strategic Analysis",
+                "Market Considerations", 
+                "Implementation Approach",
+                "Success Metrics",
+                "Next Steps"
+            ])
+        elif topic_analysis['is_technical']:
+            sections.extend([
+                "Technical Foundation",
+                "Implementation Guide",
+                "Best Practices",
+                "Practical Examples",
+                "Troubleshooting"
+            ])
+        elif topic_analysis['is_educational']:
+            sections.extend([
+                "Core Concepts",
+                "Step-by-Step Guide",
+                "Real-World Applications",
+                "Common Challenges",
+                "Further Learning"
+            ])
+        else:
+            # Universal sections based on content characteristics
+            sections.extend([
+                f"Understanding {context.topic}",
+                "Key Principles",
+                "Practical Applications",
+                "Implementation Considerations",
+                "Future Outlook"
+            ])
         
-        print("⚠️ No specific template structure found, using default")
-        return ""
+        sections.append("Key Takeaways")
+        return sections
 
-    def _get_style_enforcement_requirements(self, style: Dict, context: WritingContext) -> str:
-        """Extract style enforcement requirements"""
+    def _analyze_topic_characteristics(self, topic: str, audience: str) -> Dict[str, bool]:
+        """Analyze topic characteristics for section generation"""
+        topic_lower = topic.lower()
+        audience_lower = audience.lower()
         
+        return {
+            'is_business_focused': any(word in topic_lower for word in ['business', 'strategy', 'market', 'revenue', 'growth', 'roi']) or 'executive' in audience_lower,
+            'is_technical': any(word in topic_lower for word in ['technical', 'implementation', 'development', 'api', 'system', 'code']) or any(word in audience_lower for word in ['developer', 'engineer', 'technical']),
+            'is_educational': any(word in topic_lower for word in ['learn', 'guide', 'tutorial', 'how to', 'introduction']) or any(word in audience_lower for word in ['student', 'beginner', 'learner']),
+            'is_analytical': any(word in topic_lower for word in ['analysis', 'research', 'study', 'data', 'insight']),
+            'is_creative': any(word in topic_lower for word in ['design', 'creative', 'innovation', 'art'])
+        }
+
+    def _generate_universal_requirements(self, context: WritingContext, template_config: Dict[str, Any]) -> List[str]:
+        """Generate universal content requirements"""
         requirements = []
         
-        # Voice and tone requirements
-        voice = style.get('voice', '')
-        tone = style.get('tone', '')
+        topic_analysis = self._analyze_topic_characteristics(context.topic, context.audience)
         
-        if voice:
-            requirements.append(f"Voice: {voice}")
-        if tone:
-            requirements.append(f"Tone: {tone}")
-        
-        # Style-specific requirements
-        style_id = style.get('id', '').lower()
-        
-        if 'business' in style_id or 'startup' in style_id or 'venture' in style_id:
+        if topic_analysis['is_business_focused']:
             requirements.extend([
-                "Use professional business language",
-                "Include specific metrics and ROI data where relevant", 
-                "Start with authoritative statements, not casual greetings",
-                "Focus on strategic insights and actionable recommendations"
+                "- Include specific data, metrics, and business case",
+                "- Provide actionable strategic recommendations",
+                "- Address ROI and implementation considerations"
             ])
-        
-        elif 'academic' in style_id or 'phd' in style_id:
+        elif topic_analysis['is_technical']:
             requirements.extend([
-                "Use formal academic discourse",
-                "Start with clear thesis statements",
-                "Support arguments with evidence",
-                "Avoid casual language and colloquialisms",
-                "Maintain scholarly objectivity"
+                "- Provide concrete, implementable technical guidance",
+                "- Include working examples and code where appropriate",
+                "- Address troubleshooting and best practices"
             ])
-        
-        elif 'technical' in style_id:
+        elif topic_analysis['is_educational']:
             requirements.extend([
-                "Use precise technical terminology", 
-                "Include implementation details and code examples",
-                "Focus on practical applications and best practices",
-                "Structure information logically for technical audiences"
+                "- Use clear explanations with progressive complexity",
+                "- Include practical exercises and examples",
+                "- Provide resources for further learning"
             ])
-        
-        # Forbidden patterns (if any)
-        forbidden = style.get('forbidden_patterns', [])
-        if forbidden:
-            requirements.append(f"FORBIDDEN PHRASES: Never use: {', '.join(forbidden)}")
-        
-        return "\n".join([f"- {req}" for req in requirements]) if requirements else ""
-
-    def _create_base_prompt(self, context: WritingContext, strategy: WritingStrategy, 
-                          style: Dict, state: Dict) -> str:
-        """ENHANCED: Create base writing prompt with template structure enforcement"""
-        
-        # Platform-specific length instructions
-        platform = context.platform
-        if platform == "medium":
-            length_instruction = "Write a comprehensive long-form article between 1600-2200 words, optimized for an 8-12 minute read."
-        elif platform == "twitter":
-            length_instruction = "Write a compelling Twitter thread with 5-8 tweets, each under 280 characters."
-        elif platform == "linkedin":
-            length_instruction = "Write a professional LinkedIn post between 800-1200 words that sparks meaningful discussion."
         else:
-            length_instruction = "Write an engaging document between 800-1200 words."
+            requirements.extend([
+                "- Provide original, valuable insights",
+                "- Include specific examples and case studies",
+                "- Offer actionable advice readers can implement"
+            ])
         
-        # Extract research context
-        research = state.get("research", "")
-        research_instruction = f"\n\nRELEVANT RESEARCH TO INCORPORATE:\n{research}" if research else ""
+        # Universal quality requirements
+        requirements.extend([
+            "- Use engaging, clear writing style",
+            "- Maintain logical structure and flow",
+            "- Include relevant data and supporting evidence"
+        ])
         
-        # ✅ CRITICAL: Get template structure requirements
-        template_structure = self._get_template_structure_requirements(state)
-        template_instruction = ""
-        if template_structure:
-            template_instruction = f"\n\n{template_structure}"
+        return requirements
+
+    def _generate_universal_tone_guidance(self, context: WritingContext, template_config: Dict[str, Any], tone_config: Dict) -> str:
+        """Generate universal tone guidance"""
+        tone_elements = []
         
-        # ✅ Get style enforcement requirements  
-        style_requirements = self._get_style_enforcement_requirements(style, context)
-        style_instruction = ""
-        if style_requirements:
-            style_instruction = f"\n\nSTYLE REQUIREMENTS:\n{style_requirements}"
+        formality = tone_config.get('formality', 'professional')
+        voice = tone_config.get('voice', 'authoritative')
+        persuasiveness = tone_config.get('persuasiveness', 'balanced')
         
-        # Build enhanced prompt
-        prompt = f"""
-{length_instruction}
-
-WRITING CONTEXT:
-- Topic: {context.topic}
-- Target Audience: {context.audience} 
-- Intent: {context.intent}
-- Complexity Level: {context.complexity_level}/10
-- Platform: {context.platform}
-
-ADAPTIVE STRATEGY:
-- Writing Mode: {strategy.mode.value}
-- Structure Pattern: {strategy.structure_pattern}
-- Innovation Level: {context.innovation_preference.value}
-
-STYLE REQUIREMENTS:
-- Voice: {style.get('voice', 'conversational')}
-- Tone: {style.get('tone', 'engaging')}
-- Structure Flow: {style.get('structure', strategy.structure_pattern)}
-
-{template_instruction}
-{style_instruction}
-{research_instruction}
-
-INNOVATION CHALLENGE:
-Find a fresh angle or unexpected insight that adds genuine value to the reader's understanding.
-
-CRITICAL INSTRUCTION:
-You MUST follow the specified template structure exactly. Do not deviate from the required sections and format. Each section must contain the specified word count and content type.
-"""
+        tone_elements.append(f"{formality} formality")
+        tone_elements.append(f"{voice} voice")
+        tone_elements.append(f"{persuasiveness} persuasiveness")
         
-        return prompt
-    
+        # Context-specific adjustments
+        if "executive" in context.audience.lower():
+            tone_elements.append("strategic and decision-oriented")
+        elif "technical" in context.audience.lower():
+            tone_elements.append("precise and implementation-focused")
+        elif "beginner" in context.audience.lower():
+            tone_elements.append("educational and supportive")
+        
+        return ", ".join(tone_elements)
+
+    def _generate_universal_final_instruction(self, context: WritingContext, template_config: Dict[str, Any]) -> str:
+        """Generate universal final instruction"""
+        topic_analysis = self._analyze_topic_characteristics(context.topic, context.audience)
+        
+        if topic_analysis['is_business_focused']:
+            focus = "strategic value and actionable business insights"
+        elif topic_analysis['is_technical']:
+            focus = "technical accuracy and practical implementation"
+        elif topic_analysis['is_educational']:
+            focus = "clear learning outcomes and skill development"
+        else:
+            focus = "valuable insights and practical applications"
+        
+        return f"Generate expert-level content about {context.topic} that provides {focus} for {context.audience}."
+
     def generate_adaptive_content(self, state: Dict) -> Dict:
-        """Main content generation with adaptive intelligence"""
+        """UNIVERSAL: Template-aware content generation with ZERO FALLBACKS"""
         
-        # Analyze context and select strategy
+        template_id = state.get("template", "")
+        print(f"🚀 Generating content for template: {template_id}")
+        
+        template_config = state.get("template_config", {})
+        # After: template_config = state.get("template_config", {})
+        if hasattr(template_config, '__dict__') and not hasattr(template_config, 'get'):
+            template_config = vars(template_config)
+            state["template_config"] = template_config  # Update state too
+        template_name = ""
+        if isinstance(template_config, dict):
+            template_name = template_config.get('name', template_config.get('id', template_id))
+        elif template_id:
+            template_name = template_id
+        
+        print(f"🚀 Generating content for template: {template_name}")
+    
+
+
+        if not template_config and template_id:
+            template_config = self.load_template_config(template_id)
+        if not template_config:
+            template_config = self._extract_guaranteed_template_config(state)
+        state["template_config"] = template_config
+        
         context = self.analyze_context(state)
-        strategy = self.select_writing_strategy(context)
         
-        # Load style profile
         style_profile_input = state.get("style_profile", "jason")
         if isinstance(style_profile_input, str):
             style = self.load_style_profile(style_profile_input)
         else:
             style = style_profile_input
             
-        # Generate base prompt
-        base_prompt = self._create_base_prompt(context, strategy, style, state)
+        template_specific_prompt = self.get_template_specific_prompt(template_config, template_id)
+        user_prompt = self._create_enhanced_prompt(context, template_config, style, state)
         
-        # Inject experimental techniques
-        enhanced_prompt = self.inject_experimental_techniques(
-            base_prompt, 
-            strategy.experimental_techniques
-        )
-        
-        # Get system prompt - handle both inline content and filenames
-        system_prompt_source = style.get("system_prompt", "You are an expert content writer. Create engaging, well-structured content that matches the specified style and audience.")
-        system_prompt = self.load_system_prompt(system_prompt_source)
-        
-        # Add innovation instructions to system prompt
-        if context.innovation_preference in [AdaptiveLevel.INNOVATIVE, AdaptiveLevel.EXPERIMENTAL]:
-            innovation_instruction = """
-You are an innovative writer who pushes creative boundaries while maintaining quality.
-Take calculated creative risks. Challenge conventional wisdom. Find unexpected angles.
-Be bold in your approach while serving the reader's needs.
-"""
-            system_prompt = innovation_instruction + "\n\n" + system_prompt
-        
-        # CRITICAL: Add template enforcement to system prompt
-        template_id = state.get("template", "")
-        if template_id:
+        template_enforcement = ""
+        if template_id and template_config:
+            template_type = template_config.get('template_type', template_id)
             template_enforcement = f"""
-CRITICAL TEMPLATE ENFORCEMENT:
-You are generating content for template: {template_id}
-You MUST follow the exact structure and format specified in the user prompt.
-Do not deviate from the required sections, word counts, or formatting.
-This is not a blog post - follow the specific template requirements exactly.
-"""
-            system_prompt = template_enforcement + "\n\n" + system_prompt
+            CRITICAL TEMPLATE ENFORCEMENT:
+            You are generating content for template: {template_id} (type: {template_type})
+            You MUST follow the exact structure and format specified in the user prompt.
+            This is content specifically for {template_type} - follow the requirements exactly.
+            """
         
-        # Generate content
+        final_system_prompt = template_enforcement + "\n\n" + template_specific_prompt
+        
         model = get_model("writer")
+        print(f"🔧 Using model: {model}")
+        print(f"📝 Template type: {template_config.get('template_type', 'universal')}")
+        
         response = self.client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": enhanced_prompt}
+                {"role": "system", "content": final_system_prompt},
+                {"role": "user", "content": user_prompt}
             ],
-            temperature=self._calculate_temperature(context.innovation_preference),
+            temperature=0.7,
         )
         
         generated_content = response.choices[0].message.content.strip()
         
-        # Create rich metadata
         metadata = {
+            "template_id": template_id,
+            "template_type": template_config.get('template_type', 'universal'),
             "topic": context.topic,
             "audience": context.audience,
             "platform": context.platform,
             "intent": context.intent,
             "complexity_level": context.complexity_level,
-            "innovation_level": context.innovation_preference.value,
-            "writing_mode": strategy.mode.value,
-            "structure_pattern": strategy.structure_pattern,
-            "experimental_techniques": strategy.experimental_techniques,
-            "tone_adaptations": strategy.tone_adaptation,
             "generation_timestamp": datetime.now().isoformat(),
             "word_count": len(generated_content.split()),
             "model_used": model,
-            "template_used": state.get("template", "none")
+            "template_config_loaded": bool(template_config)
         }
         
-        # Store for future learning (async)
-        self._record_generation_attempt(context, strategy, metadata)
-        
-        return {**state, 
+        print(f"✅ Generated {metadata['word_count']} words for {template_id}")
+        # Content originality checking removed
+        return {
+            **state, 
             "draft": generated_content,
             "metadata": metadata,
-            "innovation_report": {
-                "techniques_used": strategy.experimental_techniques,
-                "innovation_level": context.innovation_preference.value,
-                "creative_risk_score": len(strategy.experimental_techniques) * 0.2
-            }
+            "template_config": template_config,
         }
-    
-    def _calculate_temperature(self, innovation_level: AdaptiveLevel) -> float:
-        """Calculate model temperature based on innovation preference"""
-        temp_map = {
-            AdaptiveLevel.CONSERVATIVE: 0.3,
-            AdaptiveLevel.BALANCED: 0.5,
-            AdaptiveLevel.INNOVATIVE: 0.7,
-            AdaptiveLevel.EXPERIMENTAL: 0.9
-        }
-        return temp_map.get(innovation_level, 0.5)
-    
-    def _record_generation_attempt(self, context: WritingContext, strategy: WritingStrategy, metadata: Dict):
-        """Record generation attempt for future learning"""
-        record = {
-            "timestamp": datetime.now().isoformat(),
-            "context": {
-                "topic_category": self._categorize_topic(context.topic),
-                "audience": context.audience,
-                "intent": context.intent,
-                "complexity": context.complexity_level,
-                "platform": context.platform
-            },
-            "strategy": {
-                "mode": strategy.mode.value,
-                "structure": strategy.structure_pattern,
-                "techniques": strategy.experimental_techniques
-            },
-            "metadata": metadata
-        }
-        
-        # Add to experiments log
-        self.innovation_experiments.append(record)
-        
-        # Keep only recent experiments (last 1000)
-        if len(self.innovation_experiments) > 1000:
-            self.innovation_experiments = self.innovation_experiments[-1000:]
-            
-        # Save asynchronously
-        try:
-            self._save_memory(self.innovation_experiments, "experiments.json")
-        except Exception as e:
-            print(f"Warning: Could not save experiment data: {e}")
-    
-    def provide_feedback(self, generation_id: str, success_score: float, feedback: str = ""):
-        """Learn from feedback to improve future generations"""
-        # Find the generation in experiments
-        for exp in self.innovation_experiments:
-            if exp.get("metadata", {}).get("generation_id") == generation_id:
-                exp["success_score"] = success_score
-                exp["feedback"] = feedback
-                
-                # Move to success or failure patterns
-                if success_score >= 0.7:
-                    self.success_patterns.append(exp)
-                    self._save_memory(self.success_patterns, "success_patterns.json")
-                elif success_score <= 0.3:
-                    self.failure_patterns.append(exp)
-                    self._save_memory(self.failure_patterns, "failure_patterns.json")
-                break
 
 
-# Export both the class and the legacy function for compatibility
-innovative_writer_agent = InnovativeWriterAgent()
+# Export the universal template-aware agent
+template_aware_writer_agent = TemplateAwareWriterAgent()
 
-# Legacy compatibility - wrapped in the new system
+# Legacy compatibility wrapper
 def _legacy_writer_fn(state: dict) -> dict:
     """Legacy wrapper for backward compatibility"""
-    return innovative_writer_agent.generate_adaptive_content(state)
+    return template_aware_writer_agent.generate_adaptive_content(state)
 
 # Exports
-WriterAgent = InnovativeWriterAgent  # Class export
-writer = RunnableLambda(_legacy_writer_fn)  # Function export
+WriterAgent = TemplateAwareWriterAgent
+writer = RunnableLambda(_legacy_writer_fn)

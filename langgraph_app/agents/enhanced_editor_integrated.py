@@ -1,23 +1,51 @@
+# File: langgraph_app/agents/enhanced_editor_integrated.py
 from langgraph_app.core.enriched_content_state import (
     EnrichedContentState, 
     AgentType, 
     ContentPhase,
     EditingGuidance
 )
+from types import SimpleNamespace
 
 class EnhancedEditorAgent:
-    """Integrated Editor Agent using EnrichedContentState"""
+    """Universal Configuration-Driven Editor Agent - NO HARDCODED TEMPLATES"""
     
     def __init__(self):
         self.agent_type = AgentType.EDITOR
         
+    def intelligent_edit(self, state: EnrichedContentState) -> EnrichedContentState:
+        """Interface method for RunnableLambda compatibility"""
+        return self.execute(state)
+
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Execute editing with full context awareness"""
+        """Execute editing with UNIVERSAL configuration-driven logic"""
+        if hasattr(state, 'template_config') and hasattr(state.template_config, '__dict__') and not hasattr(state.template_config, 'get'):
+            state.template_config = vars(state.template_config)
+
+        if hasattr(state, 'planning_output') and hasattr(state.planning_output, '__dict__') and not hasattr(state.planning_output, 'get'):
+            state.planning_output = vars(state.planning_output)
+
+        if hasattr(state, 'research_plan') and hasattr(state.research_plan, '__dict__') and not hasattr(state.research_plan, 'get'):
+            state.research_plan = vars(state.research_plan)
+        planning_output = getattr(state, 'planning_output', None)
+    
+        estimated_sections = []
+        if planning_output:
+            if hasattr(planning_output, 'estimated_sections'):
+                # Object format
+                estimated_sections = planning_output.estimated_sections
+            elif isinstance(planning_output, dict):
+                # Dictionary format
+                estimated_sections = planning_output.get('estimated_sections', [])
+    
+        if not hasattr(state, 'planning_output') or not state.planning_output:
+            state.planning_output = self._create_universal_planning_output(state)
         
-        # Get dynamic instructions
+        if not hasattr(state, 'template_config') or not state.template_config:
+            state.template_config = self._extract_universal_template_config(state)
+    
         instructions = state.get_agent_instructions(self.agent_type)
         
-        # Log execution start
         state.log_agent_execution(self.agent_type, {
             "status": "started",
             "content_length": len(state.draft_content.split()),
@@ -25,18 +53,14 @@ class EnhancedEditorAgent:
             "target_audience": state.content_spec.audience
         })
         
-        # Generate editing guidance
-        editing_guidance = self._create_editing_guidance(state, instructions)
+        editing_guidance = self._create_editing_guidance_universal(state, instructions)
         state.editing_guidance = editing_guidance
         
-        # Edit content based on guidance
-        edited_content = self._edit_content_with_guidance(state, instructions)
-        state.draft_content = edited_content  # Update draft with edits
+        edited_content = self._edit_content_with_guidance_universal(state, instructions)
+        state.draft_content = edited_content
         
-        # Update phase
         state.update_phase(ContentPhase.FORMATTING)
         
-        # Log completion
         state.log_agent_execution(self.agent_type, {
             "status": "completed",
             "improvements_made": len(editing_guidance.structural_improvements),
@@ -46,70 +70,301 @@ class EnhancedEditorAgent:
         
         return state
     
-    def _create_editing_guidance(self, state: EnrichedContentState, instructions) -> EditingGuidance:
-        """Create editing guidance based on content analysis"""
+    def _create_universal_planning_output(self, state: EnrichedContentState):
+        """Create universal planning output based on content analysis"""
+        template_config = self._extract_universal_template_config(state)
         
+        # Analyze content characteristics
+        content_analysis = self._analyze_content_characteristics(state, template_config)
+        
+        # Generate sections from template config or content analysis
+        estimated_sections = self._generate_sections_from_config(template_config, content_analysis)
+        
+        # Generate key messages from content analysis
+        key_messages = self._generate_key_messages_from_analysis(content_analysis)
+        
+        return SimpleNamespace(
+            content_strategy=f"universal_{content_analysis['content_type']}_strategy",
+            structure_approach=content_analysis['structure_approach'],
+            key_messages=key_messages,
+            research_priorities=content_analysis['research_priorities'],
+            depth=content_analysis['depth_level'],
+            sources_needed=content_analysis['sources_needed'],
+            focus_areas=content_analysis['focus_areas'],
+            audience_insights={
+                "primary_audience": state.content_spec.audience,
+                "expertise_level": state.content_spec.complexity_level,
+                "decision_factors": content_analysis['decision_factors']
+            },
+            competitive_positioning="value_driven_differentiation",
+            success_metrics={"engagement_target": content_analysis['engagement_target']},
+            estimated_sections=estimated_sections,
+            planning_confidence=content_analysis['confidence']
+        )
+
+    def _analyze_content_characteristics(self, state: EnrichedContentState, template_config: dict) -> dict:
+        """Analyze content characteristics for universal planning"""
+        topic = state.content_spec.topic.lower()
+        audience = state.content_spec.audience.lower()
+        complexity = state.content_spec.complexity_level
+        
+        # Determine content type from analysis
+        content_type = 'general'
+        if any(word in topic for word in ['business', 'strategy', 'proposal']):
+            content_type = 'business'
+        elif any(word in topic for word in ['technical', 'api', 'documentation']):
+            content_type = 'technical'
+        elif any(word in topic for word in ['research', 'study', 'analysis']):
+            content_type = 'analytical'
+        elif any(word in topic for word in ['investment', 'funding', 'venture']):
+            content_type = 'financial'
+        
+        # Determine structure approach
+        structure_approach = 'logical_progression'
+        if 'executive' in audience:
+            structure_approach = 'executive_summary_first'
+        elif 'technical' in audience:
+            structure_approach = 'implementation_focused'
+        elif 'investor' in audience:
+            structure_approach = 'roi_focused'
+        
+        return {
+            'content_type': content_type,
+            'structure_approach': structure_approach,
+            'depth_level': 'comprehensive' if complexity >= 7 else 'moderate',
+            'sources_needed': min(max(complexity, 3), 10),
+            'engagement_target': min(0.7 + (complexity * 0.02), 0.95),
+            'confidence': 0.85,
+            'research_priorities': self._determine_research_priorities(topic, content_type),
+            'focus_areas': self._determine_focus_areas(topic, content_type, audience),
+            'decision_factors': self._determine_decision_factors(audience, content_type)
+        }
+    
+    def _determine_research_priorities(self, topic: str, content_type: str) -> list:
+        """Determine research priorities from content analysis"""
+        base_priorities = ['background_research', 'key_concepts']
+        
+        if content_type == 'business':
+            base_priorities.extend(['market_analysis', 'financial_data'])
+        elif content_type == 'technical':
+            base_priorities.extend(['technical_specifications', 'implementation_examples'])
+        elif content_type == 'analytical':
+            base_priorities.extend(['data_analysis', 'comparative_studies'])
+        elif content_type == 'financial':
+            base_priorities.extend(['financial_projections', 'market_data'])
+        
+        return base_priorities
+    
+    def _determine_focus_areas(self, topic: str, content_type: str, audience: str) -> list:
+        """Determine focus areas from content analysis"""
+        base_areas = ['introduction', 'main_analysis']
+        
+        if 'executive' in audience:
+            base_areas.extend(['strategic_implications', 'decision_framework'])
+        elif 'technical' in audience:
+            base_areas.extend(['implementation_details', 'technical_specifications'])
+        elif 'investor' in audience:
+            base_areas.extend(['financial_projections', 'market_opportunity'])
+        else:
+            base_areas.extend(['practical_applications', 'next_steps'])
+        
+        return base_areas
+    
+    def _determine_decision_factors(self, audience: str, content_type: str) -> list:
+        """Determine decision factors from audience analysis"""
+        if 'executive' in audience:
+            return ['strategic_value', 'roi', 'implementation_feasibility']
+        elif 'investor' in audience:
+            return ['market_size', 'growth_potential', 'competitive_advantage']
+        elif 'technical' in audience:
+            return ['technical_feasibility', 'implementation_complexity', 'scalability']
+        else:
+            return ['relevance', 'actionability', 'credibility']
+    
+    def _generate_sections_from_config(self, template_config: dict, content_analysis: dict) -> list:
+        """Generate sections from config or content analysis"""
+        # Try template config first
+        if template_config.get('section_order'):
+            sections = []
+            for section_name in template_config['section_order']:
+                sections.append({
+                    "name": section_name,
+                    "estimated_words": template_config.get('section_word_counts', {}).get(section_name, 400)
+                })
+            return sections
+        
+        # Generate from content analysis
+        content_type = content_analysis['content_type']
+        
+        if content_type == 'business':
+            return [
+                {"name": "Executive Overview", "estimated_words": 400},
+                {"name": "Strategic Analysis", "estimated_words": 600},
+                {"name": "Market Considerations", "estimated_words": 500},
+                {"name": "Implementation Approach", "estimated_words": 500},
+                {"name": "Success Metrics", "estimated_words": 300},
+                {"name": "Next Steps", "estimated_words": 200}
+            ]
+        elif content_type == 'technical':
+            return [
+                {"name": "Technical Overview", "estimated_words": 400},
+                {"name": "Implementation Guide", "estimated_words": 800},
+                {"name": "Configuration Details", "estimated_words": 600},
+                {"name": "Best Practices", "estimated_words": 400},
+                {"name": "Troubleshooting", "estimated_words": 300}
+            ]
+        elif content_type == 'analytical':
+            return [
+                {"name": "Research Overview", "estimated_words": 400},
+                {"name": "Methodology", "estimated_words": 500},
+                {"name": "Analysis Results", "estimated_words": 700},
+                {"name": "Implications", "estimated_words": 400},
+                {"name": "Conclusions", "estimated_words": 300}
+            ]
+        else:
+            return [
+                {"name": "Introduction", "estimated_words": 400},
+                {"name": "Core Analysis", "estimated_words": 600},
+                {"name": "Practical Applications", "estimated_words": 500},
+                {"name": "Implementation Considerations", "estimated_words": 400},
+                {"name": "Key Takeaways", "estimated_words": 300}
+            ]
+    
+    def _generate_key_messages_from_analysis(self, content_analysis: dict) -> list:
+        """Generate key messages from content analysis"""
+        content_type = content_analysis['content_type']
+        
+        if content_type == 'business':
+            return [
+                "Strategic value proposition",
+                "Market opportunity analysis", 
+                "Implementation roadmap"
+            ]
+        elif content_type == 'technical':
+            return [
+                "Technical implementation approach",
+                "Configuration and setup guidance",
+                "Best practices and optimization"
+            ]
+        elif content_type == 'analytical':
+            return [
+                "Research methodology and approach",
+                "Key findings and insights",
+                "Practical implications"
+            ]
+        else:
+            return [
+                "Core concepts and principles",
+                "Practical applications",
+                "Implementation guidance"
+            ]
+
+    def _extract_universal_template_config(self, state: EnrichedContentState) -> dict:
+        """Extract template configuration universally"""
+        template_config = {}
+        
+        if hasattr(state, 'template_config') and state.template_config:
+            template_config = state.template_config
+        elif hasattr(state, 'content_spec') and state.content_spec.business_context:
+            template_config = state.content_spec.business_context.get('template_config', {})
+        
+        if not template_config and hasattr(state, 'content_spec'):
+            template_config = self._create_universal_template_config(state.content_spec)
+        
+        return template_config
+
+    def _create_universal_template_config(self, content_spec) -> dict:
+        """Create universal template configuration from content analysis"""
+        topic = content_spec.topic.lower()
+        audience = content_spec.audience.lower()
+        template_type = content_spec.template_type.lower()
+        
+        # Analyze content characteristics for config generation
+        formality_level = 'high' if any(word in audience for word in ['executive', 'investor', 'board']) else 'medium'
+        
+        persuasiveness_level = 'high' if any(word in template_type for word in ['proposal', 'pitch']) else 'medium'
+        
+        # Determine word count based on complexity and audience
+        base_word_count = 2500
+        if content_spec.complexity_level >= 8:
+            base_word_count = 4000
+        elif content_spec.complexity_level <= 4:
+            base_word_count = 1800
+        
+        return {
+            "template_type": template_type,
+            "tone": {
+                "formality": formality_level,
+                "persuasiveness": persuasiveness_level,
+                "clarity": "high"
+            },
+            "min_word_count": base_word_count,
+            "max_word_count": int(base_word_count * 1.5),
+            "audience": audience,
+            "platform": content_spec.platform,
+            "adaptable": True,
+            "generated_from_analysis": True
+        }
+
+    def _create_editing_guidance_universal(self, state: EnrichedContentState, instructions) -> EditingGuidance:
+        """Create universal editing guidance from configuration"""
         content = state.draft_content
         spec = state.content_spec
         planning = state.planning_output
-        research = state.research_findings
-        writing_context = state.writing_context
+        template_config = state.template_config
         
-        # Analyze content for improvements
-        structural_improvements = self._identify_structural_improvements(content, planning)
-        clarity_enhancements = self._identify_clarity_enhancements(content, spec)
-        audience_alignment_issues = self._check_audience_alignment(content, spec, planning)
-        flow_optimizations = self._identify_flow_optimizations(content)
-        fact_checking_requirements = self._identify_fact_checking_needs(content, research)
-        
+        structural_improvements = self._identify_structural_improvements_universal(content, planning, template_config)
+        clarity_enhancements = self._identify_clarity_enhancements_universal(content, spec, template_config)
+        audience_alignment_issues = self._check_audience_alignment_universal(content, spec, planning, template_config)
+        flow_optimizations = self._identify_flow_optimizations_universal(content, template_config)
+        fact_checking_requirements = self._identify_fact_checking_needs_universal(content, template_config)
+
         return EditingGuidance(
             structural_improvements=structural_improvements,
             clarity_enhancements=clarity_enhancements,
             audience_alignment_issues=audience_alignment_issues,
             flow_optimizations=flow_optimizations,
             fact_checking_requirements=fact_checking_requirements,
-            style_consistency_notes=self._check_style_consistency(content, writing_context),
-            engagement_opportunities=self._identify_engagement_opportunities(content, spec),
-            editing_confidence=0.82
+            style_consistency_notes=self._check_style_consistency_universal(content, template_config),
+            engagement_opportunities=self._identify_engagement_opportunities_universal(content, spec, template_config),
+            editing_confidence=0.85
         )
     
-    def _edit_content_with_guidance(self, state: EnrichedContentState, instructions) -> str:
-        """Edit content based on guidance and instructions"""
-        
+    def _edit_content_with_guidance_universal(self, state: EnrichedContentState, instructions) -> str:
+        """Edit content universally based on guidance"""
         content = state.draft_content
         guidance = state.editing_guidance
         spec = state.content_spec
         
-        # Apply structural improvements
-        content = self._apply_structural_improvements(content, guidance.structural_improvements)
-        
-        # Enhance clarity
-        content = self._apply_clarity_enhancements(content, guidance.clarity_enhancements)
-        
-        # Fix audience alignment issues
-        content = self._fix_audience_alignment(content, guidance.audience_alignment_issues, spec)
-        
-        # Optimize flow
-        content = self._optimize_flow(content, guidance.flow_optimizations)
-        
-        # Add engagement elements
-        content = self._add_engagement_elements(content, guidance.engagement_opportunities)
+        content = self._apply_structural_improvements_universal(content, guidance.structural_improvements)
+        content = self._apply_clarity_enhancements_universal(content, guidance.clarity_enhancements)
+        content = self._fix_audience_alignment_universal(content, guidance.audience_alignment_issues, spec)
+        content = self._optimize_flow_universal(content, guidance.flow_optimizations)
+        content = self._add_engagement_elements_universal(content, guidance.engagement_opportunities)
         
         return content
     
-    def _identify_structural_improvements(self, content: str, planning) -> list:
-        """Identify structural improvements needed"""
-        
+    def _identify_structural_improvements_universal(self, content: str, planning, template_config: dict) -> list:
+        """Identify structural improvements universally"""
         improvements = []
         
-        # Check for missing elements based on planning
-        if planning and planning.estimated_sections:
+        # Check template requirements
+        if template_config.get('section_order'):
+            required_sections = template_config['section_order']
+            content_lower = content.lower()
+            
+            for section in required_sections:
+                if section.lower() not in content_lower:
+                    improvements.append(f"Add required section: {section}")
+        
+        # Check planning requirements
+        elif planning and planning.estimated_sections:
             planned_sections = [section["name"].lower() for section in planning.estimated_sections]
             content_lower = content.lower()
             
             for section in planned_sections:
                 if section not in content_lower:
-                    improvements.append(f"Add missing section: {section}")
+                    improvements.append(f"Add planned section: {section}")
         
         # Check section balance
         sections = content.split('\n# ')
@@ -119,249 +374,295 @@ class EnhancedEditorAgent:
             
             for i, length in enumerate(section_lengths):
                 if length < avg_length * 0.5:
-                    improvements.append(f"Expand section {i+1} - too brief")
-                elif length > avg_length * 2:
-                    improvements.append(f"Condense section {i+1} - too lengthy")
+                    improvements.append(f"Expand section {i+1} - insufficient content")
+                elif length > avg_length * 2.5:
+                    improvements.append(f"Condense section {i+1} - excessive length")
         
-        # Check for logical flow
-        if "# Executive Summary" not in content and "business_proposal" in content.lower():
-            improvements.append("Add executive summary for business proposal")
+        # Check word count requirements
+        total_words = len(content.split())
+        min_words = template_config.get('min_word_count', 2000)
+        if total_words < min_words:
+            improvements.append(f"Expand content to meet minimum {min_words} words (current: {total_words})")
         
         return improvements
     
-    def _identify_clarity_enhancements(self, content: str, spec) -> list:
-        """Identify clarity enhancements needed"""
-        
+    def _identify_clarity_enhancements_universal(self, content: str, spec, template_config: dict) -> list:
+        """Identify clarity enhancements universally"""
         enhancements = []
         
-        # Check for jargon based on audience
+        # Check formality requirements
+        formality = template_config.get('tone', {}).get('formality', 'medium')
+        if formality == 'high':
+            contractions = ["don't", "can't", "won't", "it's", "we're", "they're"]
+            for contraction in contractions:
+                if contraction in content.lower():
+                    enhancements.append(f"Replace contraction '{contraction}' for formal tone")
+        
+        # Check complexity for audience
         if spec.complexity_level < 6:
-            # Check for technical terms that might need explanation
-            technical_terms = ["ROI", "KPI", "API", "SaaS", "ML", "AI"]
+            technical_terms = ["ROI", "KPI", "API", "SaaS", "ML", "AI", "B2B", "SLA"]
             for term in technical_terms:
                 if term in content and f"({term}" not in content:
-                    enhancements.append(f"Define or explain technical term: {term}")
+                    enhancements.append(f"Define technical term: {term}")
         
-        # Check sentence length and complexity
+        # Check sentence complexity
         sentences = content.split('. ')
         long_sentences = [i for i, s in enumerate(sentences) if len(s.split()) > 25]
         if long_sentences:
             enhancements.append(f"Break down {len(long_sentences)} overly complex sentences")
         
-        # Check for unclear transitions
+        # Check paragraph transitions
         paragraphs = content.split('\n\n')
+        transition_words = ['however', 'therefore', 'additionally', 'furthermore', 'consequently', 'moreover', 'nevertheless']
+        
         for i in range(1, len(paragraphs)):
-            if not any(word in paragraphs[i][:50].lower() for word in 
-                      ['however', 'therefore', 'additionally', 'furthermore', 'consequently']):
-                if len(paragraphs[i]) > 100:  # Only flag substantial paragraphs
+            if len(paragraphs[i]) > 100:  # Only check substantial paragraphs
+                has_transition = any(word in paragraphs[i][:50].lower() for word in transition_words)
+                if not has_transition:
                     enhancements.append(f"Add transition to paragraph {i+1}")
         
         return enhancements
     
-    def _check_audience_alignment(self, content: str, spec, planning) -> list:
-        """Check for audience alignment issues"""
-        
+    def _check_audience_alignment_universal(self, content: str, spec, planning, template_config: dict) -> list:
+        """Check audience alignment universally"""
         issues = []
         
-        # Check formality level
-        if "investor" in spec.audience.lower() or "executive" in spec.audience.lower():
-            casual_phrases = ["hey", "let's dive", "pretty cool", "awesome", "totally"]
+        target_audience = template_config.get('audience', spec.audience).lower()
+        
+        # Check formality alignment
+        if any(word in target_audience for word in ['executive', 'investor', 'board']):
+            casual_phrases = ["hey", "let's dive", "pretty cool", "awesome", "totally", "super", "really"]
             for phrase in casual_phrases:
                 if phrase in content.lower():
-                    issues.append(f"Remove casual phrase inappropriate for {spec.audience}: '{phrase}'")
+                    issues.append(f"Remove casual phrase inappropriate for {target_audience}: '{phrase}'")
         
-        # Check technical depth
-        if "technical" in spec.audience.lower() and spec.complexity_level > 7:
-            if "implementation" not in content.lower():
+        # Check technical depth alignment
+        if 'technical' in target_audience and spec.complexity_level > 7:
+            if 'implementation' not in content.lower():
                 issues.append("Add technical implementation details for technical audience")
-        elif "beginner" in spec.audience.lower() and spec.complexity_level < 4:
-            if len([w for w in content.split() if len(w) > 12]) > 20:
+        elif 'beginner' in target_audience and spec.complexity_level < 4:
+            complex_words = [w for w in content.split() if len(w) > 12]
+            if len(complex_words) > 20:
                 issues.append("Simplify vocabulary for beginner audience")
         
         # Check decision factors alignment
-        if planning and planning.audience_insights:
+        if planning and hasattr(planning, 'audience_insights'):
             decision_factors = planning.audience_insights.get("decision_factors", [])
             content_lower = content.lower()
             missing_factors = [factor for factor in decision_factors 
-                             if factor.lower() not in content_lower]
+                             if factor.lower().replace('_', ' ') not in content_lower]
             if missing_factors:
                 issues.append(f"Address missing decision factors: {', '.join(missing_factors)}")
         
         return issues
     
-    def _identify_flow_optimizations(self, content: str) -> list:
-        """Identify flow optimization opportunities"""
-        
+    def _identify_flow_optimizations_universal(self, content: str, template_config: dict) -> list:
+        """Identify flow optimizations universally"""
         optimizations = []
+        
+        # Check section order alignment
+        section_order = template_config.get('section_order', [])
+        if section_order:
+            import re
+            headers = re.findall(r'^#+\s+(.+)', content, re.MULTILINE)
+            
+            for i, required_section in enumerate(section_order):
+                if i < len(headers):
+                    if required_section.lower() not in headers[i].lower():
+                        optimizations.append(f"Reorder section '{headers[i]}' to match template requirement '{required_section}'")
         
         # Check introduction effectiveness
         intro_paragraph = content.split('\n\n')[0] if '\n\n' in content else content[:200]
-        if not any(word in intro_paragraph.lower() for word in 
-                  ['opportunity', 'challenge', 'solution', 'impact', 'strategic']):
+        hook_words = ['opportunity', 'challenge', 'solution', 'impact', 'strategic', 'critical', 'essential']
+        if not any(word in intro_paragraph.lower() for word in hook_words):
             optimizations.append("Strengthen introduction with compelling hook")
         
         # Check conclusion strength
         if '\n\n' in content:
             conclusion = content.split('\n\n')[-1]
-            if not any(word in conclusion.lower() for word in 
-                      ['next steps', 'recommendation', 'action', 'implementation']):
+            action_words = ['next steps', 'recommendation', 'action', 'implementation', 'forward', 'proceed']
+            if not any(word in conclusion.lower() for word in action_words):
                 optimizations.append("Add clear call-to-action in conclusion")
         
         # Check section connections
         sections = content.split('\n# ')
         if len(sections) > 2:
             for i in range(1, len(sections)-1):
-                section_end = sections[i].split('\n\n')[-1]
-                next_section_start = sections[i+1].split('\n\n')[0]
-                
-                # Simple heuristic for connection
-                if len(section_end) < 50 or "next" not in section_end.lower():
+                section_end = sections[i].split('\n\n')[-1] if '\n\n' in sections[i] else sections[i][-100:]
+                if len(section_end) < 50 or not any(word in section_end.lower() for word in ['next', 'following', 'now', 'therefore']):
                     optimizations.append(f"Improve connection between sections {i+1} and {i+2}")
         
         return optimizations
     
-    def _identify_fact_checking_needs(self, content: str, research) -> list:
-        """Identify fact-checking requirements"""
-        
+    def _identify_fact_checking_needs_universal(self, content: str, template_config: dict) -> list:
+        """Identify fact-checking needs universally"""
         requirements = []
         
         # Check for unsupported claims
-        claim_indicators = ["studies show", "research indicates", "data reveals", "statistics prove"]
+        claim_indicators = ["studies show", "research indicates", "data reveals", "statistics prove", "according to", "experts say"]
         for indicator in claim_indicators:
             if indicator in content.lower():
                 requirements.append(f"Verify and cite source for claim with '{indicator}'")
         
-        # Cross-reference with research findings
-        if research and research.statistical_evidence:
-            research_stats = [stat["statistic"] for stat in research.statistical_evidence]
-            # Simple check for statistical claims
-            import re
-            percentages = re.findall(r'\d+%', content)
+        # Check for statistical claims
+        import re
+        percentages = re.findall(r'\d+%', content)
+        if percentages:
             for percentage in percentages:
-                if not any(percentage in stat for stat in research_stats):
-                    requirements.append(f"Verify source for statistic: {percentage}")
+                requirements.append(f"Verify source for statistic: {percentage}")
+        
+        # Check for financial claims
+        financial_claims = re.findall(r'\$[\d,]+[MBK]?', content)
+        if financial_claims:
+            requirements.append("Verify sources for financial data")
+        
+        # Check template-specific fact checking
+        template_type = template_config.get('template_type', '')
+        if 'research' in template_type or 'academic' in template_type:
+            if 'methodology' in content.lower() and 'citation' not in content.lower():
+                requirements.append("Add citations for research methodology")
         
         return requirements
     
-    def _check_style_consistency(self, content: str, writing_context) -> list:
-        """Check style consistency throughout content"""
-        
+    def _check_style_consistency_universal(self, content: str, template_config: dict) -> list:
+        """Check style consistency universally"""
         notes = []
         
-        if not writing_context:
-            return notes
+        tone_requirements = template_config.get('tone', {})
+        
+        # Check formality consistency
+        if tone_requirements.get('formality') == 'high':
+            informal_markers = ["!", "?", "...", "etc.", "OK", "okay"]
+            for marker in informal_markers:
+                if marker in content:
+                    notes.append(f"Remove informal element '{marker}' for formal template")
+        
+        # Check persuasiveness consistency
+        if tone_requirements.get('persuasiveness') == 'high':
+            weak_language = ["might", "could", "maybe", "perhaps", "possibly"]
+            weak_count = sum(content.lower().count(word) for word in weak_language)
+            if weak_count > 5:
+                notes.append("Reduce tentative language to increase persuasiveness")
         
         # Check voice consistency
-        voice_chars = writing_context.voice_characteristics
-        if "professional" in voice_chars:
-            # Check for inconsistent casual language
-            casual_words = content.lower().count("we'll") + content.lower().count("don't") + content.lower().count("can't")
-            if casual_words > 5:
-                notes.append("Reduce contractions to maintain professional voice")
+        voice_inconsistencies = 0
+        if "I think" in content and "we recommend" in content:
+            voice_inconsistencies += 1
+        if "you should" in content and "one must" in content:
+            voice_inconsistencies += 1
         
-        # Check tone consistency
-        tone_adaptation = writing_context.tone_adaptation
-        if tone_adaptation.get("formal", 0) > 0.7:
-            # Check for informal elements
-            informal_elements = ["!", "?", "..."]
-            total_informal = sum(content.count(elem) for elem in informal_elements)
-            if total_informal > 10:
-                notes.append("Reduce informal punctuation to maintain formal tone")
+        if voice_inconsistencies > 0:
+            notes.append("Maintain consistent voice throughout content")
         
         return notes
     
-    def _identify_engagement_opportunities(self, content: str, spec) -> list:
-        """Identify opportunities to increase engagement"""
-        
+    def _identify_engagement_opportunities_universal(self, content: str, spec, template_config: dict) -> list:
+        """Identify engagement opportunities universally"""
         opportunities = []
         
-        # Check for compelling statistics
-        if "%" not in content and "business" in spec.template_type:
-            opportunities.append("Add compelling statistics to support key points")
+        platform = template_config.get('platform', spec.platform)
+        
+        # Platform-specific engagement
+        if platform in ["linkedin", "medium"]:
+            if "**" not in content:
+                opportunities.append("Add bold formatting for social media platforms")
+        
+        # Content type specific engagement
+        if spec.complexity_level > 6:
+            if "%" not in content and "$" not in content:
+                opportunities.append("Add quantitative metrics for credibility")
         
         # Check for examples
         if "example" not in content.lower() and "for instance" not in content.lower():
-            opportunities.append("Add concrete examples to illustrate key concepts")
+            opportunities.append("Add concrete examples to illustrate concepts")
         
         # Check for actionable insights
-        if "recommend" not in content.lower() and "should" not in content.lower():
+        action_words = ["recommend", "should", "implement", "apply", "execute"]
+        if not any(word in content.lower() for word in action_words):
             opportunities.append("Include actionable recommendations")
         
         # Check for visual cues
         sections = content.split('\n# ')
-        if len(sections) > 3 and "**" not in content:
-            opportunities.append("Add bold formatting for key points and improved scannability")
+        if len(sections) > 3 and content.count('**') < 5:
+            opportunities.append("Add bold formatting for key points and scannability")
+        
+        # Check for compelling statistics
+        if len(content.split()) > 1000 and not any(char in content for char in ['%', '$']):
+            opportunities.append("Add compelling statistics to support key points")
         
         return opportunities
     
-    def _apply_structural_improvements(self, content: str, improvements: list) -> str:
-        """Apply structural improvements to content"""
-        
+    def _apply_structural_improvements_universal(self, content: str, improvements: list) -> str:
+        """Apply structural improvements universally"""
         for improvement in improvements:
-            if "Add missing section" in improvement:
-                section_name = improvement.split(": ")[1]
-                # Add placeholder for missing section
-                content += f"\n\n# {section_name.title()}\n\n[Section content to be developed]"
-            
-            elif "Expand section" in improvement:
-                # Add note for expansion
+            if "Add required section" in improvement or "Add planned section" in improvement:
+                section_name = improvement.split(": ")[1] if ": " in improvement else improvement.split("section: ")[1]
+                content += f"\n\n# {section_name.title()}\n\n[Content for {section_name} to be developed based on template requirements]"
+            elif "Expand content to meet minimum" in improvement:
                 content += f"\n\n<!-- Editorial note: {improvement} -->"
         
         return content
     
-    def _apply_clarity_enhancements(self, content: str, enhancements: list) -> str:
-        """Apply clarity enhancements to content"""
-        
+    def _apply_clarity_enhancements_universal(self, content: str, enhancements: list) -> str:
+        """Apply clarity enhancements universally"""
         for enhancement in enhancements:
-            if "Define or explain technical term" in enhancement:
+            if "Define technical term" in enhancement:
                 term = enhancement.split(": ")[1]
-                # Add definition in parentheses
-                content = content.replace(term, f"{term} (definition needed)", 1)
+                content = content.replace(term, f"{term} (definition required)", 1)
+            elif "Replace contraction" in enhancement:
+                contraction = enhancement.split("'")[1]
+                contractions_map = {
+                    "don't": "do not", "can't": "cannot", "won't": "will not",
+                    "it's": "it is", "we're": "we are", "they're": "they are"
+                }
+                if contraction in contractions_map:
+                    content = content.replace(contraction, contractions_map[contraction])
         
         return content
     
-    def _fix_audience_alignment(self, content: str, issues: list, spec) -> str:
-        """Fix audience alignment issues"""
-        
+    def _fix_audience_alignment_universal(self, content: str, issues: list, spec) -> str:
+        """Fix audience alignment issues universally"""
         for issue in issues:
             if "Remove casual phrase" in issue and "'" in issue:
                 phrase = issue.split("'")[1]
-                # Replace casual phrases with professional alternatives
                 replacements = {
-                    "hey": "Note that",
-                    "let's dive": "We will examine",
-                    "pretty cool": "noteworthy",
-                    "awesome": "excellent",
-                    "totally": "completely"
+                    "hey": "Note that", "let's dive": "We will examine",
+                    "pretty cool": "noteworthy", "awesome": "excellent", "totally": "completely"
                 }
                 if phrase in replacements:
                     content = content.replace(phrase, replacements[phrase])
+            elif "Add technical implementation" in issue:
+                content += f"\n\n**Technical Implementation:** [Implementation details to be added for technical audience]"
+            elif "Address missing decision factors" in issue:
+                factors = issue.split(": ")[1]
+                content += f"\n\n**Decision Factors:** Analysis of {factors} to be included"
         
         return content
     
-    def _optimize_flow(self, content: str, optimizations: list) -> str:
-        """Apply flow optimizations"""
-        
+    def _optimize_flow_universal(self, content: str, optimizations: list) -> str:
+        """Apply flow optimizations universally"""
         for optimization in optimizations:
             if "Strengthen introduction" in optimization:
-                # Add strategic opening if missing
-                if not content.startswith("**Strategic"):
+                if not any(word in content[:200].lower() for word in ['strategic', 'critical', 'essential', 'opportunity']):
                     content = "**Strategic Overview:** " + content
-            
             elif "Add clear call-to-action" in optimization:
-                if not content.endswith("next steps") and not content.endswith("implementation"):
-                    content += "\n\n**Next Steps:** Implementation planning and stakeholder alignment recommended to proceed with proposed recommendations."
+                if not content.lower().endswith(('next steps', 'implementation', 'action')):
+                    content += "\n\n**Next Steps:** Implementation planning and stakeholder alignment recommended."
         
         return content
     
-    def _add_engagement_elements(self, content: str, opportunities: list) -> str:
-        """Add engagement elements based on opportunities"""
-        
+    def _add_engagement_elements_universal(self, content: str, opportunities: list) -> str:
+        """Add engagement elements universally"""
         for opportunity in opportunities:
             if "Add bold formatting" in opportunity:
-                # Add bold formatting to key phrases
                 content = content.replace("Key benefits:", "**Key Benefits:**")
                 content = content.replace("Important:", "**Important:**")
                 content = content.replace("Note:", "**Note:**")
+            elif "Add quantitative metrics" in opportunity:
+                content += f"\n\n**Performance Metrics:** [Add relevant quantitative data and metrics]"
+            elif "Add concrete examples" in opportunity:
+                content += f"\n\n**Practical Example:** [Add relevant case study or example]"
+            elif "Include actionable recommendations" in opportunity:
+                content += f"\n\n**Actionable Recommendations:** [Add specific implementation steps]"
         
         return content

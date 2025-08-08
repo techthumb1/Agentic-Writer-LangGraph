@@ -26,19 +26,19 @@ import {
   Loader2, 
   Sparkles, 
   Zap, 
-  AlertCircle 
+  AlertCircle,
+  Settings,
+  Info
 } from "lucide-react";
 
 import TemplateSelector from "@/components/TemplateSelector";
 import DynamicParameters from "@/components/DynamicParameters";
 import { useQueryClient } from "@tanstack/react-query";
 import GeneratingDialog from "@/components/GeneratingDialog";
-import { useTemplates } from "@/hooks/useTemplates";
-import { Template } from "@/types/template";
+import { useTemplates, getTemplateParametersAsArray } from "@/hooks/useTemplates";
+import { ContentTemplate } from "@/types/content";
 import StyleProfilesSelector from "@/components/StyleProfilesSelector";
 import { useStyleProfiles } from "@/hooks/useStyleProfiles";
-import { 
-  adaptTemplateCollection} from "@/utils/typeAdapters";
 import { z } from "zod";
 
 // Schema Definition
@@ -485,17 +485,24 @@ export default function GeneratePage() {
   const watchedTemplateId = form.watch("templateId");
   const watchedStyleProfileId = form.watch("styleProfileId");
 
-  // Safe template and style profile finding with null checking
-  const selectedTemplate: Template | null = templates && Array.isArray(templates) && watchedTemplateId
-    ? templates.find((t: Template) => t && t.id === watchedTemplateId) || null
+  // Enhanced template and style profile finding with enhanced structure support
+  const selectedTemplate: ContentTemplate | null = templates && Array.isArray(templates) && watchedTemplateId
+    ? templates.find((t: ContentTemplate) => t && t.id === watchedTemplateId) || null
     : null;
-    console.log('🔍 Debug Template Selection:', {
-      watchedTemplateId,
-      templatesCount: templates?.length,
-      selectedTemplate,
-      selectedTemplateParams: selectedTemplate?.parameters,
-      adaptedTemplates: adaptTemplateCollection(templates || [])?.slice(0, 2), // Show first 2
-    });
+
+  console.log('🔍 Enhanced Template Selection:', {
+    watchedTemplateId,
+    templatesCount: templates?.length,
+    selectedTemplate: selectedTemplate ? {
+      id: selectedTemplate.id,
+      title: selectedTemplate.title,
+      templateType: selectedTemplate.templateData?.template_type,
+      sectionsCount: selectedTemplate.templateData?.sections?.length || 0,
+      parametersCount: Object.keys(selectedTemplate.templateData?.parameters || {}).length,
+      hasInstructions: !!selectedTemplate.templateData?.instructions,
+      isEnhanced: selectedTemplate.templateData?.template_type !== 'legacy'
+    } : null,
+  });
     
   const selectedStyleProfile: ExtendedStyleProfile | null = styleProfiles && Array.isArray(styleProfiles) && watchedStyleProfileId
     ? styleProfiles.find((sp: ExtendedStyleProfile) => sp && sp.id === watchedStyleProfileId) || null
@@ -520,41 +527,61 @@ export default function GeneratePage() {
     }
   }, [templates, form]);
 
-  // Update selected template parameters
+  // Enhanced template parameters handling with dynamic structure support
   useEffect(() => {
-    if (selectedTemplate?.parameters && typeof selectedTemplate.parameters === 'object') {
+    if (selectedTemplate?.templateData?.parameters && typeof selectedTemplate.templateData.parameters === 'object') {
       try {
         const newDefaults: Record<string, string | number | boolean> = {};
-        Object.entries(selectedTemplate.parameters).forEach(([paramName, param]) => {
+        
+        // Handle enhanced template parameter structure
+        Object.entries(selectedTemplate.templateData.parameters).forEach(([paramName, param]) => {
           if (!param || typeof param !== 'object' || !paramName) {
-            console.warn('Invalid parameter:', param);
+            console.warn('Invalid enhanced parameter:', param);
             return;
           }
           
           if (param.default !== undefined) {
-            newDefaults[paramName] = param.default;
+            // Only assign if the default is string | number | boolean
+            if (
+              typeof param.default === "string" ||
+              typeof param.default === "number" ||
+              typeof param.default === "boolean"
+            ) {
+              newDefaults[paramName] = param.default;
+            } else if (Array.isArray(param.default) && param.default.length > 0 && typeof param.default[0] === "string") {
+              // If the default is a string array, use the first value or empty string
+              newDefaults[paramName] = param.default[0];
+            } else {
+              // Fallback to empty string
+              newDefaults[paramName] = "";
+            }
           } else {
             switch (param.type) {
               case "text":
               case "textarea":
               case "select":
-              case "string":
                 newDefaults[paramName] = "";
                 break;
               case "number":
+              case "range":
                 newDefaults[paramName] = 0;
                 break;
               case "checkbox":
                 newDefaults[paramName] = false;
+                break;
+              case "date":
+                newDefaults[paramName] = "";
                 break;
               default:
                 newDefaults[paramName] = "";
             }
           }
         });
+        
+        console.log('🔧 Setting enhanced template defaults:', newDefaults);
         form.resetField("dynamic_parameters", { defaultValue: newDefaults });
       } catch (error) {
-        console.error('Error processing template parameters:', error);
+        console.error('Error processing enhanced template parameters:', error);
       }
     }
   }, [watchedTemplateId, selectedTemplate, form]);
@@ -568,7 +595,7 @@ export default function GeneratePage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading templates and style profiles...</p>
+          <p className="mt-4 text-gray-600">Loading enhanced templates and style profiles...</p>
         </div>
       </div>
     );
@@ -585,7 +612,7 @@ export default function GeneratePage() {
                 <div>
                   <h3 className="font-medium">Error Loading Data</h3>
                   <p className="text-sm mt-1">
-                    {templatesError && "Failed to load templates. "}
+                    {templatesError && "Failed to load enhanced templates. "}
                     {profilesError && "Failed to load style profiles."}
                   </p>
                   {templatesErrorDetails?.message && (
@@ -618,7 +645,7 @@ export default function GeneratePage() {
               <div className="flex items-center gap-3 text-yellow-700 dark:text-yellow-300">
                 <AlertCircle className="h-5 w-5" />
                 <div>
-                  <h3 className="font-medium">No Templates Available</h3>
+                  <h3 className="font-medium">No Enhanced Templates Available</h3>
                   <p className="text-sm mt-1">
                     No templates found. Please check your backend connection.
                   </p>
@@ -639,32 +666,56 @@ export default function GeneratePage() {
         </div>
       </div>
     );
-}
+  }
 
-const onSubmit: SubmitHandler<GenerateContentFormValues> = (values) => {
-  console.log('🔍 Form submitted with values:', values);
-  console.log('🔍 Dynamic parameters:', values.dynamic_parameters);
-  
-  const params = values.dynamic_parameters || {};
-  
-  console.log('🔍 Raw form parameters:', params);
-  console.log('✅ Starting generation with all parameters...');
-  
-  startGeneration({
-    template: values.templateId,
-    style_profile: values.styleProfileId,
-    dynamic_parameters: params, // Pass through all parameters as-is
-    platform: values.platform,
-    priority: 1,
-    timeout_seconds: 300,
-    generation_mode: 'standard',
-  });
-};
+  const onSubmit: SubmitHandler<GenerateContentFormValues> = (values) => {
+    console.log('🔍 Enhanced form submitted with values:', values);
+    console.log('🔍 Enhanced dynamic parameters:', values.dynamic_parameters);
+    console.log('🔍 Selected enhanced template:', selectedTemplate?.templateData?.template_type);
+    
+    const params = values.dynamic_parameters || {};
+    
+    console.log('🔍 Raw enhanced form parameters:', params);
+    console.log('✅ Starting enhanced generation with all parameters...');
+    
+    // Enhanced generation request with template configuration
+    type GenerationMode = "standard" | "premium" | "enterprise" | undefined;
+    const generationMode: GenerationMode = 
+      selectedTemplate?.templateData?.generation_mode === "standard" ||
+      selectedTemplate?.templateData?.generation_mode === "premium" ||
+      selectedTemplate?.templateData?.generation_mode === "enterprise"
+        ? selectedTemplate.templateData.generation_mode
+        : "standard";
 
-type GenerationResultMetadata = {
-  saved_path?: string;
-  [key: string]: unknown;
-};
+    const enhancedRequest = {
+      template: values.templateId,
+      style_profile: values.styleProfileId,
+      dynamic_parameters: params,
+      platform: values.platform,
+      priority: 1,
+      timeout_seconds: 300,
+      generation_mode: generationMode,
+      
+      // Enhanced template configuration
+      template_config: selectedTemplate?.templateData ? {
+        template_type: selectedTemplate.templateData.template_type,
+        content_format: selectedTemplate.templateData.content_format,
+        output_structure: selectedTemplate.templateData.output_structure,
+        section_order: selectedTemplate.templateData.section_order,
+        validation_rules: selectedTemplate.templateData.validation_rules,
+        tone: selectedTemplate.templateData.tone,
+        instructions: selectedTemplate.templateData.instructions,
+      } : undefined,
+    };
+    
+    console.log('🚀 Enhanced generation request:', enhancedRequest);
+    startGeneration(enhancedRequest);
+  };
+
+  type GenerationResultMetadata = {
+    saved_path?: string;
+    [key: string]: unknown;
+  };
 
   const handleSaveContent = () => {
     if (result && 'metadata' in result && result.metadata) {
@@ -688,21 +739,26 @@ type GenerationResultMetadata = {
     !templatesLoading && 
     !profilesLoading;
 
+  // Get enhanced parameters for display
+  const enhancedParameters = selectedTemplate ? getTemplateParametersAsArray(selectedTemplate) : [];
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 text-gray-900 dark:text-white">
       {/* Enhanced Header */}
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-          Generate AI Content
+          Generate Enhanced AI Content
         </h1>
         <p className="text-lg text-white max-w-2xl mx-auto">
-          Create high-quality content using our advanced AI models. Select a template and style profile to get started.
+          Create high-quality content using our advanced AI models with enhanced dynamic templates. 
+          Select a template and style profile to get started.
         </p>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
+            {/* Enhanced Template Selection */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -710,31 +766,23 @@ type GenerationResultMetadata = {
                   Content Template
                 </CardTitle>
                 <CardDescription>
-                  Choose the type of content you want to generate.
+                  Choose from our collection of dynamic, enhanced templates.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <TemplateSelector
                   form={form}
-                  templates={adaptTemplateCollection(templates || [])}
+                  templates={templates}
                   isLoadingTemplates={templatesLoading}
                 />
-                {selectedTemplate && (
-                  <div className="mt-4">
-                    <Badge variant="secondary" className="mb-2">
-                      Selected Template
-                    </Badge>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      {selectedTemplate.description || selectedTemplate.name}
-                    </p>
-                  </div>
-                )}
               </CardContent>
             </Card>
+
+            {/* Style Profile Selection */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5 text-purple-600" />
+                  <Palette className="h-5 w-5 text-purple-600" />
                   Style Profile
                 </CardTitle>
                 <CardDescription>
@@ -754,31 +802,136 @@ type GenerationResultMetadata = {
             </Card>
           </div>
 
-         {selectedTemplate && selectedTemplate.parameters && typeof selectedTemplate.parameters === 'object' && Object.keys(selectedTemplate.parameters).length > 0 && (
+          {/* Enhanced Dynamic Parameters */}
+          {selectedTemplate && enhancedParameters.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Template Parameters</CardTitle>
-                <CardDescription>
-                  Provide specific inputs for your selected template.
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Settings className="h-5 w-5 text-purple-600" />
+                      Template Parameters
+                    </CardTitle>
+                    <CardDescription>
+                      Configure your {selectedTemplate.templateData?.template_type || 'dynamic'} template 
+                      with {enhancedParameters.length} specialized parameters.
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedTemplate.templateData?.template_type && (
+                      <Badge variant="secondary">
+                        {selectedTemplate.templateData.template_type}
+                      </Badge>
+                    )}
+                    <Badge variant="outline">
+                      {enhancedParameters.length} params
+                    </Badge>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <DynamicParameters 
-                  parameters={Object.entries(selectedTemplate.parameters).map(([key, param]) => ({
-                    name: key,
-                    label: param.label,
-                    type: param.type === "string" ? "text" : param.type as "text" | "textarea" | "select" | "number" | "checkbox",
-                    options: param.options,
-                    default: param.default,
-                    required: param.required,
-                    placeholder: param.placeholder,
-                    description: param.description
-                  }))} 
-                />
+              <CardContent>
+                <DynamicParameters parameters={enhancedParameters} />
               </CardContent>
             </Card>
           )}
 
+          {/* Enhanced Template Information */}
+          {selectedTemplate && selectedTemplate.templateData && (
+            <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-purple-200 dark:border-purple-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-200">
+                  <Info className="h-5 w-5" />
+                  Template Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-medium text-sm text-purple-700 dark:text-purple-300">Template Type</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {selectedTemplate.templateData.template_type || 'Standard'}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm text-purple-700 dark:text-purple-300">Generation Mode</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {selectedTemplate.templateData.generation_mode || 'Standard'}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm text-purple-700 dark:text-purple-300">Content Sections</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {selectedTemplate.templateData.sections?.length || 0} sections defined
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm text-purple-700 dark:text-purple-300">Output Format</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {selectedTemplate.templateData.content_format || 'Standard'}
+                    </p>
+                  </div>
+                </div>
+                
+                {selectedTemplate.templateData.instructions && (
+                  <div>
+                    <h4 className="font-medium text-sm text-purple-700 dark:text-purple-300 mb-2">
+                      Template Instructions
+                    </h4>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-900 p-3 rounded border max-h-32 overflow-y-auto">
+                      {selectedTemplate.templateData.instructions.slice(0, 300)}
+                      {selectedTemplate.templateData.instructions.length > 300 && '...'}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section Order Preview */}
+                {selectedTemplate.templateData.section_order && selectedTemplate.templateData.section_order.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm text-purple-700 dark:text-purple-300 mb-2">
+                      Section Order
+                    </h4>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedTemplate.templateData.section_order.slice(0, 8).map((section, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {index + 1}. {section.replace(/_/g, ' ')}
+                        </Badge>
+                      ))}
+                      {selectedTemplate.templateData.section_order.length > 8 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{selectedTemplate.templateData.section_order.length - 8} more
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Validation Rules Preview */}
+                {selectedTemplate.templateData.validation_rules && selectedTemplate.templateData.validation_rules.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm text-purple-700 dark:text-purple-300 mb-2">
+                      Validation Rules ({selectedTemplate.templateData.validation_rules.length})
+                    </h4>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                      {selectedTemplate.templateData.validation_rules.slice(0, 3).map((rule, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <div className="w-1 h-1 bg-purple-400 rounded-full"></div>
+                          <span>{rule}</span>
+                        </div>
+                      ))}
+                      {selectedTemplate.templateData.validation_rules.length > 3 && (
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                          <span>+{selectedTemplate.templateData.validation_rules.length - 3} more rules...</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Enhanced Generation Button */}
           <Card className="border-2 border-dashed border-purple-200 dark:border-purple-800">
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -787,10 +940,10 @@ type GenerationResultMetadata = {
                     <Zap className="h-6 w-6 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">Ready to Generate</h3>
+                    <h3 className="font-semibold">Ready to Generate Enhanced Content</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-300">
                       {canGenerate 
-                        ? "Click generate to create your content with AI"
+                        ? `Using ${selectedTemplate?.templateData?.template_type || 'standard'} template with ${enhancedParameters.length} parameters`
                         : "Please select both template and style profile"
                       }
                     </p>
@@ -817,7 +970,7 @@ type GenerationResultMetadata = {
                     ) : (
                       <>
                         <Zap className="h-4 w-4 mr-2" />
-                        Generate Content
+                        Generate Enhanced Content
                       </>
                     )}
                   </Button>
@@ -828,17 +981,23 @@ type GenerationResultMetadata = {
         </form>
       </Form>
 
+      {/* Enhanced Error Display */}
       {error && (
         <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
               <AlertCircle className="h-5 w-5" />
               <div>
-                <span className="font-medium">Generation Failed:</span>
+                <span className="font-medium">Enhanced Generation Failed:</span>
                 <p className="text-sm mt-1">{error}</p>
                 {!USE_BACKEND_API && (
                   <p className="text-xs text-red-600 dark:text-red-400 mt-2">
                     Tip: Enable backend API in environment variables for better reliability
+                  </p>
+                )}
+                {selectedTemplate?.templateData?.template_type && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Template Type: {selectedTemplate.templateData.template_type}
                   </p>
                 )}
               </div>
@@ -847,12 +1006,13 @@ type GenerationResultMetadata = {
         </Card>
       )}
 
+      {/* Enhanced Generation Preview */}
       <EnhancedGenerationPreview
         isGenerating={isGenerating}
         generatedContent={result?.content}
         onCancel={cancelGeneration}
         onSave={handleSaveContent}
-        templateName={selectedTemplate?.name}
+        templateName={selectedTemplate?.title}
         styleProfile={selectedStyleProfile?.name}
       />
 

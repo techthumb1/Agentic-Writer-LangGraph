@@ -36,7 +36,7 @@ class ContentIntent(Enum):
 
 @dataclass
 class ImageGenerationContext:
-    """Enhanced context for intelligent image generation"""
+    """Enhanced context for Enhanced image generation"""
     topic: str
     platform: str
     intent: ContentIntent
@@ -58,7 +58,7 @@ class ImageSpecification:
     color_scheme: str
     composition_type: str
 
-class IntelligentImageAgent:
+class EnhancedImageAgent:
     """
     Advanced image generation agent with enhanced contextual intelligence
     and proper workflow integration
@@ -187,6 +187,11 @@ class IntelligentImageAgent:
     def extract_generation_context(self, state: Dict) -> ImageGenerationContext:
         """Extract and structure comprehensive context from workflow state"""
         
+        
+        # Extract template_config
+        template_config = getattr(state, "template_config", {})
+        if not template_config and hasattr(state, "content_spec"):
+            template_config = state.content_spec.business_context.get("template_config", {})
         # Handle different state structures (dict vs Pydantic)
         if hasattr(state, 'template_config'):
             # Pydantic AgentState structure
@@ -243,7 +248,16 @@ class IntelligentImageAgent:
         )
     
     def determine_optimal_image_style(self, context: ImageGenerationContext) -> ImageStyle:
-        """Intelligent style determination based on comprehensive context analysis"""
+        """Enhanced style determination based on comprehensive context analysis"""
+        
+        # INJECT: Check template_config for explicit image style
+        template_config = context.template_config
+        if template_config and template_config.get('image_style'):
+            template_style = template_config['image_style']
+            try:
+                return ImageStyle(template_style)
+            except ValueError:
+                pass  # Continue with logic below
         
         # Platform-based baseline
         platform_style = self.platform_specs.get(context.platform, {}).get('style', ImageStyle.PROFESSIONAL)
@@ -393,10 +407,10 @@ class IntelligentImageAgent:
     async def generate_images(self, state: Dict) -> Dict:
         """
         Main image generation method - properly aligned with workflow expectations
-        Enhanced with comprehensive context analysis and intelligent generation
+        Enhanced with comprehensive context analysis and enhanced generation
         """
         
-        logger.info(f"Starting intelligent image generation for topic: {state.get('topic', 'Unknown')}")
+        logger.info(f"Starting enhanced image generation for topic: {state.get('topic', 'Unknown')}")
         
         try:
             # Extract comprehensive context
@@ -528,7 +542,7 @@ class IntelligentImageAgent:
 
     
     # Enhanced legacy method for backward compatibility and sync execution
-    def generate_intelligent_image(self, state: Dict) -> Dict:
+    def generate_enhanced_image(self, state: Dict) -> Dict:
         """Legacy sync method - enhanced for production use"""
         
         logger.info(f"Using sync image generation for topic: {state.get('topic', 'Unknown')}")
@@ -595,7 +609,7 @@ class IntelligentImageAgent:
 # Enhanced workflow integration functions
 def _enhanced_image_agent_sync_fn(state: dict) -> dict:
     """Enhanced image agent function for LangGraph workflow - sync version with proper async handling"""
-    image_agent = IntelligentImageAgent()
+    image_agent = EnhancedImageAgent()
     
     # Check if we're already in an async context
 
@@ -603,14 +617,14 @@ def _enhanced_image_agent_sync_fn(state: dict) -> dict:
         
     # We're in an async context, so we need to handle this carefully
     # Use the legacy sync method to avoid event loop conflicts
-    return image_agent.generate_intelligent_image(state)
+    return image_agent.generate_enhanced_image(state)
         
    
 
 # Async version for when explicitly needed
 async def _enhanced_image_agent_async_fn(state: dict) -> dict:
     """Enhanced image agent function for LangGraph workflow - async version"""
-    image_agent = IntelligentImageAgent()
+    image_agent = EnhancedImageAgent()
     return await image_agent.generate_images(state)
 
 # Export sync version for LangGraph compatibility

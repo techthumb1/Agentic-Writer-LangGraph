@@ -4,34 +4,85 @@
 
 id: research_paper_template
 name: Research Paper
-description: Comprehensive academic research paper template
+description: Dynamic academic research paper template that adapts to any field or methodology
 category: academic_research
-complexity: expert
+difficulty: expert
+estimatedLength: 45-60 min
+targetAudience: Researchers, academics, graduate students, and scholars
+icon: "📚"
+tags:
+  - research
+  - academic
+  - scholarly
+  - publication
+
+suggested_sections:
+  - name: abstract
+    description: Concise summary of research objectives, methods, and findings
+  - name: introduction
+    description: Background, problem statement, and research questions
+  - name: literature_review
+    description: Analysis of existing research and theoretical framework
+  - name: methodology
+    description: Research design, data collection, and analysis methods
+  - name: results
+    description: Presentation of findings with data and analysis
+  - name: discussion
+    description: Interpretation of results and implications
+  - name: conclusion
+    description: Summary of contributions and future research directions
+  - name: references
+    description: Bibliography and citation of sources
 
 # Recommended style profiles for this template
 recommended_styles:
   - "phd_dissertation"
   - "peer_review_article"
   - "literature_review"
+  - "methodology_paper"
+  - "conference_abstract"
+  - "research_proposal"
+  - "phd_academic"
 
-# Template structure
-sections:
-  - title: "Abstract"
-    required: True
-  - title: "Introduction"
-    required: True
-  - title: "Literature Review"
-    required: True
-  - title: "Methodology"
-    required: True
-  - title: "Results"
-    required: True
-  - title: "Discussion"
-    required: True
-  - title: "Conclusion"
-    required: True
-  - title: "References"
-    required: True
+system_prompt: |
+  You are a distinguished academic researcher and scholarly writer with expertise across multiple disciplines. Generate rigorous, publication-quality research papers that meet the highest academic standards.
+
+instructions: |
+  Create dynamic, comprehensive academic research papers that adapt to the user's specific field, methodology, and research context.
+  
+  Generate unique, scholarly content that includes:
+  1. **Abstract**: Compelling 150-250 word summary that captures the essence and significance of the research
+  2. **Introduction**: Establishes context, identifies research gaps, and articulates clear research questions
+  3. **Literature Review**: Synthesizes existing research, identifies theoretical frameworks, and positions the current study
+  4. **Methodology**: Detailed research design that enables replication and demonstrates methodological rigor
+  5. **Results**: Clear presentation of findings with appropriate data visualization and statistical analysis
+  6. **Discussion**: Thoughtful interpretation connecting results to theory and broader implications
+  7. **Conclusion**: Strong summary of contributions, limitations, and future research directions
+  8. **References**: Properly formatted academic citations
+  
+  **Enterprise Academic Standards**:
+  - Adapt to any academic discipline (STEM, humanities, social sciences, etc.)
+  - Generate contextually appropriate research topics, methodologies, and findings
+  - Create unique theoretical frameworks, hypotheses, and research questions for each generation
+  - Include field-specific terminology, methodologies, and analytical approaches
+  - Develop original research problems that advance knowledge in the field
+  
+  **Dynamic Research Adaptation**:
+  - Infer the academic field and adjust methodology accordingly
+  - Generate realistic data sets, statistical analyses, and research findings
+  - Create unique participant populations, sample sizes, and research contexts
+  - Adapt citation styles and academic conventions to match the discipline
+  - Develop novel theoretical contributions and practical implications
+  - Generate fresh research gaps and future research directions
+  
+  **Scholarly Rigor**:
+  - Maintain academic tone while ensuring accessibility
+  - Include appropriate statistical methods and analytical techniques
+  - Create logical argument structures with evidence-based conclusions
+  - Demonstrate methodological sophistication and ethical considerations
+  - Show awareness of limitations and alternative explanations
+  
+  Focus on creating research that advances knowledge, demonstrates methodological rigor, and provides valuable contributions to the academic community.
 
 # Content specifications
 target_length:
@@ -42,23 +93,31 @@ target_length:
 # Template requirements
 requirements:
   professional_standards: true
-  evidence_based: True
+  evidence_based: true
   structured_format: true
   audience_appropriate: true
-  actionable_content: False
+  actionable_content: false
+  peer_reviewable: true
+  citation_required: true
+  statistical_rigor: true
+  dynamic_generation: true
+  unique_content: true
 
 # Quality expectations
 quality_targets:
   clarity: 90
-  coherence: 85
-  completeness: 90
+  coherence: 95
+  completeness: 95
   professional_tone: 95
-  audience_alignment: 90
+  academic_rigor: 95
+  methodological_soundness: 90
+  uniqueness: 100
 
 metadata:
-  version: "2.0.0"
-  created_by: "professional_category_system"
-  last_updated: "2025-07-18"
+  version: "3.0.0"
+  created_by: "content_team"
+  last_updated: "2025-08-07"
   template_type: "professional"
   category: "academic_research"
   complexity_level: "expert"
+  parameter_flexibility: "dynamic"

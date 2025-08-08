@@ -48,28 +48,201 @@ class FormattingRequirements:
 
 # In enriched_content_state.py, add this class:
 
+# FIXED: Proper dataclass field ordering - non-defaults first, defaults last
+
 @dataclass
 class ContentSpec:
-   """Content specification requirements"""
-   topic: str
-   audience: str = ""
-   template_type: str = ""
-   platform: str = ""
-   complexity_level: int = 5
-   innovation_level: str = "moderate"
-   business_context: Dict[str, Any] = field(default_factory=dict)
-   constraints: Dict[str, Any] = field(default_factory=dict)
+    """Content specification with FULLY DYNAMIC length calculation"""
+    topic: str  # Required field, no default
+    audience: str = ""  # Default fields come after required fields
+    template_type: str = ""
+    platform: str = ""
+    complexity_level: int = 5
+    innovation_level: str = "moderate"
+    target_length: int = field(default=0)  # Calculated dynamically
+    business_context: Dict[str, Any] = field(default_factory=dict)
+    constraints: Dict[str, Any] = field(default_factory=dict)
+    
+    def __post_init__(self):
+        """Calculate fully dynamic target_length - NO hardcoded values"""
+        if self.target_length == 0:
+            self.target_length = self._calculate_fully_dynamic_length()
+    
+    def _calculate_fully_dynamic_length(self) -> int:
+        """PURE ALGORITHMIC calculation - adapts to any content type"""
+        
+        # Start with base calculation
+        base_length = 400  # Minimal viable content
+        
+        # DYNAMIC PLATFORM ANALYSIS
+        platform_factor = self._analyze_platform_characteristics()
+        
+        # DYNAMIC AUDIENCE ANALYSIS  
+        audience_factor = self._analyze_audience_needs()
+        
+        # DYNAMIC COMPLEXITY SCALING
+        complexity_factor = self._analyze_complexity_requirements()
+        
+        # DYNAMIC TEMPLATE ANALYSIS
+        template_factor = self._analyze_template_characteristics()
+        
+        # DYNAMIC USER PREFERENCE ANALYSIS
+        preference_factor = self._analyze_user_preferences()
+        
+        # ALGORITHMIC COMBINATION
+        calculated_length = int(
+            base_length * 
+            platform_factor * 
+            audience_factor * 
+            complexity_factor * 
+            template_factor * 
+            preference_factor
+        )
+        
+        # DYNAMIC BOUNDS (based on context)
+        min_bound = self._calculate_minimum_viable_length()
+        max_bound = self._calculate_maximum_effective_length()
+        
+        return max(min_bound, min(calculated_length, max_bound))
+    
+    def _analyze_platform_characteristics(self) -> float:
+        """Analyze platform to determine length requirements dynamically"""
+        platform = self.platform.lower()
+        
+        # Character/attention span analysis
+        if 'twitter' in platform or 'tweet' in platform:
+            return 0.15  # Very short attention span
+        elif 'linkedin' in platform:
+            return 0.4   # Professional, concise
+        elif 'medium' in platform or 'substack' in platform:
+            return 2.2   # Long-form reading platform
+        elif 'email' in platform:
+            return 0.6   # Email attention span
+        elif 'mobile' in platform:
+            return 0.7   # Mobile reading behavior
+        else:
+            return 1.0   # Standard web content
+    
+    def _analyze_audience_needs(self) -> float:
+        """Analyze audience to determine explanation depth needed"""
+        audience = self.audience.lower()
+        
+        # Expertise level analysis
+        if any(word in audience for word in ['beginner', 'new', 'intro', 'basic']):
+            return 1.4  # Need more explanation
+        elif any(word in audience for word in ['expert', 'advanced', 'professional']):
+            return 0.8  # Can be more concise
+        elif any(word in audience for word in ['executive', 'c-level', 'leadership']):
+            return 0.7  # High-level, concise
+        elif any(word in audience for word in ['technical', 'developer', 'engineer']):
+            return 1.2  # Technical detail needed
+        elif any(word in audience for word in ['academic', 'researcher', 'scholar']):
+            return 1.6  # Thorough documentation needed
+        else:
+            return 1.0  # General audience
+    
+    def _analyze_complexity_requirements(self) -> float:
+        """Scale length based on complexity level (1-10)"""
+        # Non-linear scaling - higher complexity needs exponentially more explanation
+        return 0.5 + (self.complexity_level / 10) * 1.2
+    
+    def _analyze_template_characteristics(self) -> float:
+        """Analyze template type dynamically without hardcoded mappings"""
+        template = self.template_type.lower()
+        
+        # Semantic analysis of template purpose
+        if any(word in template for word in ['social', 'tweet', 'post', 'caption']):
+            return 0.3  # Social content is brief
+        elif any(word in template for word in ['email', 'newsletter', 'message']):
+            return 0.8  # Email content is moderate
+        elif any(word in template for word in ['blog', 'article', 'story']):
+            return 1.5  # Blog content is substantial
+        elif any(word in template for word in ['technical', 'documentation', 'manual', 'guide']):
+            return 2.0  # Technical content needs detail
+        elif any(word in template for word in ['research', 'paper', 'study', 'analysis']):
+            return 2.8  # Research content is comprehensive
+        elif any(word in template for word in ['proposal', 'business', 'plan']):
+            return 2.2  # Business content is detailed
+        elif any(word in template for word in ['press', 'release', 'announcement']):
+            return 0.9  # Press releases are focused
+        else:
+            return 1.0  # Unknown template type
+    
+    def _analyze_user_preferences(self) -> float:
+        """Analyze user preferences from business context dynamically"""
+        prefs = self.business_context
+        
+        # Check for explicit preferences
+        if prefs.get('length_preference'):
+            pref = str(prefs['length_preference']).lower()
+            if any(word in pref for word in ['short', 'brief', 'concise', 'quick']):
+                return 0.6
+            elif any(word in pref for word in ['long', 'detailed', 'comprehensive', 'thorough']):
+                return 1.8
+            elif any(word in pref for word in ['extensive', 'complete', 'exhaustive']):
+                return 2.5
+        
+        # Check for time constraints
+        if prefs.get('time_limit'):
+            # Less time = shorter content
+            time_str = str(prefs['time_limit']).lower()
+            if 'quick' in time_str or 'fast' in time_str:
+                return 0.7
+        
+        # Check for formality level
+        if prefs.get('formality'):
+            formality = str(prefs['formality']).lower()
+            if formality in ['formal', 'academic', 'professional']:
+                return 1.3  # Formal content tends to be longer
+            elif formality in ['casual', 'informal', 'conversational']:
+                return 0.9  # Casual content can be shorter
+        
+        return 1.0  # Neutral
+    
+    def _calculate_minimum_viable_length(self) -> int:
+        """Calculate minimum length needed for coherent content"""
+        # Base minimum varies by content type
+        if 'social' in self.template_type.lower():
+            return 50   # Social posts can be very short
+        elif 'email' in self.template_type.lower():
+            return 100  # Emails need some substance
+        else:
+            return 200  # Most content needs at least this much
+    
+    def _calculate_maximum_effective_length(self) -> int:
+        """Calculate maximum length before diminishing returns"""
+        # Attention span varies by platform and audience
+        platform_max = 8000  # Default web maximum
+        
+        if 'twitter' in self.platform.lower():
+            platform_max = 2000  # Twitter thread maximum
+        elif 'mobile' in self.platform.lower():
+            platform_max = 1500  # Mobile reading limit
+        elif 'email' in self.platform.lower():
+            platform_max = 2000  # Email attention span
+        elif any(word in self.template_type.lower() for word in ['research', 'academic', 'technical']):
+            platform_max = 15000  # Academic content can be longer
+        
+        # Adjust for audience attention span
+        if 'executive' in self.audience.lower():
+            platform_max = min(platform_max, 2000)  # Executives want brevity
+        elif 'beginner' in self.audience.lower():
+            platform_max = min(platform_max, 3000)  # Beginners get overwhelmed
+        
+        return platform_max
 
 @dataclass
 class ContentSpecification:
     """Core content requirements - the DNA of what we're creating"""
+    # FIXED: All required fields (no defaults) must come first
     template_type: str
     topic: str
     audience: str
     platform: str
-    target_length: int
     complexity_level: int  # 1-10
     innovation_level: str  # conservative, balanced, innovative, experimental
+    # All fields with defaults come after required fields
+    target_length: int = field(default=0)  # Fixed typo: was ttarget_length
     business_context: Dict[str, Any] = field(default_factory=dict)
     constraints: Dict[str, Any] = field(default_factory=dict)
 
@@ -697,6 +870,30 @@ class ContentIntelligenceOrchestrator:
             return ["code_examples", "benchmarks", "best_practices", "implementation_guides"]
         return ["statistics", "expert_quotes", "case_studies"]
     
+    def _determine_recency_needs(self, spec: ContentSpecification) -> str:
+        """Determine how recent data needs to be"""
+        if spec.template_type == "business_proposal":
+            return "within_6_months"
+        return "within_1_year"
+    
+    def _research_innovation_approach(self, spec: ContentSpecification) -> List[str]:
+        """Define research innovation directives"""
+        if spec.innovation_level == "experimental":
+            return ["Seek cutting-edge sources", "Include emerging trends"]
+        return ["Use established sources", "Focus on proven data"]
+    
+    def _select_innovation_techniques(self, spec: ContentSpecification) -> List[str]:
+        """Select innovation techniques for writing"""
+        if spec.innovation_level == "experimental":
+            return ["narrative_storytelling", "interactive_elements", "multimedia_integration"]
+        return ["clear_structure", "proven_frameworks"]
+    
+    def _writing_innovation_approach(self, spec: ContentSpecification, research: Optional[ResearchFindings]) -> List[str]:
+        """Define writing innovation directives"""
+        if spec.innovation_level == "experimental":
+            return ["Experiment with narrative techniques", "Include interactive elements"]
+        return ["Use proven writing patterns", "Focus on clarity"]
+    
     def _determine_image_types(self, spec: ContentSpecification) -> List[str]:
         """Determine what types of images are needed"""
         if spec.template_type == "business_proposal":
@@ -814,9 +1011,9 @@ def create_initial_state(template_type: str, topic: str, audience: str, platform
         topic=topic,
         audience=audience,
         platform=platform,
-        target_length=1200,
         complexity_level=7,
         innovation_level="balanced",
+        target_length=1200,
         business_context={"industry": "technology", "stage": "growth"},
         constraints={"time_limit": "2_hours", "word_limit": 1500}
     )

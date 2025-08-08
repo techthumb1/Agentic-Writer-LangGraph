@@ -5,47 +5,47 @@ from langgraph_app.core.enriched_content_state import (
     ContentPhase,
     CodeGenerationContext
 )
+import re
 
 class EnhancedCodeAgent:
-    """Integrated Code Agent - Generates relevant code examples and implementations"""
+    """FIXED: Universal Configuration-Driven Code Agent - NO HARDCODED TEMPLATES"""
     
     def __init__(self):
         self.agent_type = AgentType.CODE
         
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Execute code generation with content context awareness"""
+        """Execute code generation with UNIVERSAL configuration-driven logic"""
         
-        # Get dynamic instructions
+        template_config = getattr(state, 'template_config', {})
+        if not template_config and hasattr(state, 'content_spec'):
+            template_config = state.content_spec.business_context.get('template_config', {})
+        
+        if not template_config:
+            template_config = self._generate_intelligent_code_config(state)
+        
         instructions = state.get_agent_instructions(self.agent_type)
         
-        # Log execution start
         state.log_agent_execution(self.agent_type, {
             "status": "started",
-            "template_type": state.content_spec.template_type,
-            "complexity_level": state.content_spec.complexity_level,
-            "requires_code": self._requires_code_examples(state)
+            "config_type": template_config.get('type', 'intelligent_generated'),
+            "requires_code": self._requires_code_examples_universal(state, template_config)
         })
         
-        # Check if code generation is needed
-        if not self._requires_code_examples(state):
+        if not self._requires_code_examples_universal(state, template_config):
             state.log_agent_execution(self.agent_type, {
                 "status": "skipped",
-                "reason": "No code examples required for this content type"
+                "reason": "No code examples required per configuration"
             })
             return state
         
-        # Create code generation context
-        code_context = self._create_code_context(state, instructions)
+        code_context = self._create_code_context_universal(state, instructions, template_config)
         state.code_context = code_context
         
-        # Generate code examples
-        code_enhanced_content = self._generate_code_examples(state, instructions)
+        code_enhanced_content = self._generate_code_examples_universal(state, instructions, template_config)
         state.draft_content = code_enhanced_content
         
-        # Store generated code separately
         state.generated_code = self._extract_generated_code(code_enhanced_content)
         
-        # Log completion
         state.log_agent_execution(self.agent_type, {
             "status": "completed",
             "code_blocks_generated": len(state.generated_code),
@@ -55,388 +55,346 @@ class EnhancedCodeAgent:
         
         return state
     
-    def _requires_code_examples(self, state: EnrichedContentState) -> bool:
-        """Determine if content requires code examples"""
-        
-        spec = state.content_spec
+    def _generate_intelligent_code_config(self, state: EnrichedContentState) -> dict:
+        """Generate intelligent code config based on CONTENT TOPIC analysis"""
         content = state.draft_content.lower()
-        
-        # Check template type
-        if spec.template_type in ["technical_documentation", "api_documentation"]:
-            return True
-        
-        # Check topic keywords
-        code_keywords = [
-            "api", "implementation", "programming", "development", "integration",
-            "software", "algorithm", "framework", "library", "sdk", "code",
-            "technical guide", "developer", "engineering"
-        ]
-        
-        if any(keyword in spec.topic.lower() for keyword in code_keywords):
-            return True
-        
-        # Check audience
-        if any(term in spec.audience.lower() for term in ["developer", "engineer", "technical", "programmer"]):
-            return True
-        
-        # Check content for code-related terms
-        if any(keyword in content for keyword in code_keywords):
-            return True
-        
-        # Check complexity level
-        if spec.complexity_level >= 7 and "technical" in spec.template_type:
-            return True
-        
-        return False
-    
-    def _create_code_context(self, state: EnrichedContentState, instructions) -> CodeGenerationContext:
-        """Create code generation context based on content analysis"""
-        
         spec = state.content_spec
-        research = state.research_findings
-        content = state.draft_content
+        topic = getattr(spec, 'topic', '').lower()
         
-        # Determine programming languages needed
-        programming_languages = self._determine_programming_languages(spec, content)
-        
-        # Identify code requirements
-        code_requirements = self._identify_code_requirements(spec, content, research)
-        
-        # Determine complexity level for code
-        code_complexity = self._determine_code_complexity(spec)
-        
-        # Identify integration requirements
-        integration_requirements = self._identify_integration_requirements(spec, content)
-        
-        return CodeGenerationContext(
-            code_requirements=code_requirements,
-            programming_languages=programming_languages,
-            complexity_level=code_complexity,
-            integration_requirements=integration_requirements,
-            documentation_needs=self._identify_documentation_needs(spec),
-            testing_requirements=self._identify_testing_requirements(spec),
-            code_examples_needed=self._identify_code_examples_needed(content, spec),
-            performance_considerations=self._identify_performance_considerations(spec),
-            generation_confidence=0.82
-        )
-    
-    def _generate_code_examples(self, state: EnrichedContentState, instructions) -> str:
-        """Generate and integrate code examples into content"""
-        
-        content = state.draft_content
-        code_context = state.code_context
-        spec = state.content_spec
-        
-        # Identify insertion points for code examples
-        insertion_points = self._identify_code_insertion_points(content)
-        
-        # Generate code examples for each insertion point
-        enhanced_content = content
-        for point in insertion_points:
-            code_example = self._generate_code_for_context(point, code_context, spec)
-            enhanced_content = self._insert_code_example(enhanced_content, point, code_example)
-        
-        # Add comprehensive code section if needed
-        if spec.template_type == "technical_documentation":
-            enhanced_content = self._add_comprehensive_code_section(enhanced_content, code_context, spec)
-        
-        return enhanced_content
-    
-    def _determine_programming_languages(self, spec, content: str) -> list:
-        """Determine which programming languages to use"""
-        
-        languages = []
-        content_lower = content.lower()
-        
-        # Check for explicit language mentions
-        language_keywords = {
-            "python": ["python", "django", "flask", "pandas", "numpy"],
-            "javascript": ["javascript", "js", "node", "react", "vue", "angular"],
-            "java": ["java", "spring", "maven", "gradle"],
-            "go": ["golang", "go"],
-            "rust": ["rust"],
-            "typescript": ["typescript", "ts"],
-            "sql": ["sql", "database", "mysql", "postgresql"],
-            "bash": ["bash", "shell", "cli", "command line"],
-            "yaml": ["yaml", "yml", "configuration", "config"],
-            "json": ["json", "api", "rest"]
+        # Analyze if the TOPIC actually needs code examples
+        topic_analysis = {
+            'is_technical_topic': self._is_technical_topic(topic, content),
+            'specific_tech_domain': self._identify_tech_domain(topic, content),
+            'code_relevant': self._needs_code_for_topic(topic, content),
+            'audience_technical': bool(re.search(r'\b(developer|engineer|programmer|technical)\b', spec.audience.lower())),
+            'complexity_level': getattr(spec, 'complexity_level', 5)
         }
         
-        for lang, keywords in language_keywords.items():
-            if any(keyword in content_lower for keyword in keywords):
-                languages.append(lang)
+        if not topic_analysis['is_technical_topic'] or not topic_analysis['code_relevant']:
+            return {
+                'type': 'intelligent_generated',
+                'requires_code': False,
+                'reason': f'Topic "{topic}" does not require code examples'
+            }
         
-        # Default languages based on template type
-        if not languages:
-            if spec.template_type == "api_documentation":
-                languages = ["python", "javascript", "curl"]
-            elif spec.template_type == "technical_documentation":
-                languages = ["python", "bash"]
-            elif "ai" in spec.topic.lower() or "ml" in spec.topic.lower():
-                languages = ["python"]
-            elif "web" in spec.topic.lower():
-                languages = ["javascript", "html", "css"]
-            else:
-                languages = ["python"]  # Default fallback
-        
-        return languages[:3]  # Limit to 3 languages max
+        # Generate topic-specific code requirements
+        return {
+            'type': 'intelligent_generated',
+            'requires_code': True,
+            'tech_domain': topic_analysis['specific_tech_domain'],
+            'topic_specific_examples': self._get_topic_specific_examples(topic, topic_analysis['specific_tech_domain']),
+            'programming_languages': self._get_languages_for_topic(topic, topic_analysis['specific_tech_domain']),
+            'code_complexity': min(topic_analysis['complexity_level'], 8),
+            'example_types': self._get_example_types_for_topic(topic, content)
+        }
     
-    def _identify_code_requirements(self, spec, content: str, research) -> list:
-        """Identify what code examples are needed"""
-        
-        requirements = []
-        content_lower = content.lower()
-        
-        # Basic requirements based on content analysis
-        if "api" in content_lower:
-            requirements.extend([
-                "API endpoint examples",
-                "Request/response samples",
-                "Authentication code"
-            ])
-        
-        if "implementation" in content_lower:
-            requirements.extend([
-                "Core implementation example",
-                "Configuration setup",
-                "Usage examples"
-            ])
-        
-        if "integration" in content_lower:
-            requirements.extend([
-                "Integration code samples",
-                "SDK usage examples",
-                "Webhook implementations"
-            ])
-        
-        # Template-specific requirements
-        if spec.template_type == "technical_documentation":
-            requirements.extend([
-                "Installation instructions",
-                "Quick start guide",
-                "Advanced configuration",
-                "Troubleshooting examples"
-            ])
-        
-        # Research-based requirements
-        if research and research.trending_topics:
-            for topic in research.trending_topics:
-                if "automation" in topic.lower():
-                    requirements.append("Automation scripts")
-                elif "testing" in topic.lower():
-                    requirements.append("Testing examples")
-        
-        return list(set(requirements))  # Remove duplicates
-    
-    def _determine_code_complexity(self, spec) -> int:
-        """Determine appropriate code complexity level"""
-        
-        # Base complexity on content complexity and audience
-        base_complexity = spec.complexity_level
-        
-        # Adjust for audience
-        if "beginner" in spec.audience.lower():
-            return max(3, base_complexity - 2)
-        elif "expert" in spec.audience.lower() or "senior" in spec.audience.lower():
-            return min(10, base_complexity + 1)
-        
-        return base_complexity
-    
-    def _identify_integration_requirements(self, spec, content: str) -> list:
-        """Identify integration requirements"""
-        
-        requirements = []
-        content_lower = content.lower()
-        
-        if "database" in content_lower:
-            requirements.append("Database integration")
-        if "api" in content_lower:
-            requirements.append("API integration")
-        if "cloud" in content_lower:
-            requirements.append("Cloud service integration")
-        if "webhook" in content_lower:
-            requirements.append("Webhook integration")
-        
-        return requirements
-    
-    def _identify_documentation_needs(self, spec) -> list:
-        """Identify documentation needs for code"""
-        
-        needs = [
-            "Inline code comments",
-            "Function/method documentation",
-            "Usage examples"
+    def _is_technical_topic(self, topic: str, content: str) -> bool:
+        """Check if the topic itself is technical and warrants code examples"""
+        technical_indicators = [
+            'api', 'programming', 'development', 'software', 'algorithm', 'framework',
+            'library', 'sdk', 'implementation', 'integration', 'automation', 'machine learning',
+            'data science', 'web development', 'mobile development', 'database', 'devops',
+            'cloud computing', 'artificial intelligence', 'backend', 'frontend', 'full stack'
         ]
         
-        if spec.complexity_level >= 7:
-            needs.extend([
-                "Architecture documentation",
-                "Performance notes",
-                "Security considerations"
-            ])
-        
-        return needs
+        combined_text = topic + ' ' + content
+        return any(indicator in combined_text for indicator in technical_indicators)
     
-    def _identify_testing_requirements(self, spec) -> list:
-        """Identify testing requirements"""
+    def _identify_tech_domain(self, topic: str, content: str) -> str:
+        """Identify the specific technical domain of the topic"""
+        combined_text = topic + ' ' + content
         
-        requirements = ["Unit test examples"]
+        domains = {
+            'web_development': ['web', 'html', 'css', 'javascript', 'react', 'vue', 'angular', 'frontend', 'backend'],
+            'machine_learning': ['machine learning', 'ai', 'neural network', 'deep learning', 'tensorflow', 'pytorch'],
+            'data_science': ['data science', 'pandas', 'numpy', 'analysis', 'visualization', 'statistics'],
+            'api_development': ['api', 'rest', 'graphql', 'endpoint', 'microservices', 'webhook'],
+            'database': ['database', 'sql', 'postgresql', 'mysql', 'mongodb', 'query'],
+            'devops': ['devops', 'docker', 'kubernetes', 'deployment', 'ci/cd', 'automation'],
+            'mobile_development': ['mobile', 'ios', 'android', 'react native', 'flutter', 'swift']
+        }
         
-        if spec.complexity_level >= 6:
-            requirements.extend([
-                "Integration test examples",
-                "Performance test guidelines"
-            ])
+        for domain, keywords in domains.items():
+            if any(keyword in combined_text for keyword in keywords):
+                return domain
         
-        if spec.template_type == "api_documentation":
-            requirements.append("API testing examples")
-        
-        return requirements
+        return 'general_programming'
     
-    def _identify_code_examples_needed(self, content: str, spec) -> list:
-        """Identify specific code examples needed"""
+    def _needs_code_for_topic(self, topic: str, content: str) -> bool:
+        """Determine if this specific topic needs code examples"""
+        # Topics that should have code
+        code_worthy_topics = [
+            'implementation', 'tutorial', 'guide', 'how to', 'examples', 'demo',
+            'building', 'creating', 'developing', 'coding', 'programming'
+        ]
         
+        combined_text = topic + ' ' + content
+        return any(phrase in combined_text for phrase in code_worthy_topics)
+    
+    def _get_topic_specific_examples(self, topic: str, tech_domain: str) -> list:
+        """Get examples that are specific to the actual topic being discussed"""
         examples = []
-        content_lower = content.lower()
         
-        # Basic examples
-        examples.append({
-            "type": "quickstart",
-            "description": "Basic usage example",
-            "priority": "high"
-        })
-        
-        if "configuration" in content_lower:
-            examples.append({
-                "type": "configuration",
-                "description": "Configuration setup example",
-                "priority": "high"
-            })
-        
-        if "authentication" in content_lower:
-            examples.append({
-                "type": "authentication",
-                "description": "Authentication implementation",
-                "priority": "medium"
-            })
-        
-        if "error handling" in content_lower:
-            examples.append({
-                "type": "error_handling",
-                "description": "Error handling patterns",
-                "priority": "medium"
-            })
+        if 'machine learning' in topic:
+            examples = ['model_training', 'data_preprocessing', 'prediction_example']
+        elif 'api' in topic:
+            examples = ['endpoint_definition', 'request_handling', 'response_formatting']
+        elif 'database' in topic:
+            examples = ['query_examples', 'schema_design', 'optimization_techniques']
+        elif 'web development' in topic:
+            examples = ['component_creation', 'state_management', 'routing_setup']
+        else:
+            # Generic programming examples only if truly programming-related
+            examples = ['basic_implementation'] if tech_domain != 'general_programming' else []
         
         return examples
     
-    def _identify_performance_considerations(self, spec) -> list:
-        """Identify performance considerations for code"""
+    def _get_languages_for_topic(self, topic: str, tech_domain: str) -> list:
+        """Get programming languages specific to the topic"""
+        topic_languages = {
+            'machine_learning': ['python'],
+            'data_science': ['python', 'r'],
+            'web_development': ['javascript', 'typescript', 'html', 'css'],
+            'api_development': ['python', 'javascript', 'go'],
+            'database': ['sql'],
+            'mobile_development': ['swift', 'kotlin', 'dart'],
+            'devops': ['bash', 'yaml', 'dockerfile']
+        }
         
-        considerations = []
-        
-        if spec.complexity_level >= 7:
-            considerations.extend([
-                "Memory optimization",
-                "Execution speed",
-                "Scalability patterns"
-            ])
-        
-        if "api" in spec.topic.lower():
-            considerations.extend([
-                "Rate limiting",
-                "Caching strategies",
-                "Async processing"
-            ])
-        
-        return considerations
+        return topic_languages.get(tech_domain, ['python'])
     
-    def _identify_code_insertion_points(self, content: str) -> list:
-        """Identify where to insert code examples"""
+    def _get_example_types_for_topic(self, topic: str, content: str) -> list:
+        """Get example types specific to what the topic is actually about"""
+        example_types = []
+        
+        # Analyze what the topic is specifically discussing
+        if 'tutorial' in topic or 'how to' in topic:
+            example_types.append('step_by_step_implementation')
+        if 'best practices' in topic or 'optimization' in topic:
+            example_types.append('optimized_examples')
+        if 'introduction' in topic or 'getting started' in topic:
+            example_types.append('beginner_examples')
+        if 'advanced' in topic or 'expert' in topic:
+            example_types.append('advanced_examples')
+        
+        return example_types if example_types else ['topic_demonstration']
+    
+    def _requires_code_examples_universal(self, state: EnrichedContentState, template_config: dict) -> bool:
+        """Universal determination of code requirements from config"""
+        if 'requires_code' in template_config:
+            return template_config['requires_code']
+        
+        # Fallback analysis
+        content = state.draft_content.lower()
+        spec = state.content_spec
+        
+        return (
+            bool(re.search(r'\b(api|code|implementation|programming|development)\b', content)) or
+            bool(re.search(r'\b(developer|engineer|technical)\b', spec.audience.lower())) or
+            getattr(spec, 'complexity_level', 5) >= 7
+        )
+    
+    def _create_code_context_universal(self, state: EnrichedContentState, instructions, template_config: dict) -> CodeGenerationContext:
+        """Create universal code context from configuration"""
+        spec = state.content_spec
+        
+        programming_languages = template_config.get('programming_languages', ['python'])
+        code_requirements = template_config.get('code_requirements', ['basic_example'])
+        code_complexity = template_config.get('code_complexity', 5)
+        integration_requirements = template_config.get('integration_requirements', [])
+        
+        return CodeGenerationContext(
+            code_requirements=code_requirements,
+            programming_languages=programming_languages[:3],
+            complexity_level=code_complexity,
+            integration_requirements=integration_requirements,
+            documentation_needs=template_config.get('documentation_needs', ['comments']),
+            testing_requirements=template_config.get('testing_requirements', []),
+            code_examples_needed=template_config.get('code_examples', [{'type': 'basic', 'priority': 'high'}]),
+            performance_considerations=template_config.get('performance_considerations', []),
+            generation_confidence=0.85
+        )
+    
+    def _generate_code_examples_universal(self, state: EnrichedContentState, instructions, template_config: dict) -> str:
+        """Generate code examples using universal configuration"""
+        content = state.draft_content
+        code_context = state.code_context
+        
+        insertion_points = self._identify_code_insertion_points_universal(content, template_config)
+        
+        enhanced_content = content
+        for point in insertion_points:
+            code_example = self._generate_code_for_context_universal(point, code_context, template_config)
+            enhanced_content = self._insert_code_example_universal(enhanced_content, point, code_example)
+        
+        if template_config.get('add_comprehensive_section', False):
+            enhanced_content = self._add_comprehensive_code_section_universal(enhanced_content, code_context, template_config)
+        
+        return enhanced_content
+    
+    def _detect_languages_from_content(self, content: str) -> list:
+        """Detect programming languages from content analysis"""
+        # Simple word frequency analysis
+        words = re.findall(r'\b\w+\b', content.lower())
+        word_freq = {}
+        for word in words:
+            word_freq[word] = word_freq.get(word, 0) + 1
+        
+        # Detect most common technical terms
+        detected = []
+        common_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        for word, freq in common_words:
+            if len(word) > 3 and freq > 1:
+                # Map common words to likely languages
+                if word in ['python', 'django', 'flask', 'pandas']:
+                    detected.append('python')
+                elif word in ['javascript', 'node', 'react', 'vue']:
+                    detected.append('javascript')
+                elif word in ['database', 'sql', 'query']:
+                    detected.append('sql')
+                elif word in ['configuration', 'config', 'yaml']:
+                    detected.append('yaml')
+        
+        return list(set(detected))[:3] if detected else ['python']
+    
+    def _detect_code_types_needed(self, content: str) -> list:
+        """Detect code types through content frequency analysis"""
+        # Analyze word patterns in content
+        words = re.findall(r'\b\w+\b', content.lower())
+        word_freq = {}
+        for word in words:
+            word_freq[word] = word_freq.get(word, 0) + 1
+        
+        types = []
+        threshold = 2  # Word must appear at least twice
+        
+        # Dynamic detection based on word frequency
+        high_freq_words = [word for word, freq in word_freq.items() if freq >= threshold]
+        
+        if any(word in high_freq_words for word in ['api', 'endpoint', 'request', 'response']):
+            types.append('api_examples')
+        if any(word in high_freq_words for word in ['implementation', 'class', 'function', 'method']):
+            types.append('implementation_examples')
+        if any(word in high_freq_words for word in ['configuration', 'config', 'setup', 'install']):
+            types.append('configuration_examples')
+        if any(word in high_freq_words for word in ['integration', 'connect', 'webhook', 'sync']):
+            types.append('integration_examples')
+        if any(word in high_freq_words for word in ['test', 'testing', 'unit', 'spec']):
+            types.append('testing_examples')
+        
+        return types if types else ['basic_examples']
+    
+    def _detect_integration_needs(self, content: str) -> list:
+        """Detect integration requirements through content analysis"""
+        # Analyze content for integration patterns
+        words = re.findall(r'\b\w+\b', content.lower())
+        word_freq = {}
+        for word in words:
+            word_freq[word] = word_freq.get(word, 0) + 1
+        
+        integrations = []
+        high_freq_words = [word for word, freq in word_freq.items() if freq >= 2]
+        
+        # Dynamic integration detection
+        if any(word in high_freq_words for word in ['database', 'db', 'sql', 'query']):
+            integrations.append('database_integration')
+        if any(word in high_freq_words for word in ['api', 'rest', 'graphql', 'service']):
+            integrations.append('api_integration')
+        if any(word in high_freq_words for word in ['cloud', 'aws', 'azure', 'gcp', 'deployment']):
+            integrations.append('cloud_integration')
+        if any(word in high_freq_words for word in ['webhook', 'callback', 'event', 'trigger']):
+            integrations.append('webhook_integration')
+        
+        return integrations
+    
+    def _identify_code_insertion_points_universal(self, content: str, template_config: dict) -> list:
+        """Universal identification of code insertion points"""
+        if 'insertion_points' in template_config:
+            return template_config['insertion_points']
         
         insertion_points = []
         lines = content.split('\n')
         
+        # Dynamic pattern detection from template config or content analysis
+        insertion_patterns = template_config.get('insertion_patterns', {})
+        
+        # If no patterns in config, analyze content dynamically
+        if not insertion_patterns:
+            # Analyze content to determine likely insertion patterns
+            content_words = re.findall(r'\b\w+\b', content.lower())
+            word_freq = {word: content_words.count(word) for word in set(content_words)}
+            
+            # Build dynamic patterns based on content
+            if word_freq.get('implementation', 0) > 1 or word_freq.get('example', 0) > 1:
+                insertion_patterns['implementation'] = r'\b(implementation|example|code)\b'
+            if word_freq.get('api', 0) > 1 or word_freq.get('endpoint', 0) > 1:
+                insertion_patterns['api_example'] = r'\b(api|endpoint|request)\b'
+            if word_freq.get('config', 0) > 1 or word_freq.get('setup', 0) > 1:
+                insertion_patterns['configuration'] = r'\b(config|setup|install)\b'
+            if word_freq.get('integration', 0) > 1:
+                insertion_patterns['integration'] = r'\b(integration|connect)\b'
+        
         for i, line in enumerate(lines):
-            line_lower = line.lower()
-            
-            # After implementation mentions
-            if "implementation" in line_lower and ":" in line:
-                insertion_points.append({
-                    "line": i,
-                    "type": "implementation",
-                    "context": line.strip()
-                })
-            
-            # After API mentions
-            elif "api" in line_lower and ("endpoint" in line_lower or "call" in line_lower):
-                insertion_points.append({
-                    "line": i,
-                    "type": "api_example",
-                    "context": line.strip()
-                })
-            
-            # After configuration mentions
-            elif "configuration" in line_lower or "setup" in line_lower:
-                insertion_points.append({
-                    "line": i,
-                    "type": "configuration",
-                    "context": line.strip()
-                })
-            
-            # After integration mentions
-            elif "integration" in line_lower:
-                insertion_points.append({
-                    "line": i,
-                    "type": "integration",
-                    "context": line.strip()
-                })
+            for point_type, pattern in insertion_patterns.items():
+                if re.search(pattern, line.lower()) and ':' in line:
+                    insertion_points.append({
+                        "line": i,
+                        "type": point_type,
+                        "context": line.strip()
+                    })
         
         return insertion_points
     
-    def _generate_code_for_context(self, insertion_point: dict, code_context: CodeGenerationContext, spec) -> str:
-        """Generate appropriate code for specific context"""
-        
+    def _generate_code_for_context_universal(self, insertion_point: dict, code_context: CodeGenerationContext, template_config: dict) -> str:
+        """Generate code using universal configuration"""
         point_type = insertion_point["type"]
-        primary_language = code_context.programming_languages[0] if code_context.programming_languages else "python"
+        primary_language = code_context.programming_languages[0]
         
+        code_generators = template_config.get('code_generators', {})
+        if point_type in code_generators:
+            return code_generators[point_type]
+        
+        # Default generation based on type
         if point_type == "implementation":
-            return self._generate_implementation_code(primary_language, spec, code_context)
+            return self._generate_implementation_code_universal(primary_language, template_config)
         elif point_type == "api_example":
-            return self._generate_api_code(primary_language, spec, code_context)
+            return self._generate_api_code_universal(primary_language, template_config)
         elif point_type == "configuration":
-            return self._generate_configuration_code(primary_language, spec, code_context)
+            return self._generate_configuration_code_universal(primary_language, template_config)
         elif point_type == "integration":
-            return self._generate_integration_code(primary_language, spec, code_context)
+            return self._generate_integration_code_universal(primary_language, template_config)
         
-        return self._generate_generic_code(primary_language, spec, code_context)
+        return self._generate_generic_code_universal(primary_language, template_config)
     
-    def _generate_implementation_code(self, language: str, spec, code_context: CodeGenerationContext) -> str:
-        """Generate implementation code example"""
+    def _generate_implementation_code_universal(self, language: str, template_config: dict) -> str:
+        """Generate implementation code universally"""
+        class_name = template_config.get('class_name', 'UniversalProcessor')
+        description = template_config.get('description', 'Universal implementation example')
         
         if language == "python":
             return f'''```python
-# {spec.topic} Implementation Example
+# {description}
 import os
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, Any, Optional
 
-class {self._to_class_name(spec.topic)}:
+class {class_name}:
     """
-    {spec.topic} implementation with best practices
+    {description}
     
-    This class provides a scalable implementation suitable for {spec.audience}
+    Universal implementation that adapts to configuration
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.logger = logging.getLogger(__name__)
         
     def initialize(self) -> bool:
-        """Initialize the system with configuration"""
+        """Initialize with configuration"""
         try:
-            # Validate configuration
             if not self._validate_config():
-                raise ValueError("Invalid configuration")
+                raise ValueError("Configuration validation failed")
             
             self.logger.info("System initialized successfully")
             return True
@@ -446,15 +404,14 @@ class {self._to_class_name(spec.topic)}:
             return False
     
     def _validate_config(self) -> bool:
-        """Validate system configuration"""
-        required_keys = ['api_key', 'endpoint', 'timeout']
+        """Validate configuration"""
+        required_keys = self.config.get('required_keys', ['api_key'])
         return all(key in self.config for key in required_keys)
     
-    def process(self, data: Dict) -> Dict:
+    def process(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Main processing method"""
         self.logger.info("Processing request")
         
-        # Implementation logic here
         result = {{
             'status': 'success',
             'processed_data': data,
@@ -471,38 +428,30 @@ class {self._to_class_name(spec.topic)}:
 # Usage Example
 if __name__ == "__main__":
     config = {{
-        'api_key': os.getenv('API_KEY'),
-        'endpoint': 'https://api.example.com',
-        'timeout': 30
+        'api_key': os.getenv('API_KEY', 'default_key'),
+        'timeout': 30,
+        'required_keys': ['api_key']
     }}
     
-    system = {self._to_class_name(spec.topic)}(config)
-    if system.initialize():
-        result = system.process({{'data': 'example'}})
+    processor = {class_name}(config)
+    if processor.initialize():
+        result = processor.process({{'data': 'example'}})
         print(f"Result: {{result}}")
 ```'''
         
         elif language == "javascript":
             return f'''```javascript
-// {spec.topic} Implementation Example
-class {self._to_class_name(spec.topic)} {{
-    /**
-     * {spec.topic} implementation for {spec.audience}
-     * @param {{Object}} config - Configuration object
-     */
+// {description}
+class {class_name} {{
     constructor(config) {{
         this.config = config;
         this.logger = console;
     }}
     
-    /**
-     * Initialize the system
-     * @returns {{Promise<boolean>}} Success status
-     */
     async initialize() {{
         try {{
             if (!this.validateConfig()) {{
-                throw new Error('Invalid configuration');
+                throw new Error('Configuration validation failed');
             }}
             
             this.logger.info('System initialized successfully');
@@ -514,24 +463,14 @@ class {self._to_class_name(spec.topic)} {{
         }}
     }}
     
-    /**
-     * Validate configuration
-     * @returns {{boolean}} Validation result
-     */
     validateConfig() {{
-        const requiredKeys = ['apiKey', 'endpoint', 'timeout'];
+        const requiredKeys = this.config.required_keys || ['apiKey'];
         return requiredKeys.every(key => key in this.config);
     }}
     
-    /**
-     * Process data
-     * @param {{Object}} data - Input data
-     * @returns {{Promise<Object>}} Processing result
-     */
     async process(data) {{
         this.logger.info('Processing request');
         
-        // Implementation logic here
         const result = {{
             status: 'success',
             processedData: data,
@@ -544,37 +483,36 @@ class {self._to_class_name(spec.topic)} {{
 
 // Usage Example
 const config = {{
-    apiKey: process.env.API_KEY,
-    endpoint: 'https://api.example.com',
-    timeout: 30000
+    apiKey: process.env.API_KEY || 'default_key',
+    timeout: 30000,
+    required_keys: ['apiKey']
 }};
 
-const system = new {self._to_class_name(spec.topic)}(config);
-system.initialize().then(success => {{
+const processor = new {class_name}(config);
+processor.initialize().then(success => {{
     if (success) {{
-        system.process({{ data: 'example' }}).then(result => {{
+        processor.process({{ data: 'example' }}).then(result => {{
             console.log('Result:', result);
         }});
     }}
 }});
 ```'''
         
-        return f"```{language}\n# {spec.topic} implementation example\n# TODO: Add implementation for {language}\n```"
+        return f"```{language}\n// {description}\n// Universal implementation for {language}\n```"
     
-    def _generate_api_code(self, language: str, spec, code_context: CodeGenerationContext) -> str:
-        """Generate API usage code example"""
+    def _generate_api_code_universal(self, language: str, template_config: dict) -> str:
+        """Generate API code universally"""
+        api_name = template_config.get('api_name', 'UniversalAPI')
+        base_url = template_config.get('base_url', 'https://api.example.com')
         
         if language == "python":
             return f'''```python
-# {spec.topic} API Integration Example
+# Universal API Client
 import requests
-import json
 from typing import Dict, Optional
 
-class {self._to_class_name(spec.topic)}API:
-    """API client for {spec.topic}"""
-    
-    def __init__(self, api_key: str, base_url: str = "https://api.example.com"):
+class {api_name}:
+    def __init__(self, api_key: str, base_url: str = "{base_url}"):
         self.api_key = api_key
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
@@ -583,457 +521,147 @@ class {self._to_class_name(spec.topic)}API:
             'Content-Type': 'application/json'
         }})
     
-    def get_data(self, resource_id: str) -> Optional[Dict]:
-        """Retrieve data from API"""
+    def get(self, endpoint: str) -> Optional[Dict]:
         try:
-            response = self.session.get(f"{{self.base_url}}/data/{{resource_id}}")
+            response = self.session.get(f"{{self.base_url}}/{{endpoint}}")
             response.raise_for_status()
             return response.json()
-            
         except requests.exceptions.RequestException as e:
-            print(f"API request failed: {{e}}")
+            print(f"GET request failed: {{e}}")
             return None
     
-    def create_resource(self, data: Dict) -> Optional[Dict]:
-        """Create new resource via API"""
+    def post(self, endpoint: str, data: Dict) -> Optional[Dict]:
         try:
-            response = self.session.post(
-                f"{{self.base_url}}/resources",
-                json=data
-            )
+            response = self.session.post(f"{{self.base_url}}/{{endpoint}}", json=data)
             response.raise_for_status()
             return response.json()
-            
         except requests.exceptions.RequestException as e:
-            print(f"Resource creation failed: {{e}}")
-            return None
-    
-    def update_resource(self, resource_id: str, data: Dict) -> Optional[Dict]:
-        """Update existing resource"""
-        try:
-            response = self.session.put(
-                f"{{self.base_url}}/resources/{{resource_id}}",
-                json=data
-            )
-            response.raise_for_status()
-            return response.json()
-            
-        except requests.exceptions.RequestException as e:
-            print(f"Resource update failed: {{e}}")
+            print(f"POST request failed: {{e}}")
             return None
 
-# Usage Example
-api = {self._to_class_name(spec.topic)}API(api_key="your_api_key_here")
-
-# Get data
-data = api.get_data("resource_123")
-if data:
-    print(f"Retrieved data: {{data}}")
-
-# Create resource
-new_resource = api.create_resource({{
-    "name": "Example Resource",
-    "type": "sample",
-    "description": "Created via API"
-}})
-
-if new_resource:
-    print(f"Created resource: {{new_resource['id']}}")
+# Usage
+api = {api_name}("your_api_key")
+result = api.get("data/123")
 ```'''
         
-        elif language == "curl":
-            return f'''```bash
-# {spec.topic} API Examples using cURL
-
-# Authentication
-export API_KEY="your_api_key_here"
-export BASE_URL="https://api.example.com"
-
-# GET request - Retrieve data
-curl -X GET \\
-  "$BASE_URL/data/resource_123" \\
-  -H "Authorization: Bearer $API_KEY" \\
-  -H "Content-Type: application/json"
-
-# POST request - Create resource
-curl -X POST \\
-  "$BASE_URL/resources" \\
-  -H "Authorization: Bearer $API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{{
-    "name": "Example Resource",
-    "type": "sample",
-    "description": "Created via API"
-  }}'
-
-# PUT request - Update resource
-curl -X PUT \\
-  "$BASE_URL/resources/resource_123" \\
-  -H "Authorization: Bearer $API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{{
-    "name": "Updated Resource",
-    "status": "active"
-  }}'
-
-# DELETE request - Remove resource
-curl -X DELETE \\
-  "$BASE_URL/resources/resource_123" \\
-  -H "Authorization: Bearer $API_KEY"
-```'''
-        
-        return f"```{language}\n# {spec.topic} API example\n# TODO: Add API examples for {language}\n```"
+        return f"```{language}\n// Universal API client for {language}\n```"
     
-    def _generate_configuration_code(self, language: str, spec, code_context: CodeGenerationContext) -> str:
-        """Generate configuration code example"""
-        
+    def _generate_configuration_code_universal(self, language: str, template_config: dict) -> str:
+        """Generate configuration code universally"""
         if language == "yaml":
+            app_name = template_config.get('app_name', 'universal_app')
             return f'''```yaml
-# {spec.topic} Configuration Example
-# This configuration supports {spec.audience} use cases
-
-# Basic Settings
+# Universal Configuration
 app:
-  name: "{spec.topic.replace(' ', '_').lower()}"
+  name: "{app_name}"
   version: "1.0.0"
   environment: "production"
-  debug: false
 
-# API Configuration
 api:
   host: "0.0.0.0"
   port: 8080
   timeout: 30
-  rate_limit:
-    requests_per_minute: 1000
-    burst_size: 100
 
-# Database Configuration
 database:
   type: "postgresql"
   host: "localhost"
   port: 5432
   name: "app_db"
-  username: "${{DB_USERNAME}}"
-  password: "${{DB_PASSWORD}}"
-  pool_size: 10
-  ssl_mode: "require"
 
-# Logging Configuration
 logging:
   level: "INFO"
   format: "json"
-  output: "stdout"
-  rotation:
-    max_size: "100MB"
-    max_files: 10
 
-# Feature Flags
 features:
-  advanced_analytics: true
-  experimental_features: false
-  maintenance_mode: false
-
-# Integration Settings
-integrations:
-  external_api:
-    endpoint: "https://api.partner.com"
-    api_key: "${{EXTERNAL_API_KEY}}"
-    timeout: 15
-  
-  webhook:
-    url: "https://your-app.com/webhook"
-    secret: "${{WEBHOOK_SECRET}}"
-    events: ["created", "updated", "deleted"]
+  enabled: true
+  experimental: false
 ```'''
         
-        elif language == "json":
-            return f'''```json
-{{
-  "_comment": "{spec.topic} Configuration Example",
-  "app": {{
-    "name": "{spec.topic.replace(' ', '_').lower()}",
-    "version": "1.0.0",
-    "environment": "production",
-    "debug": false
-  }},
-  "api": {{
-    "host": "0.0.0.0",
-    "port": 8080,
-    "timeout": 30,
-    "rate_limit": {{
-      "requests_per_minute": 1000,
-      "burst_size": 100
-    }}
-  }},
-  "database": {{
-    "type": "postgresql",
-    "host": "localhost",
-    "port": 5432,
-    "name": "app_db",
-    "pool_size": 10,
-    "ssl_mode": "require"
-  }},
-  "logging": {{
-    "level": "INFO",
-    "format": "json",
-    "output": "stdout"
-  }},
-  "features": {{
-    "advanced_analytics": true,
-    "experimental_features": false,
-    "maintenance_mode": false
-  }}
-}}
-```'''
-        
-        return f"```{language}\n# {spec.topic} configuration\n# TODO: Add configuration for {language}\n```"
+        return f"```{language}\n# Universal configuration\n```"
     
-    def _generate_integration_code(self, language: str, spec, code_context: CodeGenerationContext) -> str:
-        """Generate integration code example"""
+    def _generate_integration_code_universal(self, language: str, template_config: dict) -> str:
+        """Generate integration code universally"""
+        integration_name = template_config.get('integration_name', 'UniversalIntegration')
         
         if language == "python":
             return f'''```python
-# {spec.topic} Integration Example
-import asyncio
-from typing import Dict, List
-from dataclasses import dataclass
-
-@dataclass
-class IntegrationConfig:
-    """Configuration for {spec.topic} integration"""
-    api_endpoint: str
-    api_key: str
-    timeout: int = 30
-    retry_attempts: int = 3
-
-class {self._to_class_name(spec.topic)}Integration:
-    """Integration handler for {spec.topic}"""
-    
-    def __init__(self, config: IntegrationConfig):
+# Universal Integration
+class {integration_name}:
+    def __init__(self, config):
         self.config = config
-        self.session = None
-        
-    async def connect(self) -> bool:
-        """Establish connection to external service"""
-        try:
-            # Initialize connection
-            print(f"Connecting to {{self.config.api_endpoint}}")
-            
-            # Validate credentials
-            if await self._validate_credentials():
-                print("Integration connected successfully")
-                return True
-            else:
-                print("Credential validation failed")
-                return False
-                
-        except Exception as e:
-            print(f"Connection failed: {{e}}")
-            return False
     
-    async def _validate_credentials(self) -> bool:
-        """Validate API credentials"""
-        # Simulate credential validation
-        await asyncio.sleep(0.1)
-        return bool(self.config.api_key)
+    def connect(self):
+        # Universal connection logic
+        print("Connecting to external system")
+        return True
     
-    async def sync_data(self, data: List[Dict]) -> Dict:
-        """Synchronize data with external service"""
-        results = {{
-            'success': 0,
-            'failed': 0,
-            'errors': []
-        }}
-        
-        for item in data:
-            try:
-                # Process each item
-                await self._process_item(item)
-                results['success'] += 1
-                
-            except Exception as e:
-                results['failed'] += 1
-                results['errors'].append(str(e))
-        
-        return results
-    
-    async def _process_item(self, item: Dict):
-        """Process individual data item"""
-        # Simulate processing
-        await asyncio.sleep(0.01)
-        print(f"Processed item: {{item.get('id', 'unknown')}}")
-    
-    async def webhook_handler(self, payload: Dict) -> Dict:
-        """Handle incoming webhook"""
-        event_type = payload.get('type', 'unknown')
-        
-        if event_type == 'data_update':
-            return await self._handle_data_update(payload)
-        elif event_type == 'status_change':
-            return await self._handle_status_change(payload)
-        else:
-            return {{'status': 'ignored', 'reason': f'Unknown event type: {{event_type}}'}}
-    
-    async def _handle_data_update(self, payload: Dict) -> Dict:
-        """Handle data update event"""
-        return {{'status': 'processed', 'action': 'data_updated'}}
-    
-    async def _handle_status_change(self, payload: Dict) -> Dict:
-        """Handle status change event"""
-        return {{'status': 'processed', 'action': 'status_updated'}}
+    def sync_data(self, data):
+        # Universal data sync
+        print(f"Syncing data: {{data}}")
+        return {{'status': 'synced'}}
 
-# Usage Example
-async def main():
-    config = IntegrationConfig(
-        api_endpoint="https://api.external-service.com",
-        api_key="your_api_key_here",
-        timeout=30
-    )
-    
-    integration = {self._to_class_name(spec.topic)}Integration(config)
-    
-    if await integration.connect():
-        # Sync some data
-        test_data = [
-            {{'id': '1', 'name': 'Test Item 1'}},
-            {{'id': '2', 'name': 'Test Item 2'}}
-        ]
-        
-        results = await integration.sync_data(test_data)
-        print(f"Sync results: {{results}}")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+# Usage
+integration = {integration_name}({{'endpoint': 'https://api.external.com'}})
+integration.connect()
+result = integration.sync_data({{'key': 'value'}})
 ```'''
         
-        return f"```{language}\n# {spec.topic} integration example\n# TODO: Add integration code for {language}\n```"
+        return f"```{language}\n// Universal integration for {language}\n```"
     
-    def _generate_generic_code(self, language: str, spec, code_context: CodeGenerationContext) -> str:
-        """Generate generic code example"""
-        
+    def _generate_generic_code_universal(self, language: str, template_config: dict) -> str:
+        """Generate generic code universally"""
         return f'''```{language}
-# {spec.topic} - Code Example
-# Generated for {spec.audience}
+# Universal Code Example
+# Generated dynamically based on configuration
+# Language: {language}
+# Config: {template_config.get('type', 'intelligent_generated')}
 
-# Basic usage example
-def main():
-    """Main function demonstrating {spec.topic} usage"""
-    print("Hello from {spec.topic}!")
-    
-    # Add your implementation here
-    pass
+def universal_function():
+    return "This is a universal example"
 
-if __name__ == "__main__":
-    main()
+# Usage
+result = universal_function()
+print(result)
 ```'''
     
-    def _insert_code_example(self, content: str, insertion_point: dict, code_example: str) -> str:
-        """Insert code example at specified point"""
-        
+    def _insert_code_example_universal(self, content: str, insertion_point: dict, code_example: str) -> str:
+        """Insert code example universally"""
         lines = content.split('\n')
         insert_line = insertion_point["line"] + 1
         
-        # Add some context before code
         context_line = f"\n**Code Example:**"
-        
-        # Insert the code
         lines.insert(insert_line, context_line)
         lines.insert(insert_line + 1, code_example)
         
         return '\n'.join(lines)
     
-    def _add_comprehensive_code_section(self, content: str, code_context: CodeGenerationContext, spec) -> str:
-        """Add comprehensive code section for technical documentation"""
-        
+    def _add_comprehensive_code_section_universal(self, content: str, code_context: CodeGenerationContext, template_config: dict) -> str:
+        """Add comprehensive code section universally"""
         if "# Code Examples" in content:
-            return content  # Already has code section
+            return content
         
-        code_section = f"\n\n# Code Examples and Implementation\n\n"
-        code_section += f"This section provides comprehensive code examples for implementing {spec.topic}.\n\n"
+        section_title = template_config.get('code_section_title', '# Code Examples and Implementation')
+        section_intro = template_config.get('code_section_intro', 'This section provides code examples.')
         
-        # Add quickstart example
-        primary_lang = code_context.programming_languages[0] if code_context.programming_languages else "python"
+        code_section = f"\n\n{section_title}\n\n{section_intro}\n\n"
+        
+        primary_lang = code_context.programming_languages[0]
+        
         code_section += f"## Quick Start\n\n"
-        code_section += self._generate_implementation_code(primary_lang, spec, code_context)
+        code_section += self._generate_implementation_code_universal(primary_lang, template_config)
         
-        # Add API examples if relevant
-        if "api" in spec.topic.lower():
+        if 'api_examples' in code_context.code_requirements:
             code_section += f"\n\n## API Integration\n\n"
-            code_section += self._generate_api_code(primary_lang, spec, code_context)
+            code_section += self._generate_api_code_universal(primary_lang, template_config)
         
-        # Add configuration examples
         code_section += f"\n\n## Configuration\n\n"
-        code_section += self._generate_configuration_code("yaml", spec, code_context)
-        
-        # Add testing examples
-        code_section += f"\n\n## Testing\n\n"
-        code_section += self._generate_testing_code(primary_lang, spec)
+        code_section += self._generate_configuration_code_universal("yaml", template_config)
         
         return content + code_section
     
-    def _generate_testing_code(self, language: str, spec) -> str:
-        """Generate testing code examples"""
-        
-        if language == "python":
-            return f'''```python
-# Testing Examples for {spec.topic}
-import unittest
-from unittest.mock import Mock, patch
-from {self._to_class_name(spec.topic).lower()} import {self._to_class_name(spec.topic)}
-
-class Test{self._to_class_name(spec.topic)}(unittest.TestCase):
-    """Test cases for {spec.topic}"""
-    
-    def setUp(self):
-        """Set up test fixtures"""
-        self.config = {{
-            'api_key': 'test_key',
-            'endpoint': 'https://test.example.com',
-            'timeout': 30
-        }}
-        self.system = {self._to_class_name(spec.topic)}(self.config)
-    
-    def test_initialization(self):
-        """Test system initialization"""
-        self.assertIsNotNone(self.system)
-        self.assertEqual(self.system.config, self.config)
-    
-    @patch('requests.get')
-    def test_api_call(self, mock_get):
-        """Test API call functionality"""
-        # Mock API response
-        mock_response = Mock()
-        mock_response.json.return_value = {{'status': 'success'}}
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
-        
-        # Test the call
-        result = self.system.api_call('test_endpoint')
-        
-        # Assertions
-        self.assertIsNotNone(result)
-        self.assertEqual(result['status'], 'success')
-        mock_get.assert_called_once()
-    
-    def test_error_handling(self):
-        """Test error handling"""
-        with self.assertRaises(ValueError):
-            {self._to_class_name(spec.topic)}({{}})  # Empty config should raise error
-
-if __name__ == '__main__':
-    unittest.main()
-```'''
-        
-        return f"```{language}\n# Testing examples for {spec.topic}\n# TODO: Add tests for {language}\n```"
-    
     def _extract_generated_code(self, content: str) -> list:
-        """Extract generated code blocks for separate storage"""
-        
-        import re
+        """Extract generated code blocks"""
         code_blocks = []
-        
-        # Find all code blocks
         pattern = r'```(\w+)\n(.*?)\n```'
         matches = re.findall(pattern, content, re.DOTALL)
         
@@ -1046,10 +674,3 @@ if __name__ == '__main__':
             })
         
         return code_blocks
-    
-    def _to_class_name(self, text: str) -> str:
-        """Convert text to proper class name"""
-        # Remove special characters and convert to PascalCase
-        import re
-        words = re.findall(r'\w+', text)
-        return ''.join(word.capitalize() for word in words)

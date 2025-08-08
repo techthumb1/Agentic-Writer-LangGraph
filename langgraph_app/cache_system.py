@@ -9,11 +9,13 @@ import json
 import hashlib
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from abc import ABC, abstractmethod
 import time
+import redis
+from typing import Any, Optional, Dict
+from enum import Enum
 
 try:
     import redis.asyncio as redis
@@ -440,95 +442,6 @@ async def create_cache_manager(cache_type: str = "memory",
     
     return ContentCacheManager(backend, **kwargs)
 
-# Example usage and integration
-async def example_usage():
-    """Example of how to use the cache system"""
-    
-    # Create cache manager
-    cache_manager = await create_cache_manager("redis")
-    
-    # Example content generation function
-    async def mock_content_generator(template_id: str, style_profile: str, 
-                                   parameters: Dict[str, Any], model_name: str) -> Tuple[str, Dict]:
-        # Simulate content generation
-        await asyncio.sleep(1)  # Simulate API call
-        content = f"Generated content for {template_id} with {style_profile} style"
-        metadata = {"template": template_id, "style": style_profile}
-        return content, metadata
-    
-    # Test caching
-    template_id = "federated_learning_101"
-    style_profile = "technical_tutor"
-    parameters = {"difficulty": "beginner", "length": "medium"}
-    model_name = "gpt-4o"
-    
-    # First call - should miss cache and generate
-    print("=== First call (cache miss) ===")
-    start_time = time.time()
-    
-    cached_content = await cache_manager.get_cached_content(
-        template_id, style_profile, parameters, model_name
-    )
-    
-    if not cached_content:
-        print("Cache miss - generating content...")
-        content, metadata = await mock_content_generator(
-            template_id, style_profile, parameters, model_name
-        )
-        generation_time = time.time() - start_time
-        
-        # Cache the result
-        await cache_manager.cache_content(
-            template_id, style_profile, parameters, model_name,
-            content, metadata, generation_time
-        )
-        print(f"Generated and cached in {generation_time:.2f}s")
-    else:
-        print(f"Cache hit! Content: {cached_content.content}")
-    
-    # Second call - should hit cache
-    print("\n=== Second call (cache hit) ===")
-    start_time = time.time()
-    
-    cached_content = await cache_manager.get_cached_content(
-        template_id, style_profile, parameters, model_name
-    )
-    
-    if cached_content:
-        retrieval_time = time.time() - start_time
-        print(f"Cache hit! Retrieved in {retrieval_time:.4f}s")
-        print(f"Content: {cached_content.content}")
-        print(f"Hit count: {cached_content.hit_count}")
-        print(f"Originally generated in: {cached_content.generation_time:.2f}s")
-    
-    # Get analytics
-    print("\n=== Cache Analytics ===")
-    analytics = await cache_manager.get_cache_analytics()
-    print(f"Cache stats: {analytics['backend_stats']}")
-    
-    # Test cache warmer
-    print("\n=== Testing Cache Warmer ===")
-    warmer = CacheWarmer(cache_manager)
-    
-    # Add templates to warm
-    warmer.add_warm_template("ai_ethics_story", "popular_sci", {"length": "short"})
-    warmer.add_warm_template("startup_usecases", "founder_storytelling", {"industry": "fintech"})
-    
-    # Warm the cache
-    warming_results = await warmer.warm_cache(mock_content_generator, max_concurrent=2)
-    print(f"Cache warming results: {warming_results}")
-
-if __name__ == "__main__":
-    asyncio.run(example_usage())
-# Add this to the END of your existing langgraph_app/cache_system.py file
-
-import redis
-import json
-import logging
-from typing import Any, Optional, Dict
-from datetime import datetime, timedelta
-from enum import Enum
-import os
 
 logger = logging.getLogger(__name__)
 

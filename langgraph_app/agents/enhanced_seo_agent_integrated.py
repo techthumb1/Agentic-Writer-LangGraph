@@ -7,13 +7,20 @@ from langgraph_app.core.enriched_content_state import (
 )
 
 class EnhancedSEOAgent:
-    """Integrated SEO Agent using EnrichedContentState"""
+    """Integrated SEO Agent using EnrichedContentState with Template Configuration Support"""
     
     def __init__(self):
         self.agent_type = AgentType.SEO
         
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Execute SEO optimization with content context"""
+        """Execute SEO optimization with content context and template configuration"""
+        
+        # TEMPLATE INJECTION: Extract template_config
+        template_config = getattr(state, 'template_config', {})
+        if not template_config and hasattr(state, 'content_spec'):
+            template_config = state.content_spec.business_context.get('template_config', {})
+        
+        print(f"DEBUG seo template_config: {template_config}")
         
         # Get dynamic instructions
         instructions = state.get_agent_instructions(self.agent_type)
@@ -23,15 +30,17 @@ class EnhancedSEOAgent:
             "status": "started",
             "platform": state.content_spec.platform,
             "has_research_context": bool(state.research_findings),
-            "content_length": len(state.draft_content.split())
+            "content_length": len(state.draft_content.split()),
+            "template_config_found": bool(template_config),
+            "template_type": template_config.get('template_type', 'default')
         })
         
-        # Create SEO optimization context
-        seo_context = self._create_seo_context(state, instructions)
+        # Create SEO optimization context with template awareness
+        seo_context = self._create_seo_context(state, instructions, template_config)
         state.seo_context = seo_context
         
-        # Apply SEO optimizations
-        optimized_content = self._apply_seo_optimizations(state, instructions)
+        # Apply SEO optimizations with template configuration
+        optimized_content = self._apply_seo_optimizations(state, instructions, template_config)
         state.draft_content = optimized_content
         
         # Update phase
@@ -42,116 +51,153 @@ class EnhancedSEOAgent:
             "status": "completed",
             "keywords_optimized": len(seo_context.target_keywords),
             "confidence_score": seo_context.optimization_confidence,
-            "optimization_opportunities": len(seo_context.content_optimization_opportunities)
+            "optimization_opportunities": len(seo_context.content_optimization_opportunities),
+            "template_seo_applied": True
         })
         
         return state
     
-    def _create_seo_context(self, state: EnrichedContentState, instructions) -> SEOOptimizationContext:
-        """Create SEO optimization context"""
+    def _create_seo_context(self, state: EnrichedContentState, instructions, template_config: dict) -> SEOOptimizationContext:
+        """Create SEO optimization context with template configuration"""
         
         spec = state.content_spec
         research = state.research_findings
         planning = state.planning_output
         
-        # Extract target keywords
-        target_keywords = self._extract_target_keywords(spec, research, planning)
+        # Extract target keywords with template priority
+        target_keywords = self._extract_target_keywords(spec, research, planning, template_config)
         
-        # Determine search intent
-        search_intent = self._determine_search_intent(spec, planning)
+        # Determine search intent with template context
+        search_intent = self._determine_search_intent(spec, planning, template_config)
         
-        # Analyze competitors (simplified)
-        competitor_analysis = self._analyze_competitors(spec, research)
+        # Analyze competitors with template awareness
+        competitor_analysis = self._analyze_competitors(spec, research, template_config)
         
         # Identify optimization opportunities
-        optimization_opportunities = self._identify_optimization_opportunities(state)
+        optimization_opportunities = self._identify_optimization_opportunities(state, template_config)
         
         return SEOOptimizationContext(
             target_keywords=target_keywords,
             search_intent=search_intent,
             competitor_analysis=competitor_analysis,
             content_optimization_opportunities=optimization_opportunities,
-            meta_data_requirements=self._define_meta_requirements(spec, target_keywords),
-            internal_linking_strategy=self._plan_internal_linking(spec),
-            featured_snippet_opportunities=self._identify_snippet_opportunities(state),
+            meta_data_requirements=self._define_meta_requirements(spec, target_keywords, template_config),
+            internal_linking_strategy=self._plan_internal_linking(spec, template_config),
+            featured_snippet_opportunities=self._identify_snippet_opportunities(state, template_config),
             optimization_confidence=0.78
         )
     
-    def _apply_seo_optimizations(self, state: EnrichedContentState, instructions) -> str:
-        """Apply SEO optimizations to content"""
-        
-        content = state.draft_content
-        seo_context = state.seo_context
-        
-        # Optimize title and headers
-        content = self._optimize_title_and_headers(content, seo_context)
-        
-        # Optimize keyword density
-        content = self._optimize_keyword_integration(content, seo_context)
-        
-        # Add semantic keywords
-        content = self._add_semantic_keywords(content, seo_context)
-        
-        # Optimize for featured snippets
-        content = self._optimize_for_snippets(content, seo_context)
-        
-        # Add internal linking suggestions
-        content = self._add_internal_linking(content, seo_context)
-        
-        return content
-    
-    def _extract_target_keywords(self, spec, research, planning) -> list:
-        """Extract target keywords from context"""
+    def _extract_target_keywords(self, spec, research, planning, template_config: dict) -> list:
+        """Extract keywords with template configuration taking precedence"""
         
         keywords = []
+        
+        # TEMPLATE ENFORCEMENT: Use template-specific keywords first
+        if template_config.get('seo_keywords'):
+            keywords.extend(template_config['seo_keywords'])
+            print(f"DEBUG: Added template SEO keywords: {template_config['seo_keywords']}")
+        
+        # Template-type specific keywords
+        template_type = template_config.get('template_type', spec.template_type)
+        
+        if template_type == "venture_capital_pitch":
+            template_keywords = [
+                "venture capital funding",
+                "startup investment opportunity", 
+                "Series A funding",
+                "startup pitch deck",
+                "VC investment thesis",
+                "startup traction metrics",
+                "venture funding round"
+            ]
+            keywords.extend(template_keywords)
+            print("DEBUG: Added VC pitch keywords")
+            
+        elif template_type == "business_proposal":
+            template_keywords = [
+                "business proposal template",
+                "ROI analysis framework",
+                "strategic implementation plan",
+                "business case development",
+                "investment proposal strategy",
+                "business growth strategy"
+            ]
+            keywords.extend(template_keywords)
+            print("DEBUG: Added business proposal keywords")
+            
+        elif template_type == "technical_documentation":
+            template_keywords = [
+                "technical documentation guide",
+                "API implementation tutorial",
+                "software architecture patterns",
+                "technical specifications",
+                "developer documentation",
+                "implementation best practices"
+            ]
+            keywords.extend(template_keywords)
+            print("DEBUG: Added technical doc keywords")
         
         # Primary keyword from topic
         keywords.append(spec.topic.lower())
         
         # Keywords from research trending topics
         if research and research.trending_topics:
-            keywords.extend([topic.lower() for topic in research.trending_topics[:3]])
+            research_keywords = [topic.lower() for topic in research.trending_topics[:3]]
+            keywords.extend(research_keywords)
         
         # Keywords from planning key messages
         if planning and planning.key_messages:
             for message in planning.key_messages:
-                # Extract key terms
+                # Extract key terms (longer than 5 characters)
                 words = message.lower().split()
                 important_words = [word for word in words if len(word) > 5]
                 keywords.extend(important_words[:2])
         
         # Industry and audience keywords
-        keywords.append(spec.business_context.get("industry", "business").lower())
-        keywords.append(spec.audience.lower().replace("_", " "))
+        industry = spec.business_context.get("industry", "business")
+        keywords.extend([industry.lower(), spec.audience.lower().replace("_", " ")])
         
-        # Template-specific keywords
-        if spec.template_type == "business_proposal":
-            keywords.extend(["roi", "implementation", "strategy", "investment"])
-        elif spec.template_type == "technical_documentation":
-            keywords.extend(["implementation", "guide", "technical", "documentation"])
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_keywords = []
+        for keyword in keywords:
+            if keyword not in seen and len(keyword) > 2:  # Filter out very short keywords
+                unique_keywords.append(keyword)
+                seen.add(keyword)
         
-        return list(set(keywords))[:10]  # Limit and deduplicate
+        return unique_keywords[:15]  # Limit to top 15 keywords
     
-    def _determine_search_intent(self, spec, planning) -> str:
-        """Determine primary search intent"""
+    def _determine_search_intent(self, spec, planning, template_config: dict) -> str:
+        """Determine primary search intent with template context"""
         
-        if spec.template_type == "business_proposal":
-            return "commercial"  # Users looking to invest/buy
-        elif "guide" in spec.topic.lower() or "how" in spec.topic.lower():
-            return "informational"  # Users seeking information
+        template_type = template_config.get('template_type', spec.template_type)
+        
+        # Template-specific search intents
+        if template_type == "venture_capital_pitch":
+            return "commercial_funding"  # Users looking for investment information
+        elif template_type == "business_proposal":
+            return "commercial_implementation"  # Users looking to implement solutions
+        elif template_type == "technical_documentation":
+            return "informational_implementation"  # Users seeking implementation guidance
+        
+        # Fallback to content analysis
+        if "guide" in spec.topic.lower() or "how" in spec.topic.lower():
+            return "informational"
         elif planning and "implementation" in str(planning.key_messages).lower():
-            return "transactional"  # Users ready to act
+            return "transactional"
         else:
             return "informational"
     
-    def _analyze_competitors(self, spec, research) -> dict:
-        """Analyze competitor content (simplified)"""
+    def _analyze_competitors(self, spec, research, template_config: dict) -> dict:
+        """Analyze competitor content with template awareness"""
         
         analysis = {
             "direct_competitors": [],
             "content_gaps": [],
             "opportunity_keywords": []
         }
+        
+        template_type = template_config.get('template_type', spec.template_type)
         
         if research and research.competitive_landscape:
             competitors = research.competitive_landscape.get("direct_competitors", [])
@@ -165,472 +211,442 @@ class EnhancedSEOAgent:
             differentiators = research.competitive_landscape.get("differentiation_opportunities", [])
             analysis["opportunity_keywords"] = [diff.lower() for diff in differentiators]
         
+        # Template-specific competitive analysis
+        if template_type == "venture_capital_pitch":
+            analysis["vc_specific_gaps"] = [
+                "Limited traction data transparency",
+                "Weak market size validation", 
+                "Unclear competitive moats"
+            ]
+            analysis["vc_opportunity_keywords"] = [
+                "proven traction metrics",
+                "defensible market position",
+                "scalable business model"
+            ]
+        elif template_type == "business_proposal":
+            analysis["business_specific_gaps"] = [
+                "Insufficient ROI documentation",
+                "Weak implementation roadmaps",
+                "Limited risk assessment"
+            ]
+            analysis["business_opportunity_keywords"] = [
+                "measurable ROI outcomes",
+                "proven implementation success",
+                "comprehensive risk mitigation"
+            ]
+        
         return analysis
     
-    def _identify_optimization_opportunities(self, state: EnrichedContentState) -> list:
-        """Identify content optimization opportunities"""
+    def _identify_optimization_opportunities(self, state: EnrichedContentState, template_config: dict) -> list:
+        """Identify content optimization opportunities with template awareness"""
         
         opportunities = []
         content = state.draft_content
         spec = state.content_spec
+        template_type = template_config.get('template_type', spec.template_type)
+        
+        # Template-specific optimization opportunities
+        if template_type == "venture_capital_pitch":
+            opportunities.extend([
+                "Optimize for 'venture capital' keyword variations",
+                "Add traction metrics for featured snippets",
+                "Include funding stage terminology",
+                "Optimize team section for investor searches",
+                "Add exit strategy keywords"
+            ])
+        elif template_type == "business_proposal":
+            opportunities.extend([
+                "Optimize for 'ROI' and financial keywords", 
+                "Add implementation timeline for project searches",
+                "Include business case terminology",
+                "Optimize for strategic planning searches",
+                "Add risk management keywords"
+            ])
+        elif template_type == "technical_documentation":
+            opportunities.extend([
+                "Optimize for technical implementation searches",
+                "Add code examples for developer queries",
+                "Include API reference keywords",
+                "Optimize for troubleshooting searches",
+                "Add best practices terminology"
+            ])
         
         # Check title optimization
-        if not any(keyword in content[:100].lower() for keyword in [spec.topic.lower()]):
-            opportunities.append("Optimize title with primary keyword")
+        primary_keyword = template_config.get('seo_keywords', [spec.topic.lower()])[0] if template_config.get('seo_keywords') else spec.topic.lower()
+        if primary_keyword not in content[:100].lower():
+            opportunities.append(f"Add primary keyword '{primary_keyword}' to title/introduction")
         
         # Check header structure
         import re
         headers = re.findall(r'^#+\s+(.+)', content, re.MULTILINE)
-        # (The following lines appear to be misplaced and should be part of another function, not here.)
-        # Remove the accidentally inserted lines that do not belong to this function.
+        if len(headers) < 3:
+            opportunities.append("Add more subheadings for better content structure")
+        
+        # Check content length for template
+        word_count = len(content.split())
+        optimal_length = template_config.get('optimal_word_count', 2000)
+        
+        if word_count < optimal_length * 0.8:
+            opportunities.append(f"Expand content to reach optimal length ({optimal_length} words)")
+        elif word_count > optimal_length * 1.2:
+            opportunities.append(f"Consider condensing content for better readability")
+        
+        return opportunities
     
-    def _generate_implementation_section(self, spec, planning, research, target_words: int) -> str:
-        """Generate implementation timeline section"""
+    def _apply_seo_optimizations(self, state: EnrichedContentState, instructions, template_config: dict) -> str:
+        """Apply SEO optimizations to content with template configuration"""
         
-        content = f"# Implementation Timeline & Next Steps\n\n"
+        content = state.draft_content
+        seo_context = state.seo_context
+        template_type = template_config.get('template_type', state.content_spec.template_type)
         
-        content += f"**Phase 1: Foundation (Months 1-2)**\n"
-        content += f"- Stakeholder alignment and team formation\n"
-        content += f"- Technical infrastructure assessment\n"
-        content += f"- Baseline metrics establishment\n"
-        content += f"- Initial pilot program design\n\n"
+        # Apply template-specific SEO optimizations
+        content = self._apply_template_seo_optimizations(content, template_config)
+            
+        # Optimize title and headers
+        content = self._optimize_title_and_headers(content, seo_context, template_config)
         
-        content += f"**Phase 2: Pilot Implementation (Months 3-4)**\n"
-        content += f"- Limited scope deployment\n"
-        content += f"- User training and onboarding\n"
-        content += f"- Performance monitoring and optimization\n"
-        content += f"- Feedback collection and analysis\n\n"
+        # Optimize keyword density with template awareness
+        content = self._optimize_keyword_integration(content, seo_context, template_config)
         
-        content += f"**Phase 3: Full Deployment (Months 5-6)**\n"
-        content += f"- Organization-wide rollout\n"
-        content += f"- Process integration and automation\n"
-        content += f"- Performance validation and reporting\n"
-        content += f"- Success metric achievement confirmation\n\n"
+        # Add semantic keywords
+        content = self._add_semantic_keywords(content, seo_context, template_config)
         
-        content += f"**Immediate Next Steps:**\n"
-        content += f"- Executive approval and budget allocation\n"
-        content += f"- Project team assembly and kickoff\n"
-        content += f"- Vendor selection and contract negotiation\n"
-        content += f"- Detailed project planning and milestone definition\n\n"
+        # Optimize for featured snippets
+        content = self._optimize_for_snippets(content, seo_context, template_config)
         
-        content += f"**Resource Requirements:**\n"
-        content += f"- Project management: 1 FTE for 6 months\n"
-        content += f"- Technical implementation: 2-3 FTE for 4 months\n"
-        content += f"- Change management: 1 FTE for 3 months\n"
-        content += f"- Executive sponsorship: 20% commitment for 6 months\n\n"
-        
-        content += f"**Success Assurance:**\n"
-        content += f"- Weekly progress reviews and risk mitigation\n"
-        content += f"- Quarterly executive steering committee\n"
-        content += f"- Continuous stakeholder communication\n"
-        content += f"- Post-implementation optimization and support"
+        # Add internal linking suggestions
+        content = self._add_internal_linking(content, seo_context, template_config)
         
         return content
     
-    def _generate_generic_section(self, section_name: str, spec, planning, research, target_words: int) -> str:
-        """Generate generic section with available context"""
-        
-        content = f"# {section_name}\n\n"
-        
-        # Use available context to generate relevant content
-        if research and research.primary_insights:
-            content += f"**Key Insights:**\n"
-            for insight in research.primary_insights[:3]:
-                content += f"- {insight.get('finding', 'Research finding')}\n"
-            content += "\n"
-        
-        if planning and planning.key_messages:
-            content += f"**Strategic Considerations:**\n"
-            for message in planning.key_messages[:3]:
-                content += f"- {message}\n"
-            content += "\n"
-        
-        content += f"**Implementation Approach:**\n"
-        content += f"- Systematic methodology aligned with {spec.audience} requirements\n"
-        content += f"- {spec.innovation_level.title()} approach balancing innovation with reliability\n"
-        content += f"- Measurable outcomes and continuous improvement\n\n"
-        
-        content += f"**Expected Outcomes:**\n"
-        content += f"- Enhanced operational efficiency\n"
-        content += f"- Improved strategic positioning\n"
-        content += f"- Measurable business impact"
-        
-        return content
-    
-    def _generate_default_structure(self, spec, planning, research, context, instructions) -> list:
-        """Generate default content structure when no planning available"""
-        
-        sections = []
-        
-        # Introduction
-        intro = f"# {spec.topic}: Strategic Analysis and Recommendations\n\n"
-        intro += f"This analysis provides comprehensive insights into {spec.topic} "
-        intro += f"for {spec.audience} with actionable recommendations and implementation guidance."
-        sections.append(intro)
-        
-        # Main content
-        main = f"# Analysis and Recommendations\n\n"
-        if research and research.primary_insights:
-            main += f"**Research Findings:**\n"
-            for insight in research.primary_insights[:4]:
-                main += f"- {insight.get('finding', 'Key research finding')}\n"
-            main += "\n"
-        
-        main += f"**Strategic Recommendations:**\n"
-        main += f"- Implement {spec.innovation_level} approach to {spec.topic}\n"
-        main += f"- Focus on {spec.audience}-specific value creation\n"
-        main += f"- Establish measurable success metrics and monitoring\n"
-        main += f"- Ensure scalable and sustainable implementation"
-        sections.append(main)
-        
-        # Conclusion
-        conclusion = f"# Conclusion and Next Steps\n\n"
-        conclusion += f"The analysis demonstrates significant opportunity for {spec.audience} "
-        conclusion += f"to leverage {spec.topic} for competitive advantage. "
-        conclusion += f"Immediate next steps include stakeholder alignment, resource allocation, "
-        conclusion += f"and implementation planning to capitalize on identified opportunities."
-        sections.append(conclusion)
-        
-        return sections
-    
-    def _calculate_tone_adaptation(self, spec, planning, research) -> dict:
-        """Calculate tone adaptation based on context"""
-        
-        base_tone = {
-            "formal": 0.6,
-            "conversational": 0.4,
-            "technical": 0.3,
-            "persuasive": 0.5,
-            "authoritative": 0.7
-        }
-        
-        # Adjust for audience
-        if "executive" in spec.audience.lower() or "investor" in spec.audience.lower():
-            base_tone["formal"] = 0.8
-            base_tone["authoritative"] = 0.9
-            base_tone["conversational"] = 0.2
-        elif "technical" in spec.audience.lower():
-            base_tone["technical"] = 0.8
-            base_tone["formal"] = 0.7
-        
-        # Adjust for template type
-        if spec.template_type == "business_proposal":
-            base_tone["persuasive"] = 0.8
-            base_tone["authoritative"] = 0.9
-        
-        # Adjust for innovation level
-        if spec.innovation_level == "experimental":
-            base_tone["conversational"] = 0.6
-            base_tone["engaging"] = 0.8
-        
-        return base_tone
-    
-    def _define_voice_characteristics(self, spec, planning) -> list:
-        """Define voice characteristics based on context"""
-        
-        characteristics = ["professional", "knowledgeable"]
-        
-        if spec.innovation_level == "experimental":
-            characteristics.extend(["innovative", "forward_thinking"])
-        elif spec.innovation_level == "conservative":
-            characteristics.extend(["reliable", "proven"])
-        
-        if "investor" in spec.audience.lower():
-            characteristics.extend(["strategic", "results_oriented"])
-        elif "technical" in spec.audience.lower():
-            characteristics.extend(["precise", "detail_oriented"])
-        
-        return characteristics
-    
-    def _determine_technical_depth(self, spec, research) -> str:
-        """Determine appropriate technical depth"""
-        
-        if spec.complexity_level >= 8:
-            return "expert_level"
-        elif spec.complexity_level >= 6:
-            return "advanced"
-        elif spec.complexity_level >= 4:
-            return "intermediate"
-        else:
-            return "accessible"
-    
-    def _select_innovation_techniques(self, spec, instructions) -> list:
-        """Select innovation techniques based on level and instructions"""
-        
-        techniques = []
-        
-        if spec.innovation_level in ["innovative", "experimental"]:
-            techniques.extend(["contrarian_perspective", "analogy_bridging"])
-        
-        if spec.complexity_level >= 7:
-            techniques.extend(["assumption_archaeology", "emergence_patterns"])
-        
-        # Add from instructions
-        innovation_directives = instructions.innovation_directives
-        techniques.extend(innovation_directives[:2])
-        
-        return list(set(techniques))  # Remove duplicates
-    
-    def _generate_content_hooks(self, planning, research) -> list:
-        """Generate content hooks from planning and research"""
-        
-        hooks = []
-        
-        if planning and planning.key_messages:
-            hooks.append(f"Strategic insight: {planning.key_messages[0]}")
-        
-        if research and research.statistical_evidence:
-            stat = research.statistical_evidence[0]
-            hooks.append(f"Compelling data: {stat.get('statistic', 'Significant market trend')}")
-        
-        if research and research.trending_topics:
-            hooks.append(f"Market trend: {research.trending_topics[0]}")
-        
-        return hooks[:3]  # Limit to top 3 hooks
-    
-    def _prioritize_sections(self, planning) -> dict:
-        """Prioritize sections based on planning strategy"""
-        
-        if planning and "investor" in planning.content_strategy:
-            return {
-                "executive_summary": 10,
-                "financial_analysis": 9,
-                "market_opportunity": 8,
-                "implementation": 7
-            }
-        elif planning and "technical" in planning.content_strategy:
-            return {
-                "technical_specifications": 10,
-                "implementation": 9,
-                "examples": 8,
-                "overview": 7
-            }
-        
-        return {
-            "introduction": 8,
-            "main_content": 10,
-            "conclusion": 7
-        }
-    
-    def _extract_sections(self, content: str) -> list:
-        """Extract sections from generated content"""
-        
-        import re
-        sections = re.findall(r'^#\s+(.+)', content, re.MULTILINE)
-        return sections
-from typing import Dict, Any
-from langgraph_app.core.enriched_content_state import (
-    EnrichedContentState, 
-    AgentType, 
-    ContentPhase,
-    PlanningOutput
-)
-from datetime import datetime
+    def _apply_template_seo_optimizations(self, content: str, template_config: dict) -> str:
+        # Use template-defined SEO modifications if available
+        if template_config.get('seo_content_modifications'):
+            modifications = template_config['seo_content_modifications']
 
-class EnhancedPlannerAgent:
-    """Integrated Planner Agent using EnrichedContentState"""
+            for modification in modifications:
+                if modification.get('type') == 'keyword_emphasis':
+                    keyword = modification.get('keyword')
+                    if keyword and keyword.lower() in content.lower():
+                        import re
+                        pattern = r'\b(' + re.escape(keyword) + r')\b'
+                        content = re.sub(pattern, f'**{keyword}**', content, flags=re.IGNORECASE, count=1)
+
+                elif modification.get('type') == 'section_addition':
+                    section_title = modification.get('section_title')
+                    section_content = modification.get('section_content', '')
+                    if section_title and section_title not in content:
+                        content += f"\n\n## {section_title}\n\n{section_content}"
+
+        return content
+
+    def _optimize_title_and_headers(self, content: str, seo_context: SEOOptimizationContext, template_config: dict) -> str:
+        """Optimize title and headers with template keywords"""
+        
+        primary_keyword = seo_context.target_keywords[0] if seo_context.target_keywords else "analysis"
+        
+        # Optimize main title
+        import re
+        title_match = re.search(r'^#\s+(.+)', content, re.MULTILINE)
+        if title_match and primary_keyword.lower() not in title_match.group(1).lower():
+            optimized_title = f"# {primary_keyword.title()}: {title_match.group(1)}"
+            content = content.replace(title_match.group(0), optimized_title, 1)
+        
+        # Optimize headers with secondary keywords
+        headers = re.findall(r'^##\s+(.+)', content, re.MULTILINE)
+        secondary_keywords = seo_context.target_keywords[1:4] if len(seo_context.target_keywords) > 1 else []
+        
+        for i, header in enumerate(headers[:len(secondary_keywords)]):
+            keyword = secondary_keywords[i]
+            if keyword.lower() not in header.lower():
+                optimized_header = f"## {keyword.title()} in {header}"
+                content = content.replace(f"## {header}", optimized_header, 1)
+        
+        return content
     
-    def __init__(self):
-        self.agent_type = AgentType.PLANNER
+    def _optimize_keyword_integration(self, content: str, seo_context: SEOOptimizationContext, template_config: dict) -> str:
+        """Optimize keyword integration with natural placement"""
         
-    def execute(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Execute planning with dynamic instructions"""
+        target_keywords = seo_context.target_keywords
+        template_type = template_config.get('template_type')
         
-        # Get dynamic instructions from the state
-        instructions = state.get_agent_instructions(self.agent_type)
+        # Calculate target keyword density (1-3% for primary keyword)
+        word_count = len(content.split())
+        primary_keyword = target_keywords[0] if target_keywords else ""
         
-        # Log execution start
-        state.log_agent_execution(self.agent_type, {
-            "status": "started",
-            "instructions_received": len(instructions.primary_objectives),
-            "confidence_threshold": instructions.confidence_threshold
-        })
+        if primary_keyword:
+            current_occurrences = content.lower().count(primary_keyword.lower())
+            target_occurrences = max(2, int(word_count * 0.02))  # 2% density
+            
+            if current_occurrences < target_occurrences:
+                # Add keyword naturally in template-appropriate contexts
+                additions_needed = target_occurrences - current_occurrences
+                
+                if template_type == "venture_capital_pitch":
+                    keyword_phrases = [
+                        f"This {primary_keyword} opportunity represents",
+                        f"The {primary_keyword} market shows",
+                        f"Our {primary_keyword} solution delivers"
+                    ]
+                elif template_type == "business_proposal":
+                    keyword_phrases = [
+                        f"The {primary_keyword} implementation will",
+                        f"This {primary_keyword} strategy ensures",
+                        f"The {primary_keyword} approach provides"
+                    ]
+                else:
+                    keyword_phrases = [
+                        f"The {primary_keyword} analysis reveals",
+                        f"This {primary_keyword} framework enables",
+                        f"The {primary_keyword} methodology ensures"
+                    ]
+                
+                # Add phrases naturally to content
+                for i, phrase in enumerate(keyword_phrases[:additions_needed]):
+                    if phrase.lower() not in content.lower():
+                        # Find appropriate insertion point
+                        paragraphs = content.split('\n\n')
+                        if len(paragraphs) > i + 2:
+                            paragraphs[i + 2] = f"{phrase} enhanced value. " + paragraphs[i + 2]
+                            content = '\n\n'.join(paragraphs)
         
-        # Execute planning logic with dynamic instructions
-        planning_output = self._execute_planning_logic(state, instructions)
-        
-        # Update state with planning results
-        state.planning_output = planning_output
-        state.update_phase(ContentPhase.RESEARCH)
-        
-        # Log execution completion
-        state.log_agent_execution(self.agent_type, {
-            "status": "completed",
-            "confidence_score": planning_output.planning_confidence,
-            "key_decisions": len(planning_output.key_messages),
-            "research_priorities": len(planning_output.research_priorities)
-        })
-        
-        return state
+        return content
     
-    def _execute_planning_logic(self, state: EnrichedContentState, instructions) -> PlanningOutput:
-        """Core planning logic using dynamic instructions"""
-        spec = state.content_spec
+    def _add_semantic_keywords(self, content: str, seo_context: SEOOptimizationContext, template_config: dict) -> str:
+        """Add semantic keywords related to main topics"""
         
-        # Use instructions to guide planning decisions
-        content_strategy = self._develop_content_strategy(spec, instructions)
-        structure_approach = self._determine_structure_approach(spec, instructions)
-        key_messages = self._identify_key_messages(spec, instructions)
-        research_priorities = self._set_research_priorities(spec, instructions)
+        template_type = template_config.get('template_type')
+        primary_keyword = seo_context.target_keywords[0] if seo_context.target_keywords else ""
         
-        return PlanningOutput(
-            content_strategy=content_strategy,
-            structure_approach=structure_approach,
-            key_messages=key_messages,
-            research_priorities=research_priorities,
-            audience_insights=self._analyze_audience(spec),
-            competitive_positioning=self._determine_positioning(spec),
-            success_metrics=self._define_success_metrics(spec),
-            estimated_sections=self._estimate_sections(spec),
-            planning_confidence=0.85
-        )
+        # Template-specific semantic keywords
+        semantic_keywords = []
+        
+        if template_type == "venture_capital_pitch":
+            semantic_keywords = [
+                "investment thesis", "market validation", "scalable business model",
+                "competitive advantage", "traction metrics", "funding requirements"
+            ]
+        elif template_type == "business_proposal":
+            semantic_keywords = [
+                "strategic initiative", "business value", "implementation roadmap",
+                "risk mitigation", "performance metrics", "stakeholder alignment"
+            ]
+        elif template_type == "technical_documentation":
+            semantic_keywords = [
+                "technical architecture", "implementation guide", "best practices",
+                "performance optimization", "security considerations", "scalability"
+            ]
+        
+        # Add semantic keywords naturally
+        for keyword in semantic_keywords[:3]:  # Limit to 3 semantic keywords
+            if keyword.lower() not in content.lower():
+                # Find strategic location to add semantic keyword
+                if "## " in content:
+                    sections = content.split("## ")
+                    if len(sections) > 2:
+                        # Add to second section
+                        sections[2] = f"{keyword.title()} analysis shows that " + sections[2]
+                        content = "## ".join(sections)
+                        break
+        
+        return content
     
-    def _develop_content_strategy(self, spec, instructions) -> str:
-        """Develop strategy using dynamic instructions"""
-        if spec.template_type == "business_proposal":
-            if "venture_capital" in spec.audience.lower():
-                return "investor_focused_growth_narrative"
-            elif "enterprise" in spec.audience.lower():
-                return "enterprise_solution_positioning"
-        elif spec.template_type == "technical_documentation":
-            if spec.complexity_level > 7:
-                return "expert_technical_deep_dive"
-            else:
-                return "accessible_technical_guide"
+    def _optimize_for_snippets(self, content: str, seo_context: SEOOptimizationContext, template_config: dict) -> str:
+        """Optimize content for featured snippets"""
         
-        return f"adaptive_{spec.innovation_level}_approach"
-    
-    def _determine_structure_approach(self, spec, instructions) -> str:
-        """Determine structure using contextual guidance"""
-        # Use instructions.contextual_guidance to inform decisions
-        if "strategic narrative" in instructions.contextual_guidance:
-            return "narrative_driven_structure"
-        elif "technical content" in instructions.contextual_guidance:
-            return "problem_solution_implementation"
+        template_type = template_config.get('template_type')
         
-        return "discovery_insight_application"
-    
-    def _identify_key_messages(self, spec, instructions) -> list:
-        """Extract key messages from objectives"""
-        key_messages = []
-        
-        for objective in instructions.primary_objectives:
-            if "strategic" in objective.lower():
-                key_messages.append("Strategic value proposition")
-            elif "technical" in objective.lower():
-                key_messages.append("Technical excellence and implementation")
-            elif "roi" in objective.lower() or "financial" in objective.lower():
-                key_messages.append("Financial impact and ROI")
-        
-        # Add template-specific messages
-        if spec.template_type == "business_proposal":
-            key_messages.extend([
-                "Market opportunity and timing",
-                "Competitive advantage",
-                "Implementation roadmap"
-            ])
-        
-        return key_messages[:5]  # Limit to top 5 messages
-    
-    def _set_research_priorities(self, spec, instructions) -> list:
-        """Set research priorities based on requirements"""
-        priorities = []
-        
-        # Extract from instructions
-        requirements = instructions.specific_requirements
-        if "market_data" in requirements.get("evidence_types", []):
-            priorities.append("Market size and growth trends")
-        if "financial_metrics" in requirements.get("evidence_types", []):
-            priorities.append("Financial benchmarks and ROI data")
-        if "case_studies" in requirements.get("evidence_types", []):
-            priorities.append("Success stories and implementations")
-        
-        # Add context-specific priorities
-        if spec.template_type == "business_proposal":
-            priorities.extend([
-                "Competitive landscape analysis",
-                "Industry trend validation",
-                "Target audience pain points"
-            ])
-        
-        return priorities[:6]  # Limit research scope
-    
-    def _analyze_audience(self, spec) -> dict:
-        """Analyze target audience"""
-        return {
-            "primary_audience": spec.audience,
-            "expertise_level": spec.complexity_level,
-            "decision_factors": self._identify_decision_factors(spec),
-            "communication_preferences": self._determine_comm_preferences(spec)
-        }
-    
-    def _determine_positioning(self, spec) -> str:
-        """Determine competitive positioning"""
-        if spec.innovation_level == "experimental":
-            return "innovation_leader"
-        elif spec.innovation_level == "conservative":
-            return "reliable_proven_solution"
+        # Add FAQ-style content for snippet optimization
+        if template_type == "venture_capital_pitch":
+            snippet_content = """
+## Frequently Asked Questions
+
+**What is the investment opportunity?**
+This venture capital opportunity presents a scalable business model with proven traction metrics and clear path to profitability.
+
+**What are the key traction metrics?**
+The company demonstrates strong month-over-month growth with validated product-market fit and increasing customer acquisition.
+
+**What is the funding requirement?**
+The funding round seeks strategic investment to accelerate growth and market expansion initiatives.
+"""
+        elif template_type == "business_proposal":
+            snippet_content = """
+## Key Implementation Questions
+
+**What is the expected ROI?**
+The proposed implementation delivers measurable return on investment through operational efficiency and strategic value creation.
+
+**What is the implementation timeline?**
+The strategic implementation follows a phased approach with clear milestones and measurable outcomes.
+
+**What are the success metrics?**
+Success is measured through performance indicators including cost reduction, efficiency gains, and strategic objective achievement.
+"""
+        elif template_type == "technical_documentation":
+            snippet_content = """
+## Quick Reference
+
+**How to implement this solution?**
+The implementation follows industry best practices with clear technical specifications and step-by-step guidance.
+
+**What are the system requirements?**
+The solution requires standard enterprise infrastructure with documented performance and security specifications.
+
+**What support is available?**
+Comprehensive documentation, code examples, and technical support ensure successful implementation.
+"""
         else:
-            return "balanced_innovation_reliability"
+            snippet_content = ""
+        
+        if snippet_content and "## Frequently Asked Questions" not in content:
+            content += snippet_content
+        
+        return content
     
-    def _define_success_metrics(self, spec) -> dict:
-        """Define success metrics"""
-        return {
-            "engagement_target": 0.75,
-            "comprehension_target": 0.80,
-            "action_target": 0.60,
-            "platform_specific": self._get_platform_metrics(spec.platform)
-        }
-    
-    def _estimate_sections(self, spec) -> list:
-        """Estimate content sections"""
-        if spec.template_type == "business_proposal":
-            return [
-                {"name": "Executive Summary", "estimated_words": 200},
-                {"name": "Problem & Opportunity", "estimated_words": 350},
-                {"name": "Solution & Value Prop", "estimated_words": 450},
-                {"name": "Financial Analysis", "estimated_words": 350},
-                {"name": "Implementation Plan", "estimated_words": 250}
+    def _add_internal_linking(self, content: str, seo_context: SEOOptimizationContext, template_config: dict) -> str:
+        """Add internal linking suggestions with template awareness"""
+        
+        template_type = template_config.get('template_type')
+        
+        linking_suggestions = []
+        
+        if template_type == "venture_capital_pitch":
+            linking_suggestions = [
+                "Related: [Venture Capital Due Diligence Guide](#)",
+                "See also: [Startup Traction Metrics Framework](#)",
+                "More info: [Investment Term Sheet Template](#)"
             ]
-        elif spec.template_type == "technical_documentation":
-            return [
-                {"name": "Overview", "estimated_words": 200},
-                {"name": "Technical Specifications", "estimated_words": 500},
-                {"name": "Implementation Guide", "estimated_words": 700},
-                {"name": "Examples & Best Practices", "estimated_words": 500},
-                {"name": "Troubleshooting", "estimated_words": 300}
+        elif template_type == "business_proposal":
+            linking_suggestions = [
+                "Related: [ROI Calculation Framework](#)",
+                "See also: [Implementation Best Practices](#)",
+                "More info: [Strategic Planning Template](#)"
+            ]
+        elif template_type == "technical_documentation":
+            linking_suggestions = [
+                "Related: [API Documentation](#)",
+                "See also: [Implementation Examples](#)",
+                "More info: [Troubleshooting Guide](#)"
             ]
         
-        # Default structure
+        # Add linking suggestions at the end
+        if linking_suggestions:
+            content += "\n\n## Related Resources\n\n"
+            for suggestion in linking_suggestions:
+                content += f"- {suggestion}\n"
+        
+        return content
+    
+    def _define_meta_requirements(self, spec, target_keywords: list, template_config: dict) -> dict:
+        """Define meta data requirements with template awareness"""
+        
+        template_type = template_config.get('template_type', spec.template_type)
+        primary_keyword = target_keywords[0] if target_keywords else spec.topic
+        
+        meta_requirements = {
+            "title": template_config.get('seo_title', f"{primary_keyword.title()} - Comprehensive Analysis"),
+            "description": template_config.get('seo_description', f"Expert analysis of {primary_keyword} with actionable insights"),
+            "keywords": ", ".join(target_keywords[:10]),
+            "og_title": f"{primary_keyword.title()} Strategic Analysis",
+            "og_description": f"Professional insights and analysis for {spec.audience}",
+            "canonical_url": f"/{primary_keyword.lower().replace(' ', '-')}-analysis"
+        }
+        
+        # Template-specific meta requirements
+        if template_type == "venture_capital_pitch":
+            meta_requirements.update({
+                "article_type": "investment_analysis",
+                "target_audience": "investors, venture_capitalists, startup_founders",
+                "content_category": "venture_capital",
+                "investment_stage": template_config.get('funding_stage', 'Series A')
+            })
+        elif template_type == "business_proposal":
+            meta_requirements.update({
+                "article_type": "business_strategy",
+                "target_audience": "business_executives, decision_makers, consultants", 
+                "content_category": "business_strategy",
+                "proposal_type": "strategic_implementation"
+            })
+        elif template_type == "technical_documentation":
+            meta_requirements.update({
+                "article_type": "technical_guide",
+                "target_audience": "developers, technical_teams, engineers",
+                "content_category": "technical_documentation",
+                "difficulty_level": "intermediate_to_advanced"
+            })
+        
+        return meta_requirements
+    
+    def _plan_internal_linking(self, spec, template_config: dict) -> list:
+        """Plan internal linking strategy with template awareness"""
+        
+        template_type = template_config.get('template_type', spec.template_type)
+        
+        if template_type == "venture_capital_pitch":
+            return [
+                "Link to market research methodologies",
+                "Connect to traction metrics frameworks",
+                "Reference investment thesis templates",
+                "Link to due diligence checklists",
+                "Connect to exit strategy analysis"
+            ]
+        elif template_type == "business_proposal":
+            return [
+                "Link to ROI calculation tools",
+                "Connect to implementation frameworks",
+                "Reference strategic planning guides",
+                "Link to risk assessment templates",
+                "Connect to performance measurement systems"
+            ]
+        elif template_type == "technical_documentation":
+            return [
+                "Link to API documentation",
+                "Connect to code repositories",
+                "Reference architecture patterns", 
+                "Link to troubleshooting guides",
+                "Connect to best practices documents"
+            ]
+        
+        return ["Link to related analyses", "Connect to methodology guides"]
+    
+    def _identify_snippet_opportunities(self, state: EnrichedContentState, template_config: dict) -> list:
+        """Identify featured snippet opportunities with template awareness"""
+        
+        template_type = template_config.get('template_type', state.content_spec.template_type)
+        
+        if template_type == "venture_capital_pitch":
+            return [
+                "Investment opportunity definition",
+                "Traction metrics explanation",
+                "Market size calculation methods",
+                "Funding requirements breakdown",
+                "Investment timeline overview"
+            ]
+        elif template_type == "business_proposal":
+            return [
+                "ROI calculation methodology",
+                "Implementation timeline steps",
+                "Risk mitigation strategies",
+                "Success metrics definition",
+                "Business case components"
+            ]
+        elif template_type == "technical_documentation":
+            return [
+                "Implementation step-by-step guide",
+                "System requirements list",
+                "Configuration examples",
+                "Troubleshooting procedures",
+                "Best practices checklist"
+            ]
+        
         return [
-            {"name": "Introduction", "estimated_words": 200},
-            {"name": "Main Content", "estimated_words": 800},
-            {"name": "Conclusion", "estimated_words": 200}
+            "Key concept definitions",
+            "Step-by-step procedures",
+            "Best practices lists"
         ]
     
-    def _identify_decision_factors(self, spec) -> list:
-        """Identify what influences audience decisions"""
-        if "investor" in spec.audience.lower():
-            return ["ROI potential", "Market size", "Competitive advantage", "Team credibility"]
-        elif "technical" in spec.audience.lower():
-            return ["Implementation feasibility", "Technical specifications", "Documentation quality"]
-        
-        return ["Clarity", "Credibility", "Actionability"]
-    
-    def _determine_comm_preferences(self, spec) -> dict:
-        """Determine communication preferences"""
-        return {
-            "formality_level": "high" if spec.complexity_level > 7 else "moderate",
-            "detail_preference": "comprehensive" if spec.complexity_level > 6 else "concise",
-            "visual_preference": "data_rich" if "business" in spec.template_type else "explanatory"
-        }
-    
-    def _get_platform_metrics(self, platform: str) -> dict:
-        """Get platform-specific success metrics"""
-        metrics = {
-            "linkedin": {"engagement_rate": 0.05, "click_through": 0.02},
-            "medium": {"read_time": 8, "highlight_rate": 0.15},
-            "substack": {"open_rate": 0.45, "click_rate": 0.08}
-        }
-        return metrics.get(platform, {"engagement": 0.05})
+EnhancedSeoAgent = EnhancedSEOAgent
 
+__all__ = ['EnhancedSEOAgent', 'EnhancedSeoAgent']

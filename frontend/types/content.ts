@@ -10,10 +10,15 @@ export interface TemplateParameter {
   name: string;
   label: string;
   type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'multiselect' | 'range' | 'date';
+  description?: string;
   placeholder?: string;
   default?: string | number | boolean | string[];
-  options?: string[];
+  options?: Record<string, string> | string[];
   required?: boolean;
+  commonly_used?: boolean;
+  affects_approach?: boolean;
+  affects_scope?: boolean;
+  affects_tone?: boolean;
   validation?: {
     min?: number;
     max?: number;
@@ -24,6 +29,16 @@ export interface TemplateParameter {
     dependsOn: string;
     value: string | number | boolean;
   };
+}
+
+export interface TemplateSection {
+  name: string;
+  title?: string;
+  description: string;
+  required: boolean;
+  content_type: string;
+  specifications: string[];
+  word_target?: number;
 }
 
 export interface SuggestedSection {
@@ -44,9 +59,10 @@ export interface SuggestedParameter {
   placeholder?: string;
 }
 
+// Enhanced Template Interface to match our new dynamic structure
 export interface ContentTemplate {
   id: string;
-  title: string;
+  title: string; // Maps to name from YAML
   description?: string;
   category: string;
   difficulty?: string;
@@ -54,12 +70,46 @@ export interface ContentTemplate {
   targetAudience?: string;
   icon?: string;
   tags: string[];
-  parameters: TemplateParameter[];
+  parameters: Record<string, TemplateParameter>; // Transformed from array to object
+  
+  // Enhanced template data with all dynamic fields
   templateData: {
-    parameters: TemplateParameter[];
-    metadata?: Record<string, unknown>;
-    [key: string]: unknown;
+    // Core template info
+    id: string;
+    template_type: string;
+    content_format: string;
+    output_structure: string;
+    generation_mode: string;
+    
+    // Sections with dynamic structure
+    sections: TemplateSection[];
+    section_order: string[];
+    
+    // Parameters in both formats
+    parameters: Record<string, TemplateParameter>;
+    original_parameters: unknown; // Keep original for reference
+    
+    // Instructions and requirements
+    instructions: string;
+    validation_rules: string[];
+    
+    // Tone and style
+    tone: Record<string, unknown>;
+    
+    // Template-specific configurations
+    proposal_specs: Record<string, unknown>;
+    requirements: Record<string, unknown>;
+    quality_targets: Record<string, unknown>;
+    
+    // Metadata
+    metadata: Record<string, unknown>;
+    filename?: string;
+    
+    // Keep full original data for advanced use cases
+    originalData: Record<string, unknown>;
   };
+  
+  // Backwards compatibility
   isBuiltIn: boolean;
   isPublic: boolean;
   createdBy?: string;
@@ -69,7 +119,13 @@ export interface ContentTemplate {
   suggested_parameters?: SuggestedParameter[];
   instructions: string;
   metadata: {
-    parameter_flexibility: string;
+    parameter_flexibility?: string;
+    version?: string;
+    created_by?: string;
+    last_updated?: string;
+    template_type?: string;
+    content_type?: string;
+    template_category?: string;
     [key: string]: unknown;
   };
 }
@@ -96,6 +152,34 @@ export interface StyleProfile {
   createdBy?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// ═══════════════════════════════════════════════
+// Template API Response Types
+// ═══════════════════════════════════════════════
+
+export interface TemplateListResponse {
+  templates: ContentTemplate[];
+  total: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  success: boolean;
+}
+
+export interface StyleProfileListResponse {
+  profiles: StyleProfile[];
+  total: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  success: boolean;
 }
 
 // ═══════════════════════════════════════════════

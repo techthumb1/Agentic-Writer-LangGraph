@@ -3099,5 +3099,153 @@
       "model_used": "gpt-4o",
       "template_used": "none"
     }
+  },
+  {
+    "timestamp": "2025-07-25T23:54:21.669708",
+    "context": {
+      "topic_category": "technology",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 3,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "creative",
+      "structure": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Social Media Campaign using social media voice voice",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 3,
+      "innovation_level": "balanced",
+      "writing_mode": "creative",
+      "structure_pattern": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.3,
+        "conversational": 0.5,
+        "technical": 0.2,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-25T23:54:21.669120",
+      "word_count": 885,
+      "model_used": "gpt-4o",
+      "template_used": "none"
+    }
+  },
+  {
+    "timestamp": "2025-07-26T00:19:31.095361",
+    "context": {
+      "topic_category": "technology",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 3,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "creative",
+      "structure": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Social Media Campaign using social media voice voice",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 3,
+      "innovation_level": "balanced",
+      "writing_mode": "creative",
+      "structure_pattern": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.3,
+        "conversational": 0.5,
+        "technical": 0.2,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-26T00:19:31.095223",
+      "word_count": 1048,
+      "model_used": "gpt-4o",
+      "template_used": "none"
+    }
+  },
+  {
+    "timestamp": "2025-07-26T00:21:29.878036",
+    "context": {
+      "topic_category": "technology",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 3,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "creative",
+      "structure": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Social Media Campaign using social media voice voice",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 3,
+      "innovation_level": "balanced",
+      "writing_mode": "creative",
+      "structure_pattern": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.3,
+        "conversational": 0.5,
+        "technical": 0.2,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-26T00:21:29.877910",
+      "word_count": 751,
+      "model_used": "gpt-4o",
+      "template_used": "none"
+    }
+  },
+  {
+    "timestamp": "2025-07-26T01:15:06.088239",
+    "context": {
+      "topic_category": "technology",
+      "audience": "general",
+      "intent": "inform",
+      "complexity": 3,
+      "platform": "substack"
+    },
+    "strategy": {
+      "mode": "creative",
+      "structure": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "techniques": []
+    },
+    "metadata": {
+      "topic": "Social Media Campaign using social media voice voice",
+      "audience": "general",
+      "platform": "substack",
+      "intent": "inform",
+      "complexity_level": 3,
+      "innovation_level": "balanced",
+      "writing_mode": "creative",
+      "structure_pattern": "hook \u2192 exploration \u2192 insight \u2192 application",
+      "experimental_techniques": [],
+      "tone_adaptations": {
+        "formal": 0.3,
+        "conversational": 0.5,
+        "technical": 0.2,
+        "inspiring": 0.3,
+        "provocative": 0.1
+      },
+      "generation_timestamp": "2025-07-26T01:15:06.088101",
+      "word_count": 725,
+      "model_used": "gpt-4o",
+      "template_used": "none"
+    }
   }
 ]

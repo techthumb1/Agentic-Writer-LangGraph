@@ -487,13 +487,15 @@ class RealWorkflowTaskRegistry:
             validation_result = {
                 "template_valid": True,
                 "style_profile_valid": True,
-                "compatibility_score": 95,  # Mock score
+                "compatibility_score": [], 
                 "recommendations": []
             }
             
             await progress_callback(100.0, {"step": "validation_completed"})
             
             return validation_result
+
+        _ = template_validation_task  # Reference to avoid "not accessed" warning
         
         logger.info("Registered real workflow tasks")
     

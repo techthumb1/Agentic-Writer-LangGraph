@@ -22,7 +22,7 @@ from anthropic import AsyncAnthropic
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_model(agent_name: str) -> str:
+def get_model_name(agent_name: str) -> str:
     """
     Returns the model name for a given agent.
     Priority: Environment variable > default fallback
@@ -32,12 +32,56 @@ def get_model(agent_name: str) -> str:
         "editor": "gpt-4o-mini",
         "seo": "gpt-4o-mini",
         "image": "dall-e-3",
-        "code": "gpt-4.1",
-        "researcher": "gpt-4.5",
+        "code": "gpt-4o",
+        "researcher": "gpt-4o",
     }
 
     env_key = f"{agent_name.upper()}_MODEL"
     return os.getenv(env_key, default_models.get(agent_name, "gpt-4o"))
+
+def get_model(agent_name: str):
+    """
+    Returns an actual LLM instance for a given agent.
+    Enterprise-grade: Returns configured LLM object, not string.
+    """
+    model_name = get_model_name(agent_name)
+    
+    # Get API key
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY environment variable is required")
+    
+    # Return actual LLM instance based on model name
+    if model_name.startswith("gpt-"):
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            model=model_name,
+            api_key=openai_api_key,
+            temperature=0.7,
+            max_tokens=4000
+        )
+    elif model_name.startswith("claude-"):
+        anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not anthropic_api_key:
+            raise RuntimeError("ANTHROPIC_API_KEY environment variable is required for Claude models")
+        
+        from langchain_anthropic import ChatAnthropic
+        return ChatAnthropic(
+            model=model_name,
+            api_key=anthropic_api_key,
+            temperature=0.7,
+            max_tokens=4000
+        )
+    else:
+        # Default to OpenAI for unknown models
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            model="gpt-4o",
+            api_key=openai_api_key,
+            temperature=0.7,
+            max_tokens=4000
+        )
+
 class ModelProvider(Enum):
     """Enum for supported model providers"""
     OPENAI = "openai"
@@ -236,6 +280,7 @@ def get_optimal_model_for_style(style_profile: str, agent_type: str = "writer") 
     # Balanced for professional content
     else:
         return "gpt-4o" if agent_type == "writer" else "gpt-4o-mini"
+
 class EnhancedModelRegistry:
     """Enhanced model registry with multi-provider support and failover"""
     
@@ -445,22 +490,16 @@ class EnhancedModelRegistry:
             }
         }
 
-# Example usage and configuration
-async def example_usage():
-    """Example of how to use the enhanced model registry"""
-    
-    # Initialize registry
-    registry = EnhancedModelRegistry()
-    
-    # Configure providers
-    provider_configs = {
-        "openai": {
-            "api_key": os.getenv("OPENAI_API_KEY")
-        },
-        "anthropic": {
-            "api_key": os.getenv("ANTHROPIC_API_KEY")
-        }
-    }
-    
-    # Initialize providers
-    await registry.initialize_
+    def get_model(self, agent_name: str):
+        """Get model instance for agent - compatibility method"""
+        return get_model(agent_name)
+
+# Global registry instance for backwards compatibility
+_global_registry = None
+
+def get_model_registry() -> EnhancedModelRegistry:
+    """Get or create the global model registry"""
+    global _global_registry
+    if _global_registry is None:
+        _global_registry = EnhancedModelRegistry()
+    return _global_registry

@@ -15,6 +15,10 @@ class EnhancedPublisherAgent:
         
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
         """Execute publishing with comprehensive distribution strategy"""
+        # INJECT: Extract template_config
+        template_config = getattr(state, 'template_config', {})
+        if not template_config and hasattr(state, 'content_spec'):
+            template_config = state.content_spec.business_context.get('template_config', {})
         
         # Get dynamic instructions
         instructions = state.get_agent_instructions(self.agent_type)
@@ -54,35 +58,57 @@ class EnhancedPublisherAgent:
         return state
     
     def _create_publishing_context(self, state: EnrichedContentState, instructions) -> PublishingContext:
-        """Create comprehensive publishing context"""
-        
+        """Create comprehensive publishing context with template configuration"""
+
+        # TEMPLATE INJECTION: Extract template_config
+        template_config = getattr(state, 'template_config', {})
+        if not template_config and hasattr(state, 'content_spec'):
+            template_config = state.content_spec.business_context.get('template_config', {})
+
         spec = state.content_spec
         seo_context = state.seo_context
         formatting_requirements = state.formatting_requirements
-        
+
         # Determine publication platform
         publication_platform = spec.platform
-        
-        # Plan distribution channels
-        distribution_channels = self._plan_distribution_channels(spec, publication_platform)
-        
-        # Develop promotional strategy
-        promotional_strategy = self._develop_promotional_strategy(state)
-        
-        # Set engagement expectations - FIXED: Added state parameter
-        engagement_expectations = self._set_engagement_expectations(state, spec, publication_platform)
-        
+
+        # Plan distribution channels with template awareness
+        distribution_channels = self._plan_distribution_channels(spec, publication_platform, template_config)
+
+        # Develop promotional strategy with template configuration
+        promotional_strategy = self._develop_promotional_strategy(state, template_config)
+
+        # Set engagement expectations with template context
+        engagement_expectations = self._set_engagement_expectations(state, spec, publication_platform, template_config)
+
         return PublishingContext(
             publication_platform=publication_platform,
-            scheduling_requirements=self._determine_scheduling(spec),
+            scheduling_requirements=self._determine_scheduling(spec, template_config),
             distribution_channels=distribution_channels,
             promotional_strategy=promotional_strategy,
             engagement_expectations=engagement_expectations,
-            analytics_tracking=self._setup_analytics_tracking(spec),
-            follow_up_actions=self._plan_follow_up_actions(state),
+            analytics_tracking=self._setup_analytics_tracking(spec, template_config),
+            follow_up_actions=self._plan_follow_up_actions(state, template_config),
             publishing_confidence=0.87
         )
     
+
+    def _plan_distribution_channels(self, spec, primary_platform: str, template_config: dict = None) -> list:
+        """Plan distribution with template awareness"""
+
+        channels = [primary_platform]
+
+        # INJECT: Use template-specific channels
+        if template_config and template_config.get('distribution_channels'):
+            channels.extend(template_config['distribution_channels'])
+
+        template_type = template_config.get('template_type', spec.template_type) if template_config else spec.template_type
+
+        if template_type == "venture_capital_pitch":
+            channels.extend(["vc_networks", "startup_communities", "pitch_platforms"])
+        elif template_type == "business_proposal":
+            channels.extend(["linkedin_professional", "industry_publications", "business_networks"])
+
     def _prepare_for_publication(self, state: EnrichedContentState, instructions) -> str:
         """Prepare final content for publication"""
         
@@ -152,72 +178,24 @@ class EnhancedPublisherAgent:
         
         return results
     
-    def _plan_distribution_channels(self, spec, primary_platform: str) -> list:
-        """Plan intelligent multi-channel distribution strategy"""
+    def _plan_distribution_channels(self, spec, primary_platform: str, template_config: dict = None) -> list:
+        channels = [primary_platform]
         
-        channels = [primary_platform]  # Primary publication platform
+        # INJECT: Use template-specific channels
+        if template_config and template_config.get('distribution_channels'):
+            channels.extend(template_config['distribution_channels'])
         
-        # Add complementary channels based on audience and content type
-        if spec.template_type == "business_proposal":
-            if "investor" in spec.audience.lower():
-                channels.extend([
-                    "linkedin_professional",
-                    "investment_newsletters", 
-                    "industry_publications",
-                    "email_direct_outreach"
-                ])
-            elif "enterprise" in spec.audience.lower():
-                channels.extend([
-                    "linkedin_company_page",
-                    "company_blog",
-                    "sales_enablement_portal",
-                    "industry_forums"
-                ])
-        
-        elif spec.template_type == "technical_documentation":
-            channels.extend([
-                "github_documentation",
-                "developer_community_sites",
-                "technical_forums",
-                "api_documentation_portal",
-                "developer_newsletters"
-            ])
-        
-        # Industry-specific channels
-        industry = spec.business_context.get("industry", "")
-        if industry == "technology":
-            channels.extend([
-                "hacker_news",
-                "reddit_programming",
-                "dev_to",
-                "tech_twitter",
-                "medium_publications"
-            ])
-        elif industry == "finance":
-            channels.extend([
-                "financial_blogs",
-                "fintech_newsletters",
-                "industry_publications",
-                "linkedin_finance_groups"
-            ])
-        elif industry == "healthcare":
-            channels.extend([
-                "healthcare_journals",
-                "medical_forums",
-                "healthtech_publications"
-            ])
-        
-        # Audience sophistication-based channels
-        if spec.complexity_level >= 8:
-            channels.extend([
-                "expert_communities",
-                "academic_networks",
-                "professional_associations"
-            ])
+        # Audience-based channels
+        if "investor" in spec.audience.lower():
+            channels.extend(["linkedin_professional", "investment_newsletters"])
+        elif "technical" in spec.audience.lower():
+            channels.extend(["github_documentation", "developer_community_sites"])
+        elif "executive" in spec.audience.lower():
+            channels.extend(["linkedin_company_page", "industry_publications"])
         
         return list(set(channels))  # Remove duplicates
-    
-    def _develop_promotional_strategy(self, state: EnrichedContentState) -> list:
+
+    def _develop_promotional_strategy(self, state: EnrichedContentState, template_config: dict) -> list:
         """Develop comprehensive promotional strategy based on content and audience"""
         
         spec = state.content_spec
@@ -308,7 +286,7 @@ class EnhancedPublisherAgent:
         
         return strategies
     
-    def _set_engagement_expectations(self, state: EnrichedContentState, spec, platform: str) -> dict:
+    def _set_engagement_expectations(self, state: EnrichedContentState, spec, platform: str, template_config: dict) -> dict:
         """Set realistic engagement expectations based on multiple factors"""
         
         base_expectations = {

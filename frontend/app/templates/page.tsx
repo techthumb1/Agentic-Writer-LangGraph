@@ -184,8 +184,18 @@ export default function TemplatesPage() {
     setShowPreview(true);
   };
 
-  // Cast templates to ExtendedTemplate for this page
-  const extendedTemplates = (templates as ExtendedTemplate[]) || [];
+  // Safely map templates to ExtendedTemplate, ensuring required fields exist
+  const extendedTemplates: ExtendedTemplate[] = Array.isArray(templates)
+    ? templates
+        .filter((t) => typeof t.title === 'string' && typeof t.category === 'string' && typeof t.id === 'string')
+        .map((t) => ({
+          ...t,
+          name: ((t as unknown) as Template).name ?? t.title, // Ensure 'name' is present, fallback to 'title'
+          description: t.description ?? '', // Ensure description is always a string
+          // Cast parameters to the expected type to resolve type incompatibility
+          parameters: t.parameters as unknown as Record<string, import('@/types/template').TemplateParameter>,
+        }))
+    : [];
 
   const filteredTemplates = extendedTemplates.filter(template => {
     const matchesSearch = template?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
