@@ -3,41 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 // File: frontend/app/api/templates/route.ts
 
-import { promises as fs } from 'fs';
-import * as yaml from 'yaml';
-import path from 'path';
 
-export async function GET() {
-  try {
-    console.log('🔍 Template API: Starting template loading...');
-    
-    // Define multiple possible template directory paths
-    const possiblePaths = [
-      path.join(process.cwd(), 'data', 'content_templates'),
-      path.join(process.cwd(), '..', 'data', 'content_templates'),
-      path.join(process.cwd(), 'frontend', '..', 'data', 'content_templates'),
-    ];
-
-    let templatesDir = '';
-    let dirExists = false;
-
-    // Find the correct templates directory
-    for (const templatePath of possiblePaths) {
-      try {
-        await fs.access(templatePath);
-        templatesDir = templatePath;
-        dirExists = true;
-        console.log(`✅ Found templates directory at: ${templatePath}`);
-        break;
-      } catch (error) {
-        console.log(`❌ Directory not found: ${templatePath}`);
-      }
-    }
-
-    if (!dirExists) {
-      console.error('❌ No content_templates directory found in any expected location');
-      return NextResponse.json({ error: 'Templates directory not found' }, { status: 404 });
-    }
 const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL;
 const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
 

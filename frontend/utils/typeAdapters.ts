@@ -2,8 +2,9 @@
 // Enhanced with safety checks and null handling
 // Updated to handle array-based parameters from YAML templates
 // Compatible with existing ContentTemplate interface
+// FIXED: TypeScript errors resolved
 
-import type { ContentTemplate, StyleProfile, TemplateParameter } from '@/types/content';
+import type { ContentTemplate, StyleProfile, TemplateParameter, TemplateSection } from '@/types/content';
 
 // Raw template structure from YAML files (what we receive from backend)
 interface RawYAMLTemplate {
@@ -65,7 +66,7 @@ interface ParameterArrayItem {
   type: string;
   label: string;
   description?: string;
-  options?: string[];
+  options?: string[] | Record<string, string>; // FIXED: Allow both array and object
   commonly_used?: boolean;
   required?: boolean;
   placeholder?: string;
@@ -119,6 +120,22 @@ function validateParameterType(type: string): "text" | "textarea" | "number" | "
   return validTypes.includes(type as typeof validTypes[number]) ? type as typeof validTypes[number] : "text";
 }
 
+// Helper function to normalize options to string array
+function normalizeOptions(options?: string[] | Record<string, string>): string[] | undefined {
+  if (!options) return undefined;
+  
+  if (Array.isArray(options)) {
+    return options;
+  }
+  
+  if (typeof options === 'object') {
+    // Convert Record<string, string> to string array using values
+    return Object.values(options);
+  }
+  
+  return undefined;
+}
+
 // Helper function to convert array-based parameters to object-based parameters (for ContentTemplate)
 function convertParametersArrayToObject(
   parametersArray?: ParameterArrayItem[]
@@ -153,7 +170,7 @@ function convertParametersArrayToObject(
       name: param.name,
       label: param.label || param.name,
       type: validateParameterType(param.type),
-      options: param.options,
+      options: normalizeOptions(param.options), // FIXED: Normalize options
       required: param.required ?? false,
       placeholder: param.placeholder,
       default: defaultValue,
@@ -199,6 +216,9 @@ export function adaptBackendTemplate(backendTemplate: BackendTemplate | RawYAMLT
 
   console.log(`✅ Template "${name}" has ${Object.keys(parametersObject).length} parameters:`, Object.keys(parametersObject));
 
+  // FIXED: Convert to Record<string, TemplateParameter> instead of array
+  const parametersRecord: Record<string, TemplateParameter> = parametersObject;
+
   // Convert to ContentTemplate format (matching your existing interface)
   const contentTemplate: ContentTemplate = {
     id,
@@ -210,14 +230,26 @@ export function adaptBackendTemplate(backendTemplate: BackendTemplate | RawYAMLT
     targetAudience: safeGet(backendTemplate, 'targetAudience', undefined),
     icon: safeGet(backendTemplate, 'icon', undefined),
     tags: safeGet(backendTemplate, 'tags', []),
-    parameters: Object.values(parametersObject), // ContentTemplate expects array of TemplateParameter
+    parameters: parametersRecord, // FIXED: Use Record instead of array
     templateData: {
-      parameters: Object.values(parametersObject),
+      id,
+      template_type: 'standard',
+      content_format: 'standard',
+      output_structure: 'standard',
+      generation_mode: 'standard',
+      sections: safeGet(backendTemplate, 'sections', []) as TemplateSection[], // FIXED: Provide default empty array
+      section_order: [],
+      parameters: parametersRecord, // FIXED: Use Record instead of array
+      original_parameters: backendTemplate.parameters,
+      instructions: safeGet(backendTemplate, 'instructions', ''), // FIXED: Provide default empty string
+      validation_rules: [],
+      tone: {},
+      proposal_specs: {},
+      requirements: {},
+      quality_targets: {},
       metadata: safeGet(backendTemplate, 'metadata', {}),
       filename: safeGet(backendTemplate, 'filename', undefined),
-      sections: safeGet(backendTemplate, 'sections', undefined),
-      suggested_sections: safeGet(backendTemplate, 'suggested_sections', undefined),
-      instructions: safeGet(backendTemplate, 'instructions', undefined),
+      originalData: backendTemplate as unknown as Record<string, unknown>,
     },
     instructions: safeGet(backendTemplate, 'instructions', ''),
     metadata: {
@@ -336,7 +368,7 @@ export function adaptTemplateCollection(backendTemplates: unknown): ContentTempl
               label: param.label || key,
               type: param.type || 'text',
               description: undefined, // TemplateParameter doesn't have description
-              options: param.options,
+              options: param.options, // FIXED: Keep original options type
               required: param.required || false,
               placeholder: param.placeholder,
               default: defaultValue,
