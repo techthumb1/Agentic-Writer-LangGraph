@@ -183,3 +183,11 @@ storage/.gitignore
 """
 content_fingerprints.json
 """
+
+archive/
+generated_content/
+*.copy.tsx
+*.copy.ts
+debug_templates.py
+fix_template_config.py
+fix_templates_now.py
