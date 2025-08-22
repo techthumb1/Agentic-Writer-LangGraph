@@ -1,8 +1,4 @@
-// app/api/templates/route.ts
-// Updated to handle dynamic template structures with complex parameters and sections
 import { NextRequest, NextResponse } from 'next/server';
-// File: frontend/app/api/templates/route.ts
-
 
 const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL;
 const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
@@ -14,27 +10,32 @@ console.log('🔑 [TEMPLATES] Environment check:', {
   keyPreview: FASTAPI_API_KEY ? `${FASTAPI_API_KEY.substring(0, 10)}...` : 'MISSING'
 });
 
-// Enhanced interface to handle both old and new template structures
 interface BackendTemplate {
   id: string;
   name: string;
   description: string;
   category: string;
   
-  // Core fields (both old and new formats)
   difficulty?: string;
-  complexity?: string; // Old format fallback
+  complexity?: string;
   estimatedLength?: string;
   target_length?: {
     min_words?: number;
     max_words?: number;
     optimal_words?: number;
-  } | string | number; // Old format fallback
+  } | string | number;
   targetAudience?: string;
   icon?: string;
   tags?: string[];
   
-  // Section handling (new dynamic format)
+  // V2 Template fields - CRITICAL
+  inputs?: Record<string, {
+    required?: boolean;
+    default?: unknown;
+    description?: string;
+    enum?: unknown[];
+  }>;
+  
   sections?: Array<{
     title?: string;
     required?: boolean;
@@ -49,7 +50,6 @@ interface BackendTemplate {
     specifications: string[];
   }>;
   
-  // Parameter handling (new dynamic format)
   parameters?: Array<{
     name: string;
     type: string;
@@ -61,9 +61,8 @@ interface BackendTemplate {
     affects_scope?: boolean;
     affects_tone?: boolean;
     options?: Record<string, string>;
-  }> | Record<string, unknown>; // Support old simple format too
+  }> | Record<string, unknown>;
   
-  // Enhanced fields
   metadata?: Record<string, unknown>;
   filename?: string;
   instructions?: string;
@@ -71,31 +70,63 @@ interface BackendTemplate {
   content_format?: string;
   output_structure?: string;
   generation_mode?: string;
-  
-  // Template-specific configurations
   section_order?: string[];
   tone?: Record<string, unknown>;
   validation_rules?: string[];
   proposal_specs?: Record<string, unknown>;
-  
-  // Quality and requirements
   requirements?: Record<string, unknown>;
   quality_targets?: Record<string, unknown>;
   
-  // Backwards compatibility
   [key: string]: unknown;
 }
 
-// Transform complex parameters to frontend-friendly format
-function transformParameters(params: unknown): Record<string, unknown> {
+function normalizeV2Template(template: BackendTemplate): BackendTemplate {
+  console.log('🔄 Normalizing template:', template.id, 'has inputs:', !!template.inputs);
+  
+  if (!template.inputs) {
+    console.log('⚠️ No inputs found, returning original');
+    return template;
+  }
+  
+  const parameters = [];
+  console.log('📋 Processing inputs:', Object.keys(template.inputs));
+  
+  for (const [key, spec] of Object.entries(template.inputs)) {
+    const param = {
+      name: key,
+      label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      type: Array.isArray(spec?.enum) ? 'select' : 
+            typeof spec?.default === 'boolean' ? 'checkbox' :
+            typeof spec?.default === 'number' ? 'number' : 'text',
+      description: spec?.description || '',
+      required: spec?.required || false,
+      default: spec?.default || '',
+      options: Array.isArray(spec?.enum)
+        ? Object.fromEntries(
+            (spec.enum as unknown[]).map((v) => [
+              String(v),
+              typeof v === 'string' ? v : JSON.stringify(v),
+            ])
+          )
+        : undefined
+    };
+    
+    parameters.push(param);
+    console.log('✅ Created parameter:', param.name, param.type);
+  }
+  
+  template.parameters = parameters;
+  console.log('✅ Normalized template with', parameters.length, 'parameters');
+  return template;
+}
+
+function transformParametersToRecord(params: unknown): Record<string, unknown> {
   if (!params) return {};
   
-  // If it's already a simple object, return as-is
   if (!Array.isArray(params)) {
     return params as Record<string, unknown>;
   }
   
-  // Transform array of parameter objects to object with defaults
   const transformed: Record<string, unknown> = {};
   
   (params as Array<Record<string, unknown>>).forEach((param) => {
@@ -118,7 +149,6 @@ function transformParameters(params: unknown): Record<string, unknown> {
   return transformed;
 }
 
-// Transform sections to unified format
 function transformSections(template: BackendTemplate): Array<{
   name: string;
   description: string;
@@ -127,7 +157,6 @@ function transformSections(template: BackendTemplate): Array<{
   specifications: string[];
   title: string;
 }> {
-  // Priority: suggested_sections > sections > empty array
   if (template.suggested_sections && Array.isArray(template.suggested_sections)) {
     return template.suggested_sections.map((section) => ({
       name: (section as Record<string, unknown>).name as string || (section as Record<string, unknown>).title as string || '',
@@ -166,7 +195,6 @@ function transformSections(template: BackendTemplate): Array<{
   return [];
 }
 
-// Extract target length in a unified way
 function extractTargetLength(template: BackendTemplate): string | null {
   if (template.estimatedLength) {
     return template.estimatedLength;
@@ -198,7 +226,6 @@ export async function GET(request: NextRequest) {
 
     console.log(`🔍 [TEMPLATES] Fetching templates - page: ${page}, limit: ${limit}, search: "${search}", category: "${category}"`);
 
-    // Build query parameters for backend
     const params = new URLSearchParams({
       page,
       limit,
@@ -215,7 +242,7 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      signal: AbortSignal.timeout(10000), // 10 second timeout
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
@@ -230,9 +257,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 [TEMPLATES] Raw backend response type:', typeof data);
     console.log('🔍 [TEMPLATES] Is array:', Array.isArray(data));
     console.log('🔍 [TEMPLATES] Response keys:', data && typeof data === 'object' ? Object.keys(data) : 'primitive type');
-    console.log('🔍 [TEMPLATES] First few items:', Array.isArray(data) ? data.slice(0, 2) : 'Not an array');
 
-    // Extract templates from various possible response structures
     let templates: BackendTemplate[] = [];
     
     if (Array.isArray(data)) {
@@ -253,74 +278,61 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`📊 [TEMPLATES] Extracted ${templates.length} templates`);
+    
+    // Debug first template
+    if (templates.length > 0) {
+      console.log('🔍 First template debug:', {
+        id: templates[0]?.id,
+        name: templates[0]?.name,
+        hasInputs: !!(templates[0]?.inputs),
+        inputsKeys: templates[0]?.inputs ? Object.keys(templates[0].inputs) : [],
+        hasParameters: !!(templates[0]?.parameters),
+        allKeys: Object.keys(templates[0] || {})
+      });
+    }
 
-    // Transform backend templates to enhanced frontend format
     const transformedTemplates = templates.map((template) => {
       console.log('🔄 [TEMPLATES] Transforming template:', template.id, template.name);
-      console.log('🔍 [TEMPLATES] Template structure keys:', Object.keys(template));
       
-      // Enhanced transformation with dynamic structure support
+      // Normalize V2 template structure
+      const normalizedTemplate = normalizeV2Template(template);
+      
       const transformedTemplate = {
-        id: template.id,
-        title: template.name || 'Untitled Template',
-        description: template.description || `Template for ${template.category || 'general'}`,
-        category: template.category || 'general',
+        id: normalizedTemplate.id,
+        title: normalizedTemplate.name || 'Untitled Template',
+        description: normalizedTemplate.description || `Template for ${normalizedTemplate.category || 'general'}`,
+        category: normalizedTemplate.category || 'general',
+        difficulty: normalizedTemplate.difficulty || normalizedTemplate.complexity || null,
+        estimatedLength: extractTargetLength(normalizedTemplate),
+        targetAudience: normalizedTemplate.targetAudience || null,
+        icon: normalizedTemplate.icon || null,
+        tags: normalizedTemplate.tags || [],
         
-        // Handle difficulty with fallback to complexity
-        difficulty: template.difficulty || template.complexity || null,
+        parameters: transformParametersToRecord(normalizedTemplate.parameters),
         
-        // Handle estimated length with smart extraction
-        estimatedLength: extractTargetLength(template),
-        
-        targetAudience: template.targetAudience || null,
-        icon: template.icon || null,
-        tags: template.tags || [],
-        
-        // Enhanced parameter handling
-        parameters: transformParameters(template.parameters),
-        
-        // Enhanced template data with all dynamic fields
         templateData: {
-          // Core template info
-          id: template.id,
-          template_type: template.template_type || 'standard',
-          content_format: template.content_format || 'standard',
-          output_structure: template.output_structure || 'standard',
-          generation_mode: template.generation_mode || 'standard',
-          
-          // Sections with dynamic structure
-          sections: transformSections(template),
-          section_order: template.section_order || [],
-          
-          // Parameters in both formats
-          parameters: transformParameters(template.parameters),
-          original_parameters: template.parameters, // Keep original for reference
-          
-          // Instructions and requirements
-          instructions: template.instructions || '',
-          validation_rules: template.validation_rules || [],
-          
-          // Tone and style
-          tone: template.tone || {},
-          
-          // Template-specific configurations
-          proposal_specs: template.proposal_specs || {},
-          requirements: template.requirements || {},
-          quality_targets: template.quality_targets || {},
-          
-          // Metadata
-          metadata: template.metadata || {},
-          filename: template.filename,
-          
-          // Keep full original data for advanced use cases
-          originalData: template,
+          id: normalizedTemplate.id,
+          template_type: normalizedTemplate.template_type || 'standard',
+          content_format: normalizedTemplate.content_format || 'standard',
+          output_structure: normalizedTemplate.output_structure || 'standard',
+          generation_mode: normalizedTemplate.generation_mode || 'standard',
+          sections: transformSections(normalizedTemplate),
+          section_order: normalizedTemplate.section_order || [],
+          parameters: transformParametersToRecord(normalizedTemplate.parameters),
+          original_parameters: normalizedTemplate.parameters,
+          instructions: normalizedTemplate.instructions || '',
+          validation_rules: normalizedTemplate.validation_rules || [],
+          tone: normalizedTemplate.tone || {},
+          proposal_specs: normalizedTemplate.proposal_specs || {},
+          requirements: normalizedTemplate.requirements || {},
+          quality_targets: normalizedTemplate.quality_targets || {},
+          metadata: normalizedTemplate.metadata || {},
+          filename: normalizedTemplate.filename,
+          originalData: normalizedTemplate,
         },
         
-        // Backwards compatibility fields
-        instructions: template.instructions || '',
-        metadata: template.metadata || {},
-        
-        // System fields
+        instructions: normalizedTemplate.instructions || '',
+        metadata: normalizedTemplate.metadata || {},
         isBuiltIn: true,
         isPublic: true,
         createdAt: new Date().toISOString(),
@@ -330,6 +342,7 @@ export async function GET(request: NextRequest) {
       console.log('✅ [TEMPLATES] Transformed template structure:', {
         id: transformedTemplate.id,
         hasParameters: Object.keys(transformedTemplate.parameters).length > 0,
+        parameterKeys: Object.keys(transformedTemplate.parameters),
         hasSections: transformedTemplate.templateData.sections.length > 0,
         hasInstructions: !!transformedTemplate.instructions,
         templateType: transformedTemplate.templateData.template_type
@@ -339,15 +352,17 @@ export async function GET(request: NextRequest) {
     });
 
     console.log(`✅ [TEMPLATES] Successfully transformed ${transformedTemplates.length} templates`);
-    console.log('🔍 [TEMPLATES] First transformed template details:', {
-      id: transformedTemplates[0]?.id,
-      title: transformedTemplates[0]?.title,
-      parametersCount: Object.keys(transformedTemplates[0]?.parameters || {}).length,
-      sectionsCount: transformedTemplates[0]?.templateData?.sections?.length || 0,
-      templateType: transformedTemplates[0]?.templateData?.template_type
-    });
+    if (transformedTemplates.length > 0) {
+      console.log('🔍 [TEMPLATES] First transformed template details:', {
+        id: transformedTemplates[0]?.id,
+        title: transformedTemplates[0]?.title,
+        parametersCount: Object.keys(transformedTemplates[0]?.parameters || {}).length,
+        parameterKeys: Object.keys(transformedTemplates[0]?.parameters || {}),
+        sectionsCount: transformedTemplates[0]?.templateData?.sections?.length || 0,
+        templateType: transformedTemplates[0]?.templateData?.template_type
+      });
+    }
 
-    // Extract pagination info
     const total = Array.isArray(data) ? data.length : 
                  data.data?.total || data.total || templates.length;
     const currentPage = parseInt(page);
@@ -370,10 +385,7 @@ export async function GET(request: NextRequest) {
       templatesCount: response_data.templates.length,
       total: response_data.total,
       success: response_data.success,
-      templateTypes: response_data.templates.map(t => ({ 
-        id: t.id, 
-        type: t.templateData.template_type 
-      }))
+      firstTemplateParameterCount: Object.keys(response_data.templates[0]?.parameters || {}).length
     });
 
     return NextResponse.json(response_data);
@@ -383,7 +395,6 @@ export async function GET(request: NextRequest) {
     console.error('❌ [TEMPLATES] API Error:', errorMessage);
     console.error('❌ [TEMPLATES] Error stack:', error instanceof Error ? error.stack : 'No stack');
 
-    // Return error response with fallback empty data
     return NextResponse.json(
       {
         error: 'Failed to fetch templates',

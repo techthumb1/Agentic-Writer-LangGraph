@@ -1,84 +1,120 @@
-id: technical_documentation
-name: Technical Documentation
-description: Create clear, comprehensive technical guides and API documentation
-category: Technical Writing
-difficulty: advanced
-estimatedLength: 15-25 min
-targetAudience: Developers and technical writers
-icon: "📖"
-tags:
-  - documentation
-  - technical
-  - api
-  - guides
+name: "Research Paper Generator"
+slug: "research_paper_template"
+version: "2.0"
 
-parameters:
-  - name: product_name
-    type: text
-    label: Product/API Name
-    description: "What are you documenting?"
-    commonly_used: true
-  - name: audience_level
-    type: select
-    label: Technical Level
-    description: "Reader's expected expertise"
-    options:
-      - beginner
-      - intermediate
-      - advanced
-      - expert
-    commonly_used: true
-  - name: documentation_type
-    type: select
-    label: Documentation Type
-    description: "What kind of documentation is needed?"
-    options:
-      - api_reference
-      - user_guide
-      - installation_guide
-      - tutorial
-      - troubleshooting
-      - getting_started
-    commonly_used: true
-  - name: programming_language
-    type: text
-    label: Primary Language
-    description: "Main programming language or technology"
-    commonly_used: false
-  - name: include_code_examples
-    type: boolean
-    label: Include Code Examples
-    description: "Should we include working code samples?"
-    commonly_used: false
-  - name: target_platform
-    type: text
-    label: Target Platform
-    description: "Web, mobile, desktop, cloud, etc."
-    commonly_used: false
-  - name: integration_complexity
-    type: select
-    label: Integration Complexity
-    description: "How complex is the implementation?"
-    options:
-      - simple
-      - moderate
-      - complex
-      - enterprise
-    commonly_used: false
-  - name: authentication_method
-    type: text
-    label: Authentication
-    description: "API keys, OAuth, JWT, etc."
-    commonly_used: false
+description: >
+  Academic research paper generator. Creates publication-quality research papers with methodology and findings,
+  not blog posts about research topics.
 
-instructions: |
-  Generate comprehensive technical documentation based on user specifications.
-  Include appropriate code examples, setup instructions, and troubleshooting.
-  Adapt complexity level and structure to the target audience.
-  Ensure clarity and completeness for developers to successfully implement.
+# Inputs (resolved at runtime from request payload or style profile)
+inputs:
+  research_topic: { required: true }
+  academic_field: { required: true }             # "psychology", "computer_science", "medicine", "business"
+  research_type: { default: "empirical" }        # "empirical", "theoretical", "literature_review", "case_study"
+  methodology: { default: "quantitative" }       # "quantitative", "qualitative", "mixed_methods"
+  target_audience: { default: "academic" }       # "academic", "practitioners", "general_scholarly"
+  publication_target: { default: "peer_reviewed" } # "peer_reviewed", "conference", "thesis", "report"
+  citation_style: { default: "apa" }            # "apa", "mla", "chicago", "ieee", "harvard"
+  sample_size: { optional: true }
+  # Optional user overrides
+  theoretical_framework: { optional: true }
+  research_questions: { optional: true }
+  statistical_methods: { optional: true }
+  ethical_considerations: { optional: true }
 
-metadata:
-  version: "1.0.0"
-  created_by: "content_team"
-  last_updated: "2025-07-10"
-  parameter_flexibility: "high"
+# Priority-based requirement resolution
+requirements:
+  min_words:
+    priority:
+      - dynamic.min_words
+      - style.length_limit.target
+      - 8000
+  min_citations:
+    priority:
+      - dynamic.min_citations
+      - style.requirements.min_citations
+      - 25
+  min_sections:
+    priority:
+      - dynamic.min_sections
+      - 8
+
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "research_paper"                  # CRITICAL: Actual academic research paper!
+  format: "academic_manuscript"
+  include_methodology: true
+  generate_realistic_findings: true
+  follow_academic_standards: true
+  enforce_citation_requirements:
+    priority:
+      - dynamic.enforce_citation_requirements
+      - true
+
+mcp:
+  tool_sequence:
+    priority:
+      - dynamic.tool_sequence
+      - [academic_search, statistical_analyzer, citation_generator, peer_review_checker]
+
+sections:
+  order:
+    priority:
+      - dynamic.section_order
+      - ["title_abstract", "introduction", "literature_review", "methodology", "results", "discussion", "conclusion", "references"]
+
+prompt_schema:
+  system_preamble: |
+    You are a distinguished academic researcher and scholarly writer. Create rigorous, publication-quality
+    research papers that advance knowledge in the field. Generate actual research manuscripts with
+    methodology, findings, and academic rigor - not explanatory content about research topics.
+
+  content_template: |
+    # {{research_title}}
+
+    ## Abstract
+    {{abstract_section}}
+
+    ## Introduction
+    {{introduction_section}}
+
+    ## Literature Review
+    {{literature_review}}
+
+    ## Methodology
+    {{methodology_section}}
+
+    ## Results
+    {{results_section}}
+
+    ## Discussion
+    {{discussion_section}}
+
+    ## Conclusion
+    {{conclusion_section}}
+
+    ## Limitations and Future Research
+    {{limitations_section}}
+
+    ## References
+    {{references_section}}
+
+  placeholders:
+    - research_title
+    - abstract_section
+    - introduction_section
+    - literature_review
+    - methodology_section
+    - results_section
+    - discussion_section
+    - conclusion_section
+    - limitations_section
+    - references_section
+
+output:
+  format: "markdown"
+  require:
+    academic_rigor: true
+    proper_citations: true
+    methodology_section: true
+    peer_reviewable: true

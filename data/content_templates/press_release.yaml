@@ -1,100 +1,120 @@
-id: press_release
-name: Press Release
-description: Create compelling press releases for product launches and company news
-category: Public Relations
-difficulty: intermediate
-estimatedLength: 10-15 min
-targetAudience: PR professionals and marketing teams
-icon: "📰"
-tags:
-  - press-release
-  - public-relations
-  - news
-  - media
+name: "Research Paper Generator"
+slug: "research_paper_template"
+version: "2.0"
 
-suggested_sections:
-  - name: headline
-    description: Attention-grabbing headline with key news
-  - name: lead_paragraph
-    description: Who, what, when, where, why summary
-  - name: body_content
-    description: Detailed information with quotes and context
-  - name: company_boilerplate
-    description: Standard company background information
-  - name: contact_information
-    description: Media contact details and availability
+description: >
+  Academic research paper generator. Creates publication-quality research papers with methodology and findings,
+  not blog posts about research topics.
 
-parameters:
-  - name: announcement_type
-    type: select
-    label: News Category
-    description: "What type of announcement is this?"
-    options:
-      - product_launch
-      - company_news
-      - partnership
-      - funding
-      - executive_hire
-      - award_recognition
-      - event_announcement
-      - research_findings
-    commonly_used: true
-  - name: company_name
-    type: text
-    label: Company Name
-    description: "Organization making the announcement"
-    commonly_used: true
-  - name: key_spokesperson
-    type: text
-    label: Key Spokesperson
-    description: "Name and title of main quote source"
-    commonly_used: true
-  - name: announcement_details
-    type: text
-    label: Key Announcement Details
-    description: "Main facts about what's being announced"
-    commonly_used: true
-  - name: target_media
-    type: select
-    label: Target Media
-    description: "Primary media audience"
-    options:
-      - trade_publications
-      - mainstream_media
-      - tech_media
-      - local_media
-      - industry_specific
-      - financial_media
-    commonly_used: false
-  - name: geographic_focus
-    type: text
-    label: Geographic Scope
-    description: "Local, national, international relevance"
-    commonly_used: false
-  - name: include_statistics
-    type: boolean
-    label: Include Supporting Data
-    description: "Add relevant statistics or metrics"
-    commonly_used: false
-  - name: urgency_level
-    type: select
-    label: Release Timing
-    description: "When should this be published?"
-    options:
-      - immediate_release
-      - for_release
-      - embargoed
-      - scheduled
-    commonly_used: false
+# Inputs (resolved at runtime from request payload or style profile)
+inputs:
+  research_topic: { required: true }
+  academic_field: { required: true }             # "psychology", "computer_science", "medicine", "business"
+  research_type: { default: "empirical" }        # "empirical", "theoretical", "literature_review", "case_study"
+  methodology: { default: "quantitative" }       # "quantitative", "qualitative", "mixed_methods"
+  target_audience: { default: "academic" }       # "academic", "practitioners", "general_scholarly"
+  publication_target: { default: "peer_reviewed" } # "peer_reviewed", "conference", "thesis", "report"
+  citation_style: { default: "apa" }            # "apa", "mla", "chicago", "ieee", "harvard"
+  sample_size: { optional: true }
+  # Optional user overrides
+  theoretical_framework: { optional: true }
+  research_questions: { optional: true }
+  statistical_methods: { optional: true }
+  ethical_considerations: { optional: true }
 
-instructions: |
-  Create a newsworthy press release following journalism standards.
-  Lead with the most important information and include relevant quotes.
-  Ensure the content is factual, timely, and appeals to target media.
-  Include all essential elements for media pickup and coverage.
+# Priority-based requirement resolution
+requirements:
+  min_words:
+    priority:
+      - dynamic.min_words
+      - style.length_limit.target
+      - 8000
+  min_citations:
+    priority:
+      - dynamic.min_citations
+      - style.requirements.min_citations
+      - 25
+  min_sections:
+    priority:
+      - dynamic.min_sections
+      - 8
 
-metadata:
-  version: "1.0.0"
-  created_by: "content_team"
-  last_updated: "2025-07-10"
-  parameter_flexibility: "high"
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "research_paper"                  # CRITICAL: Actual academic research paper!
+  format: "academic_manuscript"
+  include_methodology: true
+  generate_realistic_findings: true
+  follow_academic_standards: true
+  enforce_citation_requirements:
+    priority:
+      - dynamic.enforce_citation_requirements
+      - true
+
+mcp:
+  tool_sequence:
+    priority:
+      - dynamic.tool_sequence
+      - [academic_search, statistical_analyzer, citation_generator, peer_review_checker]
+
+sections:
+  order:
+    priority:
+      - dynamic.section_order
+      - ["title_abstract", "introduction", "literature_review", "methodology", "results", "discussion", "conclusion", "references"]
+
+prompt_schema:
+  system_preamble: |
+    You are a distinguished academic researcher and scholarly writer. Create rigorous, publication-quality
+    research papers that advance knowledge in the field. Generate actual research manuscripts with
+    methodology, findings, and academic rigor - not explanatory content about research topics.
+
+  content_template: |
+    # {{research_title}}
+
+    ## Abstract
+    {{abstract_section}}
+
+    ## Introduction
+    {{introduction_section}}
+
+    ## Literature Review
+    {{literature_review}}
+
+    ## Methodology
+    {{methodology_section}}
+
+    ## Results
+    {{results_section}}
+
+    ## Discussion
+    {{discussion_section}}
+
+    ## Conclusion
+    {{conclusion_section}}
+
+    ## Limitations and Future Research
+    {{limitations_section}}
+
+    ## References
+    {{references_section}}
+
+  placeholders:
+    - research_title
+    - abstract_section
+    - introduction_section
+    - literature_review
+    - methodology_section
+    - results_section
+    - discussion_section
+    - conclusion_section
+    - limitations_section
+    - references_section
+
+output:
+  format: "markdown"
+  require:
+    academic_rigor: true
+    proper_citations: true
+    methodology_section: true
+    peer_reviewable: true

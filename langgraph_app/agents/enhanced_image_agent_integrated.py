@@ -11,6 +11,11 @@ from openai import OpenAI
 from langchain_core.runnables import RunnableLambda
 from dotenv import load_dotenv
 
+from langgraph_app.core.enriched_content_state import EnrichedContentState
+
+# Import ContentPhase for phase management
+from langgraph_app.core.enriched_content_state import ContentPhase
+
 load_dotenv()
 
 # Enhanced logging
@@ -66,6 +71,10 @@ class EnhancedImageAgent:
     
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        # Define AgentType locally if not imported
+        class AgentType(Enum):
+            IMAGE = "image"
+        self.agent_type = AgentType.IMAGE 
         
         # Enhanced style definitions with detailed characteristics
         self.image_styles = {
@@ -187,7 +196,31 @@ class EnhancedImageAgent:
     def extract_generation_context(self, state: Dict) -> ImageGenerationContext:
         """Extract and structure comprehensive context from workflow state"""
         
-        
+        # FIXED: Handle different state structures properly
+        if hasattr(state, 'template_config'):
+            # EnrichedContentState structure
+            template_config = getattr(state, 'template_config', {})
+            style_config = getattr(state, 'style_config', {})
+            topic = getattr(state.content_spec, 'topic', 'Content Generation')
+            platform = getattr(state.content_spec, 'platform', 'blog')
+            tags = template_config.get('tags', []) if template_config else []
+        else:
+            # Dictionary structure fallback
+            template_config = state.get('template_config', {}) if isinstance(state, dict) else {}
+            style_config = state.get('style_config', {}) if isinstance(state, dict) else {}
+            dynamic_params = state.get('dynamic_parameters', {}) if isinstance(state, dict) else {}
+            
+            topic = (template_config.get('topic') or 
+                    dynamic_params.get('topic') or 
+                    'Content Generation')
+            
+            platform = (template_config.get('platform') or 
+                       dynamic_params.get('platform') or 
+                       'blog')
+            
+            tags = (template_config.get('tags') or 
+                   dynamic_params.get('tags') or 
+                   [])        
         # Extract template_config
         template_config = getattr(state, "template_config", {})
         if not template_config and hasattr(state, "content_spec"):
@@ -202,7 +235,7 @@ class EnhancedImageAgent:
             tags = template_config.get('tags', [])
         else:
             # Dictionary structure
-            template_config = state.get('template_config', {})
+            template_config = getattr(state, 'template_config', {})
             style_config = state.get('style_config', {})
             dynamic_params = state.get('dynamic_parameters', {})
             
@@ -604,7 +637,54 @@ class EnhancedImageAgent:
             return self._create_error_image_result(str(e), 
                                                  getattr(locals(), 'context', None), 
                                                  getattr(locals(), 'optimal_style', ImageStyle.PROFESSIONAL))
-
+    
+    def execute(self, state: EnrichedContentState) -> EnrichedContentState:
+        """ENTERPRISE EXECUTE METHOD - Required for graph integration"""
+        logger.info(f"Executing Enhanced Image Agent for topic: {state.content_spec.topic}")
+        
+        # TEMPLATE INJECTION: Extract template_config
+        template_config = getattr(state, 'template_config', {})
+        if not template_config and hasattr(state, 'content_spec'):
+            template_config = state.content_spec.business_context.get('template_config', {})
+        
+        # Get dynamic instructions
+        instructions = state.get_agent_instructions(self.agent_type)
+        
+        # Log execution start
+        state.log_agent_execution(self.agent_type, {
+            "status": "started",
+            "template_config_found": bool(template_config),
+            "instructions_received": len(instructions.primary_objectives) if instructions else 0
+        })
+        
+        try:
+            # Execute image generation using existing sync method
+            image_result = self.generate_enhanced_image(state)
+            
+            # Update state with image results
+            if image_result.get("cover_image_url"):
+                state.generated_images = [image_result]
+            
+            # Update phase
+            state.update_phase(ContentPhase.CODE_GENERATION)
+            
+            # Log successful completion
+            state.log_agent_execution(self.agent_type, {
+                "status": "completed",
+                "image_generated": bool(image_result.get("cover_image_url")),
+                "generation_successful": image_result.get("image_metadata", {}).get("generation_successful", False)
+            })
+            
+            logger.info("✅ Enhanced Image Agent completed successfully")
+            return state
+            
+        except Exception as e:
+            logger.error(f"❌ Enhanced Image Agent failed: {e}")
+            state.log_agent_execution(self.agent_type, {
+                "status": "failed",
+                "error": str(e)
+            })
+            return state
 
 # Enhanced workflow integration functions
 def _enhanced_image_agent_sync_fn(state: dict) -> dict:

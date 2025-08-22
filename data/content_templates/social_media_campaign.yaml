@@ -1,95 +1,108 @@
-id: social_media_campaign
-name: Social Media Campaign
-description: Generate cohesive social media content across multiple platforms
-category: Social Media
-difficulty: intermediate
-estimatedLength: 10-15 min
-targetAudience: Social media managers and marketers
-icon: "📱"
-tags:
-  - social-media
-  - marketing
-  - engagement
+name: "Social Media Campaign Generator"
+slug: "social_media_campaign"
+version: "2.0"
 
-suggested_sections:
-  - name: strategy_overview
-    description: Campaign goals and key messaging
-  - name: platform_content
-    description: Platform-specific posts and content
-  - name: engagement_plan
-    description: Community management and response strategy
-  - name: performance_metrics
-    description: Success measurement and KPIs
+description: >
+  Generates actual social media posts and campaign content. Creates ready-to-publish social media content,
+  not blog posts about social media strategy.
 
-parameters:
-  - name: campaign_goal
-    type: select
-    label: Primary Goal
-    description: "What's the main objective?"
-    options:
-      - brand_awareness
-      - lead_generation
-      - engagement
-      - sales
-      - community_building
-      - event_promotion
-    commonly_used: true
-  - name: target_platforms
-    type: text
-    label: Social Platforms
-    description: "Which platforms to focus on (e.g., Instagram, LinkedIn, TikTok)"
-    commonly_used: true
-  - name: target_audience
-    type: text
-    label: Audience Demographics
-    description: "Age, interests, behaviors, location, etc."
-    commonly_used: true
-  - name: brand_voice
-    type: select
-    label: Brand Personality
-    description: "How should the brand sound?"
-    options:
-      - professional
-      - playful
-      - inspirational
-      - educational
-      - humorous
-      - authoritative
-    commonly_used: true
-  - name: campaign_duration
-    type: text
-    label: Campaign Length
-    description: "How long will this campaign run?"
-    commonly_used: false
-  - name: budget_range
-    type: select
-    label: Budget Level
-    description: "Available resources for this campaign"
-    options:
-      - minimal
-      - moderate
-      - substantial
-      - premium
-    commonly_used: false
-  - name: content_types
-    type: text
-    label: Preferred Content
-    description: "Videos, images, carousels, stories, etc."
-    commonly_used: false
-  - name: hashtag_strategy
-    type: text
-    label: Hashtag Approach
-    description: "Branded, trending, niche hashtags to use"
-    commonly_used: false
+# Inputs (resolved at runtime from request payload or style profile)
+inputs:
+  campaign_goal: { required: true }               # "brand_awareness", "lead_generation", "engagement", etc.
+  target_platforms: { required: true }            # ["instagram", "linkedin", "twitter", "tiktok"]
+  brand_voice: { default: "professional" }        # "playful", "inspirational", "educational", etc.
+  target_audience: { default: "general" }
+  campaign_duration: { default: "1_week" }        # "3_days", "1_week", "1_month"
+  post_count: { default: 10 }                    # Number of individual posts to generate
+  content_types: { default: ["posts", "stories"] } # "posts", "stories", "reels", "carousels"
+  hashtag_strategy: { default: "mixed" }          # "branded", "trending", "niche", "mixed"
+  include_captions: { default: true }
+  include_hashtags: { default: true }
+  include_cta: { default: true }
+  # Optional user overrides
+  posting_schedule: { optional: true }
+  budget_level: { optional: true }
+  seasonal_themes: { optional: true }
+  brand_guidelines: { optional: true }
 
-instructions: |
-  Create comprehensive social media campaign materials.
-  Use suggested parameters as starting points - users can customize extensively.
-  Adapt content strategy based on all provided specifications.
-  Include platform-specific optimizations and best practices.
+# Priority-based requirement resolution
+requirements:
+  min_posts:
+    priority:
+      - dynamic.post_count
+      - style.requirements.min_posts
+      - 8
+  hashtags_per_post:
+    priority:
+      - dynamic.hashtags_per_post
+      - style.requirements.hashtags_per_post
+      - 5
+  platforms_count:
+    priority:
+      - dynamic.platforms_count
+      - 2
 
-metadata:
-  version: "1.0.0"
-  created_by: "content_team"
-  last_updated: "2025-07-10"
-  parameter_flexibility: "high"
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "social_media_posts"              # CRITICAL: Actual social media content!
+  format: "structured_posts"
+  generate_platform_specific: true
+  include_engagement_hooks: true
+  create_cohesive_campaign: true
+  optimize_for_algorithms:
+    priority:
+      - dynamic.optimize_for_algorithms
+      - true
+
+mcp:
+  tool_sequence:
+    priority:
+      - dynamic.tool_sequence
+      - [hashtag_generator, engagement_optimizer, platform_analyzer]
+
+sections:
+  order:
+    priority:
+      - dynamic.section_order
+      - ["campaign_overview", "platform_posts", "hashtag_strategy", "posting_schedule", "engagement_plan"]
+
+prompt_schema:
+  system_preamble: |
+    You are a social media content strategist and copywriter. Create actual, ready-to-publish social media posts
+    and campaign materials. Generate specific post content with captions, hashtags, and engagement elements -
+    not explanatory content about social media marketing.
+
+  content_template: |
+    # {{campaign_title}} - Social Media Campaign
+
+    ## Campaign Overview
+    {{campaign_overview}}
+
+    ## Platform-Specific Posts
+
+    {{platform_posts_section}}
+
+    ## Hashtag Strategy
+    {{hashtag_strategy_section}}
+
+    ## Posting Schedule
+    {{posting_schedule_section}}
+
+    ## Engagement Guidelines
+    {{engagement_guidelines}}
+
+  placeholders:
+    - campaign_title
+    - campaign_overview
+    - platform_posts_section
+    - hashtag_strategy_section
+    - posting_schedule_section
+    - engagement_guidelines
+
+output:
+  format: "markdown"
+  require:
+    actual_posts: true
+    platform_optimization: true
+    ready_to_publish: true
+    engagement_elements: true

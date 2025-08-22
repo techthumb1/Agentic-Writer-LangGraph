@@ -1,668 +1,119 @@
+# langgraph_app/integrated_server_clean.py
 """
-Enterprise-grade FastAPI server for WriterzRoom
-Unified MCP-integrated content generation system
+Clean, refactored version of integrated_server.py
+Uses existing modules and extracted components
 """
 
-import asyncio
-import os
 import uuid
-import yaml
-import json
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Union
-from pathlib import Path
+from datetime import datetime
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Request, Query, Body
-from fastapi import status
-from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+from fastapi import FastAPI, Request, BackgroundTasks, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware  
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, Response
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, Field, field_validator
-from .schemas import MCPGenerationRequest
-from .mcp_integration import execute_mcp_enhanced_generation
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
+from langgraph_app.agents.mcp_enhanced_agents import GenerateRequest
 
-import uvicorn
+# Use your existing modules
+from .config.settings import settings
+from .config.auth import verify_api_key
+from .core.content_manager import content_manager
+from .monitoring.metrics import custom_registry, REQUEST_COUNT, REQUEST_DURATION
+from .schemas import *  # Your existing Pydantic models
+from .mcp_server_extension import execute_enhanced_mcp_generation
+from .mcp_server_extension import enhanced_mcp_manager
+from .enhanced_model_registry import get_model
 
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
-import structlog
-
-# MCP Integration - unified imports
-MCP_AVAILABLE = False
+# Import your existing systems
 try:
     from .mcp_server_extension import (
         initialize_mcp_for_existing_server,
         cleanup_mcp_for_existing_server,
-        enhance_generation_with_mcp,
-        MCPGenerationRequest
+        MCPGenerationRequest,
     )
-    MCP_AVAILABLE = True
-    print("✅ MCP modules loaded successfully")
 except ImportError as e:
-    print(f"⚠️ MCP modules not available: {e}")
-    print("❌ This server requires MCP modules to function properly")
+    logging.error(f"MCP modules not available: {e}")
+    raise SystemExit("ENTERPRISE FAILURE: MCP modules not available")
 
-
-# Enhanced model registry
 try:
-    from .enhanced_model_registry import get_model, EnhancedModelRegistry
-    print("✅ Model registry loaded successfully")
+    from .universal_system.universal_integration import LangGraphUniversalIntegration
 except ImportError as e:
-    print(f"❌ Model registry not available: {e}")
+    logging.error(f"Universal System not available: {e}")
+    raise SystemExit("ENTERPRISE FAILURE: Universal System not available")
 
-# Configure structured logging
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer()
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
-)
+logger = logging.getLogger(__name__)
 
-logger = structlog.get_logger()
-
-# Configuration
-API_KEY = os.getenv("LANGGRAPH_API_KEY", "prod_api_key_2025_secure_content_gen_v1") 
-ENVIRONMENT = os.getenv("NODE_ENV", "development")
-
-# Authentication setup
-security = HTTPBearer(auto_error=False)
-
-async def get_api_key(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[str]:
-    """Extract API key from Authorization header"""
-    if credentials:
-        return credentials.credentials
-    return None
-
-async def verify_api_key(api_key: Optional[str] = Depends(get_api_key)):
-    """Verify API key - optional in development, required in production"""
-    if ENVIRONMENT == "production":
-        if not api_key or api_key != API_KEY:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid or missing API key",
-                headers={"WWW-Authenticate": "Bearer"}
-            )
-    return True
-
-# Prometheus metrics registry
-custom_registry = CollectorRegistry()
-
-def get_or_create_counter(name, description, labels, registry=None):
-    """Get existing counter or create new one, avoiding duplicates"""
-    if registry is None:
-        registry = custom_registry
-    
-    try:
-        return Counter(name, description, labels, registry=registry)
-    except ValueError as e:
-        if "Duplicated timeseries" in str(e):
-            for collector in registry._collector_to_names:
-                if hasattr(collector, '_name') and collector._name == name:
-                    return collector
-            return Counter(f"{name}_new", description, labels, registry=registry)
-        raise
-
-def get_or_create_histogram(name, description, registry=None):
-    """Get existing histogram or create new one, avoiding duplicates"""
-    if registry is None:
-        registry = custom_registry
-    
-    try:
-        return Histogram(name, description, registry=registry)
-    except ValueError as e:
-        if "Duplicated timeseries" in str(e):
-            for collector in registry._collector_to_names:
-                if hasattr(collector, '_name') and collector._name == name:
-                    return collector
-            return Histogram(f"{name}_new", description, registry=registry)
-        raise
-
-# Initialize Prometheus metrics
-REQUEST_COUNT = get_or_create_counter(
-    'agentic_writer_requests_total', 
-    'Total requests', 
-    ['method', 'endpoint', 'status']
-)
-REQUEST_DURATION = get_or_create_histogram(
-    'agentic_writer_request_duration_seconds', 
-    'Request duration'
-)
-GENERATION_COUNT = get_or_create_counter(
-    'content_generation_total', 
-    'Total content generations', 
-    ['status', 'template']
-)
-GENERATION_DURATION = get_or_create_histogram(
-    'content_generation_duration_seconds', 
-    'Content generation duration'
-)
-
-# Pydantic models
-class TemplateParameter(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
-    label: str = Field(..., min_length=1, max_length=200)
-    type: str = Field(..., pattern=r'^(string|text|textarea|number|select|boolean|array|date|email|url)$')
-    description: Optional[str] = Field(None, max_length=500)
-    placeholder: Optional[str] = Field(None, max_length=500)
-    default: Optional[Union[str, int, float, bool, List[str]]] = None
-    options: Optional[List[str]] = Field(None, max_items=100)
-    required: bool = Field(default=False)
-    validation: Optional[Dict[str, Any]] = Field(default_factory=dict)
-
-class ContentTemplate(BaseModel):
-    id: str = Field(..., min_length=1, max_length=100)
-    slug: str = Field(..., min_length=1, max_length=100)
-    name: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=1000)
-    category: Optional[str] = Field(None, max_length=100)
-    defaults: Dict[str, Any] = Field(default_factory=dict)
-    system_prompt: Optional[str] = Field(None, max_length=5000)
-    structure: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    research: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    parameters: Dict[str, TemplateParameter] = Field(default_factory=dict)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    version: str = Field(default="1.0.0")
-    filename: str
-
-class StyleProfile(BaseModel):
-    id: str = Field(..., min_length=1, max_length=100)
-    name: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=1000)
-    category: str = Field(default="general", max_length=100)
-    platform: Optional[str] = Field(None, max_length=100)
-    tone: Optional[str] = Field(None, max_length=100)
-    voice: Optional[str] = Field(None, max_length=100)
-    structure: Optional[str] = Field(None, max_length=500)
-    audience: Optional[str] = Field(None, max_length=200)
-    system_prompt: Optional[str] = Field(None, max_length=5000)
-    length_limit: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    settings: Dict[str, Any] = Field(default_factory=dict)
-    formatting: Dict[str, Any] = Field(default_factory=dict)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    filename: str
-
-class GenerateRequest(BaseModel):
-    class Config:
-        extra = "allow"
-    template: str = Field(..., min_length=1, max_length=100)
-    style_profile: str = Field(..., min_length=1, max_length=100)
-    dynamic_parameters: Dict[str, Any] = Field(default_factory=dict, max_items=50)
-    priority: int = Field(default=1, ge=1, le=5)
-    timeout_seconds: int = Field(default=300, ge=60, le=1800)
-    
-    @field_validator('dynamic_parameters')
-    @classmethod
-    def validate_parameters(cls, v):
-        for key, value in v.items():
-            if isinstance(value, str) and len(value) > 10000:
-                raise ValueError(f"Parameter '{key}' exceeds maximum length")
-        return v
-
-class GenerationStatus(BaseModel):
-    requestId: str
-    status: str = Field(..., pattern=r'^(pending|processing|completed|failed|cancelled)$')
-    progress: float = Field(..., ge=0.0, le=1.0)
-    current_step: str = Field(default="")
-    content: str = Field(default="")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    errors: List[str] = Field(default_factory=list)
-    warnings: List[str] = Field(default_factory=list)
-    metrics: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime
-    updated_at: datetime
-    completed_at: Optional[datetime] = None
-
-class PaginationMetadata(BaseModel):
-    page: int = Field(..., ge=1)
-    limit: int = Field(..., ge=1, le=100)
-    total: int = Field(..., ge=0)
-    totalPages: int = Field(..., ge=0)
-    hasNext: bool
-    hasPrev: bool
-
-class APIResponse(BaseModel):
-    success: bool
-    data: Optional[Any] = None
-    error: Optional[Dict[str, Any]] = None
-    timestamp: datetime = Field(default_factory=datetime.now)
-    requestId: Optional[str] = None
-
-# File loading utilities
-def get_template_paths() -> List[str]:
-    """Get ordered list of template directory paths"""
-    paths = [
-        "data/content_templates",
-        "../data/content_templates",
-        "frontend/content-templates",
-        "../frontend/content-templates",
-        "content-templates"
-    ]
-    existing_paths = [path for path in paths if os.path.exists(path)]
-    logger.info(f"📂 Template paths found: {existing_paths}")
-    return existing_paths
-
-def get_style_profile_paths() -> List[str]:
-    """Get ordered list of style profile directory paths"""
-    paths = [
-        "data/style_profiles",
-        "../data/style_profiles",
-        "frontend/style-profiles",
-        "../frontend/style-profiles",
-        "style_profiles",
-        "style-profiles"
-    ]
-    existing_paths = [path for path in paths if os.path.exists(path)]
-    logger.info(f"📂 Style profile paths found: {existing_paths}")
-    return existing_paths
-
-def load_yaml_file_safe(file_path: str) -> Dict[str, Any]:
-    """Load YAML file with comprehensive error handling"""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = yaml.safe_load(f)
-            if content is None:
-                logger.warning(f"Empty YAML file: {file_path}")
-                return {}
-            if not isinstance(content, dict):
-                logger.warning(f"Invalid YAML structure in {file_path}: expected dict, got {type(content)}")
-                return {}
-            return content
-    except yaml.YAMLError as e:
-        logger.error(f"YAML parsing error in {file_path}: {e}")
-        return {}
-    except FileNotFoundError:
-        logger.error(f"File not found: {file_path}")
-        return {}
-    except PermissionError:
-        logger.error(f"Permission denied reading file: {file_path}")
-        return {}
-    except Exception as e:
-        logger.error(f"Unexpected error loading YAML {file_path}: {e}")
-        return {}
-
-def parse_template_parameters(parameters_data: Any) -> Dict[str, TemplateParameter]:
-    """Parse parameters from various formats"""
-    processed_parameters = {}
-    
-    if isinstance(parameters_data, dict):
-        for key, param in parameters_data.items():
-            if isinstance(param, dict):
-                processed_parameters[key] = TemplateParameter(
-                    name=key,
-                    label=param.get('label', key.replace('_', ' ').title()),
-                    type=param.get('type', 'string'),
-                    description=param.get('description'),
-                    placeholder=param.get('placeholder'),
-                    default=param.get('default'),
-                    options=param.get('options'),
-                    required=param.get('required', False)
-                )
-            else:
-                processed_parameters[key] = TemplateParameter(
-                    name=key,
-                    label=key.replace('_', ' ').title(),
-                    type='string',
-                    default=param if param is not None else None,
-                    required=False
-                )
-    
-    elif isinstance(parameters_data, list):
-        for param in parameters_data:
-            if isinstance(param, dict) and 'name' in param:
-                param_name = param['name']
-                processed_parameters[param_name] = TemplateParameter(
-                    name=param_name,
-                    label=param.get('label', param_name.replace('_', ' ').title()),
-                    type=param.get('type', 'string'),
-                    description=param.get('description'),
-                    placeholder=param.get('placeholder'),
-                    default=param.get('default'),
-                    options=param.get('options'),
-                    required=param.get('required', False)
-                )
-            elif isinstance(param, str):
-                processed_parameters[param] = TemplateParameter(
-                    name=param,
-                    label=param.replace('_', ' ').title(),
-                    type='string',
-                    required=False
-                )
-            elif isinstance(param, dict):
-                for key, value in param.items():
-                    processed_parameters[key] = TemplateParameter(
-                        name=key,
-                        label=key.replace('_', ' ').title(),
-                        type='string',
-                        default=value if not isinstance(value, dict) else None,
-                        required=False
-                    )
-                    break
-    
-    return processed_parameters
-
-def load_templates() -> List[ContentTemplate]:
-    """Load and validate all content templates"""
-    templates = []
-    
-    for template_dir in get_template_paths():
-        if not os.path.exists(template_dir):
-            continue
-            
-        try:
-            files = os.listdir(template_dir)
-            
-            for filename in files:
-                if not filename.endswith('.yaml'):
-                    continue
-                
-                file_path = os.path.join(template_dir, filename)
-                template_data = load_yaml_file_safe(file_path)
-                
-                if not template_data:
-                    continue
-                
-                try:
-                    template_id = template_data.get('id', filename.replace('.yaml', ''))
-                    parameters_data = template_data.get("parameters", {})
-                    processed_parameters = parse_template_parameters(parameters_data)
-                    
-                    template = ContentTemplate(
-                        id=template_id,
-                        slug=template_data.get('slug', template_id),
-                        name=template_data.get("name", template_id.replace('_', ' ').title()),
-                        description=template_data.get("description", ""),
-                        category=template_data.get("category", "general"),
-                        defaults=template_data.get("defaults", {}),
-                        system_prompt=template_data.get("system_prompt"),
-                        structure=template_data.get("structure", {}),
-                        research=template_data.get("research", {}),
-                        parameters=processed_parameters,
-                        metadata=template_data.get("metadata", {}),
-                        version=template_data.get("version", "1.0.0"),
-                        filename=filename
-                    )
-                    templates.append(template)
-                    logger.info(f"✅ Loaded template: {template.name} ({template.id})")
-                    
-                except Exception as e:
-                    logger.error(f"Invalid template format in {filename}: {e}")
-                    continue
-        
-        except Exception as e:
-            logger.error(f"Error loading templates from {template_dir}: {e}")
-            continue
-    
-    logger.info(f"📊 Total templates loaded: {len(templates)}")
-    return templates
-
-def load_style_profiles() -> List[StyleProfile]:
-    """Load and validate all style profiles"""
-    profiles = []
-    
-    for profile_dir in get_style_profile_paths():
-        if not os.path.exists(profile_dir):
-            continue
-            
-        try:
-            files = os.listdir(profile_dir)
-            
-            for filename in files:
-                if not filename.endswith('.yaml'):
-                    continue
-                
-                file_path = os.path.join(profile_dir, filename)
-                profile_data = load_yaml_file_safe(file_path)
-                
-                if not profile_data:
-                    continue
-                
-                try:
-                    profile_id = profile_data.get('id', filename.replace('.yaml', ''))
-                    
-                    profile = StyleProfile(
-                        id=profile_id,
-                        name=profile_data.get("name", profile_id.replace('_', ' ').title()),
-                        description=profile_data.get("description", ""),
-                        category=profile_data.get("category", "general"),
-                        platform=profile_data.get("platform"),
-                        tone=profile_data.get("tone"),
-                        voice=profile_data.get("voice"),
-                        structure=profile_data.get("structure"),
-                        audience=profile_data.get("audience"),
-                        system_prompt=profile_data.get("system_prompt"),
-                        length_limit=profile_data.get("length_limit", {}),
-                        settings=profile_data.get("settings", {}),
-                        formatting=profile_data.get("formatting", {}),
-                        metadata=profile_data.get("metadata", {}),
-                        filename=filename
-                    )
-                    profiles.append(profile)
-                    logger.info(f"✅ Loaded style profile: {profile.name} ({profile.id})")
-                    
-                except Exception as e:
-                    logger.error(f"Invalid style profile format in {filename}: {e}")
-                    continue
-        
-        except Exception as e:
-            logger.error(f"Error loading style profiles from {profile_dir}: {e}")
-            continue
-    
-    logger.info(f"📊 Total style profiles loaded: {len(profiles)}")
-    return profiles
-
-# Unified content generation function
-
-# Unified content generation function - FIXED
-async def execute_content_generation(
-    request_id: str,
-    template_config: Dict[str, Any],
-    style_config: Dict[str, Any],
-    app_state,
-    mcp_options: Optional[Dict[str, Any]] = None
-) -> GenerationStatus:
-    """Execute content generation through unified MCP pipeline - FIXED"""
-    start_time = datetime.now()
-    
-    try:
-        logger.info("Starting MCP-enhanced content generation",
-                   requestId=request_id,
-                   template=template_config.get("name"),
-                   style=style_config.get("name"),
-                   mcp_enabled=mcp_options.get('enable_mcp', True) if mcp_options else True)
-        
-        # Check MCP availability first
-        if not MCP_AVAILABLE:
-            raise Exception("MCP not available - cannot generate content without MCP")
-            
-        if not getattr(app_state, 'mcp_available', False):
-            raise Exception("MCP not initialized in app state - check MCP setup")
-        
-        # Validate required configurations
-        if not template_config or not template_config.get("name"):
-            raise Exception("Invalid template configuration")
-            
-        if not style_config or not style_config.get("name"):
-            raise Exception("Invalid style configuration")
-        
-        # Execute MCP-enhanced generation (no fallbacks)
-        logger.info(f"🚀 Executing MCP-enhanced generation for {request_id}")
-        
-        if mcp_options and mcp_options.get('enable_mcp', True):
-            result = await enhance_generation_with_mcp(
-                execute_mcp_enhanced_generation,
-                request_id,
-                template_config,
-                style_config,
-                app_state,
-                mcp_options or {}
-            )
-        else:
-            result = await execute_mcp_enhanced_generation(
-                request_id=request_id,
-                template_config=template_config,
-                style_config=style_config,
-                app_state=app_state,
-                mcp_options=mcp_options or {}
-            )
-        
-        # Validate result
-        if result is None:
-            raise Exception("MCP generation function returned None - check MCP implementation")
-        
-        if not isinstance(result, dict):
-            raise Exception(f"Invalid result type: {type(result)} - expected dict")
-        
-        # Extract and validate result data
-        status_value = result.get("status")
-        if not status_value:
-            raise Exception("Result missing status field")
-            
-        content_value = result.get("content", "")
-        if not content_value and status_value == "completed":
-            raise Exception("Completed generation missing content")
-        
-        progress_value = min(result.get("progress", 1.0 if status_value == "completed" else 0.0), 1.0)
-        metadata_value = result.get("metadata", {})
-        errors_value = result.get("errors", [])
-        warnings_value = result.get("warnings", [])
-        metrics_value = result.get("metrics", {})
-        
-        logger.info(f"✅ Generation completed: {status_value}, content_length: {len(content_value)}")
-        
-        # Create status object
-        status = GenerationStatus(
-            requestId=request_id,
-            status=status_value,
-            progress=progress_value,
-            current_step="Completed" if status_value == "completed" else "Processing",
-            content=content_value,
-            metadata=metadata_value,
-            errors=errors_value,
-            warnings=warnings_value,
-            metrics=metrics_value,
-            created_at=start_time,
-            updated_at=datetime.now(),
-            completed_at=datetime.now() if status_value in ["completed", "failed"] else None
-        )
-        
-        # Store in app state
-        if not hasattr(app_state, 'generation_tasks'):
-            app_state.generation_tasks = {}
-        app_state.generation_tasks[request_id] = status
-        
-        # Record metrics
-        duration = (datetime.now() - start_time).total_seconds()
-        GENERATION_DURATION.observe(duration)
-        GENERATION_COUNT.labels(
-            status=status_value,
-            template=template_config.get("name", "unknown")
-        ).inc()
-        
-        logger.info("✅ Content generation completed successfully",
-                   requestId=request_id,
-                   status=status_value,
-                   duration=duration,
-                   content_preview=content_value[:100] + "..." if len(content_value) > 100 else content_value)
-        
-        return status
-        
-    except Exception as e:
-        logger.error("❌ Content generation failed",
-                    requestId=request_id,
-                    error=str(e),
-                    exc_info=True)
-        
-        # Create error status
-        error_status = GenerationStatus(
-            requestId=request_id,
-            status="failed",
-            progress=0.0,
-            current_step="Failed",
-            content="",
-            metadata={"error_details": str(e)},
-            errors=[f"Generation failed: {str(e)}"],
-            warnings=[],
-            metrics={"error_time": datetime.now().isoformat()},
-            created_at=start_time,
-            updated_at=datetime.now(),
-            completed_at=datetime.now()
-        )
-        
-        # Store error status
-        if not hasattr(app_state, 'generation_tasks'):
-            app_state.generation_tasks = {}
-        app_state.generation_tasks[request_id] = error_status
-        
-        # Record error metrics
-        GENERATION_COUNT.labels(
-            status="failed", 
-            template=template_config.get("name", "unknown") if template_config else "unknown"
-        ).inc()
-        
-        # Re-raise to ensure calling code knows about the failure
-        raise e
-
-# Application lifecycle
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifecycle management with MCP initialization"""
-    logger.info("Starting WriterzRoom API with MCP integration")
+    """Application lifecycle management - ENTERPRISE: All components must initialize"""
+    logger.info("Starting WriterzRoom API - ENTERPRISE MODE")
     
-    # Initialize generation task storage
+    # Initialize application state
     app.state.generation_tasks = {}
+    app.state.mcp_evidence_store = {}
     
     # Initialize model registry
     try:
         llm = get_model("writer")
-        logger.info("Model registry initialized successfully")
+        logger.info("✅ Model registry initialized successfully")
     except Exception as e:
-        logger.error("Failed to initialize model registry", error=str(e))
+        logger.error(f"❌ Failed to initialize model registry: {str(e)}")
+        raise SystemExit(f"ENTERPRISE MODE: Model registry initialization failed: {e}")
     
-    # Initialize MCP if available
-    if MCP_AVAILABLE:
-        try:
-            mcp_success = await initialize_mcp_for_existing_server(app)
-            app.state.mcp_available = mcp_success if mcp_success else False
-            logger.info(f"✅ MCP initialization: {'successful' if app.state.mcp_available else 'failed'}")
-        except Exception as e:
-            logger.error(f"❌ MCP initialization error: {e}")
-            app.state.mcp_available = False
-    else:
-        app.state.mcp_available = False
+    # Initialize MCP
+    try:
+        mcp_success = await initialize_mcp_for_existing_server(app)
+        if not mcp_success:
+            raise SystemExit("ENTERPRISE MODE: MCP initialization returned failure status")
+        app.state.mcp_available = True
+        logger.info("✅ MCP initialization successful")
+    except Exception as e:
+        logger.error(f"❌ MCP initialization error: {e}")
+        raise SystemExit(f"ENTERPRISE MODE: MCP initialization failed: {e}")
     
-    logger.info("✅ Server initialization complete")
+    # Initialize Universal system
+    try:
+        app.state.universal_integration = LangGraphUniversalIntegration()
+        logger.info("✅ Universal Integration initialized successfully")
+    except Exception as e:
+        logger.error(f"❌ Universal Integration initialization error: {e}")
+        raise SystemExit(f"ENTERPRISE MODE: Universal Integration initialization failed: {e}")
+    
+    # Validate that templates and profiles can be loaded
+    try:
+        templates = content_manager.load_templates()
+        profiles = content_manager.load_style_profiles()
+        if len(templates) == 0:
+            raise SystemExit("ENTERPRISE MODE: No templates loaded - system cannot operate")
+        if len(profiles) == 0:
+            raise SystemExit("ENTERPRISE MODE: No style profiles loaded - system cannot operate")
+        logger.info(f"✅ Loaded {len(templates)} templates and {len(profiles)} style profiles")
+    except Exception as e:
+        logger.error(f"❌ Template/Profile loading error: {e}")
+        raise SystemExit(f"ENTERPRISE MODE: Template/Profile loading failed: {e}")
+    
+    logger.info("✅ Server initialization complete - All enterprise requirements met")
     
     yield
     
-    # Cleanup MCP
-    if MCP_AVAILABLE and getattr(app.state, 'mcp_available', False):
-        try:
-            await cleanup_mcp_for_existing_server(app)
-            logger.info("✅ MCP cleanup completed")
-        except Exception as e:
-            logger.error(f"❌ MCP cleanup error: {e}")
+    # Cleanup
+    try:
+        await cleanup_mcp_for_existing_server(app)
+        logger.info("✅ MCP cleanup completed")
+    except Exception as e:
+        logger.error(f"❌ MCP cleanup error: {e}")
     
     logger.info("🛑 Shutting down WriterzRoom API")
 
 # FastAPI application
 app = FastAPI(
-    title="WriterzRoom API",
+    title="WriterzRoom API - Enterprise Edition",
     description="Enterprise-grade AI-powered content generation with unified MCP integration",
-    version="2.0.0",
+    version="2.0.0-enterprise",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -673,7 +124,7 @@ app = FastAPI(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://frontend:3000", "https://*.vercel.app"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -688,8 +139,7 @@ async def track_requests(request: Request, call_next):
     
     start_time = datetime.now()
     
-    with REQUEST_DURATION.time():
-        response = await call_next(request)
+    response = await call_next(request)
     
     duration = (datetime.now() - start_time).total_seconds()
     
@@ -699,361 +149,149 @@ async def track_requests(request: Request, call_next):
         status=response.status_code
     ).inc()
     
+    REQUEST_DURATION.observe(duration)
+    
     response.headers["X-Request-ID"] = requestId
     response.headers["X-Response-Time"] = f"{duration:.3f}s"
     
-    logger.info("Request completed",
-                requestId=requestId,
-                method=request.method,
-                path=request.url.path,
-                status_code=response.status_code,
-                duration=duration)
+    logger.info(f"Request completed: {request.method} {request.url.path} {response.status_code} {duration:.3f}s [{requestId}]")
     
     return response
 
-# Exception handlers
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    logger.error("HTTP exception",
-                 requestId=getattr(request.state, 'requestId', None),
-                 status_code=exc.status_code,
-                 detail=exc.detail)
-    
-    response_data = APIResponse(
-        success=False,
-        error={
-            "code": f"HTTP_{exc.status_code}",
-            "message": exc.detail,
-            "timestamp": datetime.now().isoformat()
-        },
-        requestId=getattr(request.state, 'requestId', None)
-    ).dict()
-    
-    response_data["timestamp"] = response_data["timestamp"].isoformat() if isinstance(response_data["timestamp"], datetime) else response_data["timestamp"]
-    
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=response_data
-    )
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    logger.error("Unhandled exception",
-                 requestId=getattr(request.state, 'requestId', None),
-                 error=str(exc),
-                 exc_info=True)
-    
-    response_data = APIResponse(
-        success=False,
-        error={
-            "code": "INTERNAL_SERVER_ERROR",
-            "message": "An unexpected error occurred",
-            "timestamp": datetime.now().isoformat()
-        },
-        requestId=getattr(request.state, 'requestId', None)
-    ).dict()
-    
-    response_data["timestamp"] = response_data["timestamp"].isoformat() if isinstance(response_data["timestamp"], datetime) else response_data["timestamp"]
-    
-    return JSONResponse(
-        status_code=500,
-        content=response_data
-    )
-
-# API Endpoints
-@app.get("/", response_model=APIResponse)
+# Root endpoint
+@app.get("/")
 async def root(request: Request):
     """API root endpoint"""
-    return APIResponse(
-        success=True,
-        data={
-            "name": "WriterzRoom API",
-            "version": "2.0.0",
-            "status": "operational",
-            "features": [
-                "Unified MCP content generation",
-                "Real-time progress tracking",
-                "Comprehensive metrics",
-                "Template and style management",
-                "Production-ready monitoring"
-            ],
-            "endpoints": {
-                "docs": "/docs",
-                "health": "/health",
-                "metrics": "/metrics",
-                "templates": "/api/templates",
-                "styles": "/api/style-profiles",
-                "generate": "/api/generate"
-            }
-        },
-        requestId=request.state.requestId
-    )
+    return {
+        "name": "WriterzRoom API - Enterprise Edition",
+        "version": "2.0.0-enterprise", 
+        "status": "operational",
+        "mode": "enterprise",
+        "requestId": request.state.requestId
+    }
 
+# Health endpoints
 @app.get("/health")
-async def health_check(request: Request):
-    """Comprehensive health check"""
-    try:
-        template_count = len(load_templates())
-        profile_count = len(load_style_profiles())
-        
-        template_dirs_exist = any(os.path.exists(path) for path in get_template_paths())
-        profile_dirs_exist = any(os.path.exists(path) for path in get_style_profile_paths())
-        
-        health_data = {
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
-            "services": {
-                "mcp_integration": MCP_AVAILABLE,
-                "template_directories": template_dirs_exist,
-                "style_profile_directories": profile_dirs_exist,
-                "api_server": True
-            },
-            "metrics": {
-                "templates_loaded": template_count,
-                "profiles_loaded": profile_count,
-                "active_generations": len(getattr(app.state, 'generation_tasks', {}))
-            },
-            "system": {
-                "environment": ENVIRONMENT,
-                "mcp_enabled": MCP_AVAILABLE
-            }
-        }
-        
-        critical_services = [
-            health_data["services"]["mcp_integration"],
-            health_data["services"]["api_server"]
-        ]
-        
-        all_healthy = all(critical_services)
-        
-        if not all_healthy:
-            health_data["status"] = "unhealthy"
-        elif template_count == 0 or profile_count == 0:
-            health_data["status"] = "degraded"
-        
-        return JSONResponse(
-            status_code=200 if all_healthy else 503,
-            content=health_data
-        )
-        
-    except Exception as e:
-        logger.error("Health check failed", error=str(e))
-        
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "error",
-                "timestamp": datetime.now().isoformat(),
-                "error": str(e)
-            }
-        )
+async def health_check():
+    """Basic health check"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "environment": settings.ENVIRONMENT
+    }
 
 @app.get("/metrics")
 async def metrics():
     """Prometheus metrics endpoint"""
     return Response(generate_latest(custom_registry), media_type=CONTENT_TYPE_LATEST)
 
-@app.get("/api/templates", response_model=APIResponse)
-async def list_templates(request: Request, authenticated: bool = Depends(verify_api_key)):
+# Template endpoints  
+@app.get("/api/templates")
+async def list_templates(authenticated: bool = Depends(verify_api_key)):
     """List all available content templates"""
     try:
-        templates = load_templates()
-        
-        return APIResponse(
-            success=True,
-            data={
+        templates = content_manager.load_templates()
+        return {
+            "success": True,
+            "data": {
                 "items": [template.dict() for template in templates],
                 "count": len(templates)
-            },
-            requestId=request.state.requestId
-        )
-        
+            }
+        }
     except Exception as e:
-        logger.error("Failed to load templates", error=str(e))
+        logger.error(f"Failed to load templates: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to load templates")
 
-@app.get("/api/style-profiles", response_model=APIResponse)
-async def list_style_profiles(
-    request: Request,
-    authenticated: bool = Depends(verify_api_key),
-    page: int = 1,
-    limit: int = 100,
-    search: str = "",
-    category: str = ""
-):
-    """List style profiles with pagination and filtering"""
+@app.get("/api/style-profiles")
+async def list_style_profiles(authenticated: bool = Depends(verify_api_key)):
+    """List all available style profiles"""
     try:
-        profiles = load_style_profiles()
-        
-        # Apply filters
-        if search:
-            search_lower = search.lower()
-            profiles = [
-                p for p in profiles 
-                if search_lower in p.name.lower() or 
-                   search_lower in (p.description or "").lower()
-            ]
-        
-        if category:
-            profiles = [p for p in profiles if p.category.lower() == category.lower()]
-        
-        # Pagination
-        total = len(profiles)
-        total_pages = (total + limit - 1) // limit
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-        paginated_profiles = profiles[start_idx:end_idx]
-        
-        pagination = PaginationMetadata(
-            page=page,
-            limit=limit,
-            total=total,
-            totalPages=total_pages,
-            hasNext=page < total_pages,
-            hasPrev=page > 1
-        )
-        
-        return APIResponse(
-            success=True,
-            data={
-                "items": [profile.dict() for profile in paginated_profiles],
-                "pagination": pagination.dict()
-            },
-            requestId=request.state.requestId
-        )
-        
+        profiles = content_manager.load_style_profiles()
+        return {
+            "success": True,
+            "data": {
+                "items": [profile.dict() for profile in profiles],
+                "count": len(profiles)
+            }
+        }
     except Exception as e:
-        logger.error("Failed to load style profiles", error=str(e))
+        logger.error(f"Failed to load style profiles: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to load style profiles")
 
-@app.post("/api/generate", response_model=APIResponse)
-async def generate_content_endpoint(
+# Generation endpoints - simplified versions using your existing functions
+@app.post("/api/generate")
+async def generate_content(
     request_data: GenerateRequest,
     background_tasks: BackgroundTasks,
     request: Request,
     authenticated: bool = Depends(verify_api_key)
 ):
-    """Start content generation through unified MCP pipeline"""
+    """Generate content using existing MCP integration"""
     requestId = str(uuid.uuid4())
     
     try:
-        logger.info(f"🔍 Generation request received: {request_data}")
+        # Load templates and profiles
+        templates = content_manager.load_templates()
+        profiles = content_manager.load_style_profiles()
         
-        # Load and validate template
-        templates = load_templates()
-        template = next(
-            (t for t in templates if t.id == request_data.template.replace('.yaml', '')),
-            None
-        )
-        
+        # Find template and profile
+        template = next((t for t in templates if t.id == request_data.template.replace('.yaml', '')), None)
         if not template:
-            logger.error(f"Template not found: {request_data.template}")
-            logger.error(f"Available templates: {[t.id for t in templates]}")
             raise HTTPException(status_code=404, detail=f"Template not found: {request_data.template}")
         
-        # Load and validate style profile
-        profiles = load_style_profiles()
-        
-        # Try multiple ways to find the profile
-        profile = None
-        search_terms = [
-            request_data.style_profile,
-            request_data.style_profile.replace('.yaml', ''),
-            request_data.style_profile.replace('-', '_'),
-            request_data.style_profile.replace('_', '-'),
-        ]
-        
-        for search_term in search_terms:
-            profile = next(
-                (p for p in profiles if p.id == search_term),
-                None
-            )
-            if profile:
-                break
-        
+        profile = next((p for p in profiles if p.id == request_data.style_profile.replace('.yaml', '')), None)
         if not profile:
-            logger.error(f"Style profile not found: {request_data.style_profile}")
-            logger.error(f"Available profiles: {[p.id for p in profiles]}")
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Style profile not found: {request_data.style_profile}. Available: {[p.id for p in profiles]}"
-            )
+            raise HTTPException(status_code=404, detail=f"Style profile not found: {request_data.style_profile}")
         
-        logger.info(f"✅ Found template: {template.name} and profile: {profile.name}")
-        
-        # Prepare configurations for MCP generation
-        template_config = template.dict()
-        template_config.update(request_data.dynamic_parameters)
-        
-        style_config = profile.dict()
-        
-        # Prepare MCP options
-        mcp_options = {
-            'enable_mcp': True,  # Always enable MCP by default
-            'research_depth': 'moderate',
-            'memory_namespace': 'content_generation',
-            'timeout_seconds': request_data.timeout_seconds
-        }
-        
-        # Initialize generation status
-        initial_status = GenerationStatus(
-            requestId=requestId,
-            status="pending",
-            progress=0.0,
-            current_step="Initializing...",
-            content="",
-            metadata={
+        # Initialize status
+        initial_status = {
+            "requestId": requestId,
+            "status": "pending",
+            "progress": 0.0,
+            "current_step": "Initializing generation...",
+            "content": "",
+            "metadata": {
                 "template": template.name,
                 "style_profile": profile.name,
                 "started_at": datetime.now().isoformat(),
-                "mcp_enabled": mcp_options['enable_mcp']
+                "enterprise_mode": True
             },
-            errors=[],
-            warnings=[],
-            metrics={},
-            created_at=datetime.now(),
-            updated_at=datetime.now()
-        )
+            "created_at": datetime.now().isoformat()
+        }
         
+        # Store in app state
         if not hasattr(app.state, 'generation_tasks'):
             app.state.generation_tasks = {}
         app.state.generation_tasks[requestId] = initial_status
         
-        # Start background generation through MCP pipeline
+        # Use your existing MCP integration
         background_tasks.add_task(
-            execute_content_generation,
+            execute_enhanced_mcp_generation,
             requestId,
-            template_config,
-            style_config,
+            template.dict(),
+            profile.dict(),
             app.state,
-            mcp_options
+            {"enable_mcp": True, "dynamic_parameters": request_data.dynamic_parameters}
         )
         
-        logger.info("Content generation initiated",
-                   requestId=requestId,
-                   template=template.name,
-                   style_profile=profile.name,
-                   mcp_enabled=mcp_options['enable_mcp'])
+        logger.info(f"Content generation initiated [requestId={requestId}, template={template.name}]")
         
-        return APIResponse(
-            success=True,
-            data={
+        return {
+            "success": True,
+            "data": {
                 "requestId": requestId,
                 "status": "pending",
-                "metadata": initial_status.metadata
-            },
-            requestId=request.state.requestId
-        )
+                "metadata": initial_status["metadata"]
+            }
+        }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Failed to start generation", 
-                    error=str(e), 
-                    requestId=requestId)
+        logger.error(f"Failed to start content generation: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to start content generation")
 
-@app.get("/api/generate/{requestId}", response_model=APIResponse)
+@app.get("/api/generate/{requestId}")
 async def get_generation_result(requestId: str, request: Request, authenticated: bool = Depends(verify_api_key)):
     """Get generation status or final result"""
     if not hasattr(app.state, 'generation_tasks') or requestId not in app.state.generation_tasks:
@@ -1061,43 +299,17 @@ async def get_generation_result(requestId: str, request: Request, authenticated:
     
     status = app.state.generation_tasks[requestId]
     
-    return APIResponse(
-        success=True,
-        data=status.dict(),
-        requestId=request.state.requestId
-    )
+    return {
+        "success": True,
+        "data": status
+    }
 
-@app.delete("/api/generate/{requestId}")
-async def cancel_generation(requestId: str, request: Request, authenticated: bool = Depends(verify_api_key)):
-    """Cancel an ongoing generation"""
-    if not hasattr(app.state, 'generation_tasks') or requestId not in app.state.generation_tasks:
-        raise HTTPException(status_code=404, detail="Generation request not found")
-    
-    status = app.state.generation_tasks[requestId]
-    if status.status in ["completed", "failed"]:
-        raise HTTPException(status_code=400, detail="Cannot cancel completed generation")
-    
-    # Update status to cancelled
-    status.status = "cancelled"
-    status.updated_at = datetime.now()
-    app.state.generation_tasks[requestId] = status
-    
-    logger.info("Generation cancelled", requestId=requestId)
-    
-    return APIResponse(
-        success=True,
-        data={"message": "Generation cancelled successfully"},
-        requestId=request.state.requestId
-    )
-
+# Legacy compatibility endpoint
 @app.get("/status/{requestId}")
-async def get_generation_status(requestId: str, request: Request):
-    """Get generation status - frontend compatibility endpoint"""
+async def get_generation_status_legacy(requestId: str, request: Request):
+    """Legacy status endpoint for backward compatibility"""
     try:
-        logger.info(f"🔍 Status check for request: {requestId}")
-        
         if not hasattr(app.state, 'generation_tasks') or requestId not in app.state.generation_tasks:
-            logger.warning(f"❌ Request {requestId} not found")
             return JSONResponse(
                 status_code=404,
                 content={
@@ -1110,24 +322,9 @@ async def get_generation_status(requestId: str, request: Request):
         
         status = app.state.generation_tasks[requestId]
         
-        logger.info(f"✅ Status found: {status.status}, content_length: {len(status.content)}")
-        
         response_data = {
             "success": True,
-            "data": {
-                "requestId": requestId,
-                "status": status.status,
-                "progress": status.progress,
-                "current_step": status.current_step,
-                "content": status.content,
-                "metadata": status.metadata,
-                "errors": status.errors,
-                "warnings": status.warnings,
-                "metrics": status.metrics,
-                "created_at": status.created_at.isoformat() if status.created_at else None,
-                "updated_at": status.updated_at.isoformat() if status.updated_at else None,
-                "completed_at": status.completed_at.isoformat() if status.completed_at else None
-            },
+            "data": status,
             "error": None,
             "timestamp": datetime.now().isoformat(),
             "requestId": requestId
@@ -1136,8 +333,7 @@ async def get_generation_status(requestId: str, request: Request):
         return JSONResponse(content=response_data)
         
     except Exception as e:
-        logger.error("Status check failed", requestId=requestId, error=str(e))
-        
+        logger.error(f"Legacy status check failed [requestId={requestId}, error={str(e)}]")
         return JSONResponse(
             status_code=500,
             content={
@@ -1148,179 +344,17 @@ async def get_generation_status(requestId: str, request: Request):
             }
         )
 
-# MCP Enhanced Generation Endpoint
-@app.post("/api/generate-mcp", response_model=APIResponse)
-async def generate_content_with_explicit_mcp(
-    request_data: MCPGenerationRequest,
-    background_tasks: BackgroundTasks,
-    request: Request,
-    authenticated: bool = Depends(verify_api_key)
-):
-    """Generate content with explicit MCP enhancement and advanced options"""
-    
-    # Convert to standard request format
-    standard_request = GenerateRequest(
-        template=request_data.template,
-        style_profile=request_data.style_profile,
-        dynamic_parameters=request_data.dynamic_parameters,
-        priority=request_data.priority,
-        timeout_seconds=request_data.timeout_seconds
-    )
-    
-    requestId = str(uuid.uuid4())
-    
-    try:
-        # Load and validate template and profile (same as regular endpoint)
-        templates = load_templates()
-        template = next(
-            (t for t in templates if t.id == request_data.template.replace('.yaml', '')),
-            None
-        )
-        
-        if not template:
-            raise HTTPException(status_code=404, detail=f"Template not found: {request_data.template}")
-        
-        profiles = load_style_profiles()
-        profile = None
-        search_terms = [
-            request_data.style_profile,
-            request_data.style_profile.replace('.yaml', ''),
-            request_data.style_profile.replace('-', '_'),
-            request_data.style_profile.replace('_', '-'),
-        ]
-        
-        for search_term in search_terms:
-            profile = next((p for p in profiles if p.id == search_term), None)
-            if profile:
-                break
-        
-        if not profile:
-            raise HTTPException(status_code=404, detail=f"Style profile not found: {request_data.style_profile}")
-        
-        # Prepare configurations with MCP-specific options
-        template_config = template.dict()
-        template_config.update(request_data.dynamic_parameters)
-        
-        style_config = profile.dict()
-        
-        # Enhanced MCP options
-        mcp_options = {
-            'enable_mcp': request_data.enable_mcp,
-            'research_depth': request_data.research_depth,
-            'memory_namespace': 'mcp_enhanced_generation',
-            'timeout_seconds': request_data.timeout_seconds,
-            'priority': request_data.priority,
-            'advanced_features': True
-        }
-        
-        # Initialize status
-        initial_status = GenerationStatus(
-            requestId=requestId,
-            status="pending",
-            progress=0.0,
-            current_step="Initializing MCP generation...",
-            content="",
-            metadata={
-                "template": template.name,
-                "style_profile": profile.name,
-                "started_at": datetime.now().isoformat(),
-                "mcp_enabled": mcp_options['enable_mcp'],
-                "research_depth": mcp_options['research_depth'],
-                "generation_type": "mcp_enhanced"
-            },
-            errors=[],
-            warnings=[],
-            metrics={},
-            created_at=datetime.now(),
-            updated_at=datetime.now()
-        )
-        
-        if not hasattr(app.state, 'generation_tasks'):
-            app.state.generation_tasks = {}
-        app.state.generation_tasks[requestId] = initial_status
-        
-        # Start MCP-enhanced generation
-        background_tasks.add_task(
-            execute_content_generation,
-            requestId,
-            template_config,
-            style_config,
-            app.state,
-            mcp_options
-        )
-        
-        logger.info("MCP-enhanced content generation initiated",
-                   requestId=requestId,
-                   template=template.name,
-                   style_profile=profile.name,
-                   mcp_enabled=mcp_options['enable_mcp'],
-                   research_depth=mcp_options['research_depth'])
-        
-        return APIResponse(
-            success=True,
-            data={
-                "requestId": requestId,
-                "status": "pending",
-                "metadata": initial_status.metadata
-            },
-            requestId=request.state.requestId
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to start MCP generation", 
-                    error=str(e), 
-                    requestId=requestId)
-        raise HTTPException(status_code=500, detail="Failed to start MCP content generation")
+# Content management endpoints
 @app.get("/api/content")
-async def list_content():
+async def list_content(authenticated: bool = Depends(verify_api_key)):
     """List all content items"""
     try:
-        base_path = Path(__file__).parent.parent
-        content_dir = base_path / "generated_content"
+        content_items = content_manager.get_content_items()
         
-        content_items = []
-        total_views = 0
-        published_count = 0
-        draft_count = 0
-        
-        if content_dir.exists():
-            for week_dir in content_dir.iterdir():
-                if not week_dir.is_dir():
-                    continue
-                
-                for json_file in week_dir.glob("*.json"):
-                    try:
-                        with open(json_file, 'r', encoding='utf-8') as f:
-                            metadata = json.load(f)
-                        
-                        content_id = json_file.stem
-                        status = metadata.get('status', 'draft')
-                        views = metadata.get('views', 0)
-                        
-                        total_views += views
-                        if status == 'published':
-                            published_count += 1
-                        else:
-                            draft_count += 1
-                        
-                        content_items.append({
-                            "id": content_id,
-                            "title": metadata.get('title', content_id.replace('_', ' ').title()),
-                            "status": status,
-                            "type": metadata.get('type', 'article'),
-                            "date": metadata.get('createdAt', datetime.now().isoformat()),
-                            "createdAt": metadata.get('createdAt', datetime.now().isoformat()),
-                            "updatedAt": metadata.get('updatedAt', datetime.now().isoformat()),
-                            "views": views,
-                            "week": week_dir.name
-                        })
-                    except Exception as e:
-                        logger.warning(f"Error processing {json_file}: {e}")
-                        continue
-        
-        content_items.sort(key=lambda x: x.get('createdAt', ''), reverse=True)
+        # Calculate stats
+        total_views = sum(item.get('views', 0) for item in content_items)
+        published_count = sum(1 for item in content_items if item.get('status') == 'published')
+        draft_count = len(content_items) - published_count
         
         return {
             "content": content_items,
@@ -1335,201 +369,109 @@ async def list_content():
         
     except Exception as e:
         logger.error(f"List content error: {e}")
-        return {
-            "content": [], 
-            "totalViews": 0,
-            "stats": {"total": 0, "published": 0, "drafts": 0, "types": 0}
-        }
+        raise HTTPException(status_code=500, detail="Failed to list content")
 
 @app.get("/api/dashboard/stats")
-async def get_dashboard_stats():
+async def get_dashboard_stats(authenticated: bool = Depends(verify_api_key)):
     """Get dashboard statistics"""
     try:
-        base_path = Path(__file__).parent.parent
-        content_dir = base_path / "generated_content"
+        content_items = content_manager.get_content_items()
         
+        # Calculate basic stats
         stats = {
-            "total": 0,
-            "totalContent": 0,
-            "drafts": 0,
-            "published": 0,
-            "views": 0,
-            "recentContent": [],
-            "recentActivity": []
+            "total": len(content_items),
+            "totalContent": len(content_items),
+            "drafts": sum(1 for item in content_items if item.get('status') == 'draft'),
+            "published": sum(1 for item in content_items if item.get('status') == 'published'),
+            "views": sum(item.get('views', 0) for item in content_items),
+            "recentContent": content_items[:5],  # Most recent 5
+            "recentActivity": [
+                {
+                    "id": f"activity-{item['id']}",
+                    "type": "created" if item["status"] == "draft" else "published",
+                    "description": f"{'Published' if item['status'] == 'published' else 'Created'} \"{item['title']}\"",
+                    "timestamp": item["updatedAt"]
+                }
+                for item in content_items[:5]
+            ]
         }
-        
-        recent_items = []
-        cutoff_date = datetime.now() - timedelta(days=30)
-        
-        if content_dir.exists():
-            for week_dir in content_dir.iterdir():
-                if not week_dir.is_dir():
-                    continue
-                    
-                for json_file in week_dir.glob("*.json"):
-                    try:
-                        with open(json_file, 'r', encoding='utf-8') as f:
-                            metadata = json.load(f)
-                        
-                        stats["total"] += 1
-                        stats["totalContent"] += 1
-                        stats["views"] += metadata.get('views', 0)
-                        
-                        status = metadata.get('status', 'draft')
-                        if status == 'published':
-                            stats["published"] += 1
-                        else:
-                            stats["drafts"] += 1
-                        
-                        created_at = metadata.get('createdAt', metadata.get('updatedAt'))
-                        if created_at:
-                            try:
-                                created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                            except:
-                                created_date = datetime.now()
-                        else:
-                            created_date = datetime.now()
-                        
-                        if created_date >= cutoff_date:
-                            content_id = json_file.stem
-                            recent_items.append({
-                                "id": content_id,
-                                "title": metadata.get('title', content_id.replace('_', ' ').title()),
-                                "status": status,
-                                "updatedAt": metadata.get('updatedAt', created_at or datetime.now().isoformat()),
-                                "type": metadata.get('type', 'article'),
-                                "createdAt": created_at or datetime.now().isoformat()
-                            })
-                            
-                    except Exception as e:
-                        logger.warning(f"Error processing {json_file}: {e}")
-                        continue
-        
-        recent_items.sort(key=lambda x: x.get('createdAt', ''), reverse=True)
-        stats["recentContent"] = recent_items[:5]
-        
-        stats["recentActivity"] = [
-            {
-                "id": f"activity-{item['id']}",
-                "type": "created" if item["status"] == "draft" else "published",
-                "description": f"{'Published' if item['status'] == 'published' else 'Created'} \"{item['title']}\"",
-                "timestamp": item["updatedAt"]
-            }
-            for item in stats["recentContent"]
-        ]
         
         return stats
         
     except Exception as e:
         logger.error(f"Dashboard stats error: {e}")
-        return {
-            "total": 0,
-            "totalContent": 0,
-            "drafts": 0,
-            "published": 0,
-            "views": 0,
-            "recentContent": [],
-            "recentActivity": []
-        }
+        raise HTTPException(status_code=500, detail="Failed to get dashboard stats")
 
-@app.get("/api/content/{content_id}")
-async def get_content(content_id: str):
-    """Get specific content item"""
-    base_path = Path(__file__).parent.parent
-    content_dir = base_path / "generated_content"
-    
-    for week_dir in content_dir.iterdir():
-        if not week_dir.is_dir():
-            continue
-        
-        json_file = week_dir / f"{content_id}.json"
-        md_file = week_dir / f"{content_id}.md"
-        
-        if json_file.exists():
-            with open(json_file, 'r') as f:
-                metadata = json.load(f)
+# Development/Debug endpoints (only in development)
+if settings.ENVIRONMENT == "development":
+    @app.get("/debug/enterprise-status")
+    async def debug_enterprise_status(request: Request, authenticated: bool = Depends(verify_api_key)):
+        """Debug enterprise system status"""
+        try:
+            mcp_available = getattr(app.state, 'mcp_available', False)
+            universal_available = hasattr(app.state, 'universal_integration') and app.state.universal_integration is not None
             
-            content = metadata.get('content', '')
-            if md_file.exists():
-                with open(md_file, 'r') as f:
-                    content = f.read()
+            template_count = len(content_manager.load_templates())
+            profile_count = len(content_manager.load_style_profiles())
             
             return {
-                "id": content_id,
-                "title": metadata.get('title', content_id.replace('_', ' ').title()),
-                "content": content,
-                "contentHtml": metadata.get('contentHtml'),
-                "status": metadata.get('status', 'draft'),
-                "type": metadata.get('type', 'article'),
-                "createdAt": metadata.get('createdAt'),
-                "updatedAt": metadata.get('updatedAt'),
-                "views": metadata.get('views', 0),
-                "author": metadata.get('author'),
-                "metadata": metadata.get('metadata', {}),
-                "week": week_dir.name
+                "success": True,
+                "data": {
+                    "enterprise_mode": True,
+                    "system_status": {
+                        "mcp_integration": {
+                            "available": mcp_available,
+                            "status": "operational" if mcp_available else "failed"
+                        },
+                        "universal_system": {
+                            "available": universal_available,
+                            "status": "operational" if universal_available else "failed"
+                        },
+                        "template_system": {
+                            "templates_loaded": template_count,
+                            "status": "operational" if template_count > 0 else "degraded"
+                        },
+                        "style_system": {
+                            "profiles_loaded": profile_count,
+                            "status": "operational" if profile_count > 0 else "degraded"
+                        }
+                    },
+                    "environment": {
+                        "mode": settings.ENVIRONMENT,
+                        "api_key_configured": bool(settings.API_KEY)
+                    },
+                    "metrics": {
+                        "active_generations": len(getattr(app.state, 'generation_tasks', {})),
+                        "total_templates": template_count,
+                        "total_profiles": profile_count
+                    }
+                }
             }
-    
-    raise HTTPException(status_code=404, detail="Content not found")
-
-# Debug endpoints
-@app.get("/debug/mcp-status")
-async def debug_mcp_status(request: Request):
-    """Debug MCP integration status"""
-    return APIResponse(
-        success=True,
-        data={
-            "mcp_modules_available": MCP_AVAILABLE,
-            "mcp_runtime_available": getattr(app.state, 'mcp_available', False),
-            "environment": ENVIRONMENT,
-            "template_paths": get_template_paths(),
-            "style_profile_paths": get_style_profile_paths(),
-            "templates_loaded": len(load_templates()),
-            "profiles_loaded": len(load_style_profiles()),
-            "active_generations": len(getattr(app.state, 'generation_tasks', {})),
-            "integration_type": "mcp_enhanced",
-            "mcp_features": [
-                "Tool discovery",
-                "Memory management", 
-                "Enhanced research",
-                "Agent coordination",
-                "Real-time collaboration"
-            ] if MCP_AVAILABLE else []
-        },
-        requestId=request.state.requestId
-    )
-
-@app.get("/debug/integration-status")
-async def debug_integration_status(request: Request):
-    """Debug unified integration status"""
-    return APIResponse(
-        success=True,
-        data={
-            "mcp_available": MCP_AVAILABLE,
-            "mcp_runtime_status": getattr(app.state, 'mcp_available', False),
-            "environment": ENVIRONMENT,
-            "template_paths": get_template_paths(),
-            "style_profile_paths": get_style_profile_paths(),
-            "templates_loaded": len(load_templates()),
-            "profiles_loaded": len(load_style_profiles()),
-            "active_generations": len(getattr(app.state, 'generation_tasks', {})),
-            "integration_type": "mcp_enhanced" if MCP_AVAILABLE else "unavailable",
-            "agent_coordination": "enabled" if MCP_AVAILABLE else "disabled"
-
-        },
-        requestId=request.state.requestId
-    )
+            
+        except Exception as e:
+            logger.error(f"Enterprise status check failed: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
 if __name__ == "__main__":
-    print("🚀 Starting WriterzRoom API Server")
-    print(f"🔧 MCP Integration: {MCP_AVAILABLE}")
-    print(f"🔐 Environment: {ENVIRONMENT}")
-    print(f"🔑 Auth Required: {'Yes' if ENVIRONMENT == 'production' else 'No (dev mode)'}")
+    logger.info("Starting WriterzRoom API Server - ENTERPRISE MODE")
+    logger.info("=" * 60)
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"API Key: {'✅ Configured' if settings.API_KEY else '❌ Missing'}")
+    logger.info(f"MCP Integration: ✅ Required (Enterprise)")
+    logger.info(f"Universal System: ✅ Required (Enterprise)")
+    logger.info(f"Authentication: ✅ Always Required (Enterprise)")
+    logger.info("=" * 60)
+    logger.info("ENTERPRISE MODE: All systems must be operational")
+    logger.info("No fallbacks - Fail fast on missing dependencies")
     
     uvicorn.run(
-        "integrated_server:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info",
-        access_log=True
+        "integrated_server_clean:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=(settings.ENVIRONMENT == "development"),
+        access_log=True,
+        log_level="info"
     )

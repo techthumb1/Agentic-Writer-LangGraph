@@ -71,7 +71,28 @@ class TemplateLoader:
                     logger.error(f"  📁 {item.name}")
         except Exception as e:
             logger.error(f"Could not list directories: {e}")
-    
+    def normalize_v2_template(self, template_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert V2 template inputs to parameter format"""
+        if 'inputs' not in template_data:
+            return template_data
+
+        inputs = template_data['inputs']
+        parameters = []
+
+        for key, spec in inputs.items():
+            param = {
+                'name': key,
+                'label': key.replace('_', ' ').title(),
+                'type': self._infer_type(spec.get('default')),
+                'required': spec.get('required', False),
+                'default': spec.get('default', ''),
+                'commonly_used': key in ['topic', 'audience', 'tone']  # Mark common ones
+            }
+            parameters.append(param)
+
+        template_data['parameters'] = parameters
+        return template_data
+
     def _load_templates_from_directory(self, directory: Path):
         """Load all YAML templates from the specified directory"""
 
@@ -86,9 +107,8 @@ class TemplateLoader:
                     if not documents:
                         logger.warning(f"Empty YAML file: {yaml_file.name}")
                         continue
-                    
-                    template_data = documents[0]
 
+                    template_data = self.normalize_v2_template(documents[0])
                     if template_data is None:
                         logger.warning(f"Empty YAML document in file: {yaml_file.name}")
                         continue
@@ -238,6 +258,13 @@ class TemplateLoader:
             "template_count": len(self.templates_cache),
             "templates_loaded": bool(self.templates_cache)
         }
+
+
+    def _infer_type(self, value):
+        if isinstance(value, bool): return 'boolean'
+        if isinstance(value, (int, float)): return 'number'
+        if isinstance(value, list): return 'select'
+        return 'text'
 
 # ✅ CONSISTENT: Singleton pattern (same as DynamicStyleProfileLoader)
 def get_template_loader():

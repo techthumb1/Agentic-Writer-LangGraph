@@ -120,6 +120,8 @@ const startGeneration = async (params: GenerationParams): Promise<GenerationResp
       timeout_seconds: params.timeout_seconds || 300,
       generation_mode: params.generation_mode || 'standard',
       topic: params.topic,
+      enable_mcp: true,
+      research_depth: 'deep',
       audience: params.audience,
       tags: params.tags,
       platform: params.platform,

@@ -12,7 +12,17 @@ class EnhancedPublisherAgent:
     
     def __init__(self):
         self.agent_type = AgentType.PUBLISHER
-        
+    
+    def _safe_get_planning_data(self, state: EnrichedContentState, attribute: str, default=None):
+        """Safely get planning data whether it's a dict or object"""
+        if not state.planning_output:
+            return default
+
+        if isinstance(state.planning_output, dict):
+            return state.planning_output.get(attribute, default)
+        else:
+            return getattr(state.planning_output, attribute, default)
+    
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
         """Execute publishing with comprehensive distribution strategy"""
         # INJECT: Extract template_config
@@ -178,23 +188,6 @@ class EnhancedPublisherAgent:
         
         return results
     
-    def _plan_distribution_channels(self, spec, primary_platform: str, template_config: dict = None) -> list:
-        channels = [primary_platform]
-        
-        # INJECT: Use template-specific channels
-        if template_config and template_config.get('distribution_channels'):
-            channels.extend(template_config['distribution_channels'])
-        
-        # Audience-based channels
-        if "investor" in spec.audience.lower():
-            channels.extend(["linkedin_professional", "investment_newsletters"])
-        elif "technical" in spec.audience.lower():
-            channels.extend(["github_documentation", "developer_community_sites"])
-        elif "executive" in spec.audience.lower():
-            channels.extend(["linkedin_company_page", "industry_publications"])
-        
-        return list(set(channels))  # Remove duplicates
-
     def _develop_promotional_strategy(self, state: EnrichedContentState, template_config: dict) -> list:
         """Develop comprehensive promotional strategy based on content and audience"""
         
@@ -347,7 +340,7 @@ class EnhancedPublisherAgent:
         
         return expectations
     
-    def _determine_scheduling(self, spec) -> dict:
+    def _determine_scheduling(self, spec, template_config) -> dict:
         """Determine optimal scheduling strategy"""
         
         scheduling = {
@@ -359,6 +352,11 @@ class EnhancedPublisherAgent:
             "audience_timezone_optimization": True
         }
         
+        # Template-specific scheduling adjustments
+        if template_config and template_config.get('scheduling_preferences'):
+            scheduling.update(template_config['scheduling_preferences'])
+    
+
         # Platform-specific scheduling
         platform = spec.platform
         if platform == "linkedin":
@@ -406,8 +404,8 @@ class EnhancedPublisherAgent:
         
         return scheduling
     
-    def _setup_analytics_tracking(self, spec) -> list:
-        """Setup comprehensive analytics tracking requirements"""
+    def _setup_analytics_tracking(self, spec, template_config: dict = None) -> list:
+        """Setup comprehensive analytics tracking requirements with template configuration"""
         
         tracking = [
             "Google Analytics 4 integration",
@@ -418,7 +416,11 @@ class EnhancedPublisherAgent:
             "Cross-platform attribution"
         ]
         
-        # Template-specific tracking
+        # Template-specific tracking from configuration
+        if template_config and template_config.get('analytics_requirements'):
+            tracking.extend(template_config['analytics_requirements'])
+        
+        # Template-specific tracking based on type
         if spec.template_type == "business_proposal":
             tracking.extend([
                 "Lead generation tracking",
@@ -467,15 +469,19 @@ class EnhancedPublisherAgent:
         
         return tracking
     
-    def _plan_follow_up_actions(self, state: EnrichedContentState) -> list:
-        """Plan comprehensive follow-up actions based on content and strategy"""
-        
+    def _plan_follow_up_actions(self, state: EnrichedContentState, template_config: dict = None) -> list:
+        """Plan comprehensive follow-up actions based on content and strategy with template configuration"""
+
         spec = state.content_spec
         planning = state.planning_output
         research = state.research_findings
-        
+
         follow_ups = []
-        
+
+        # Template-specific follow-ups from configuration
+        if template_config and template_config.get('follow_up_actions'):
+            follow_ups.extend(template_config['follow_up_actions'])
+
         # Content-based follow-ups
         if spec.template_type == "business_proposal":
             follow_ups.extend([
@@ -493,7 +499,7 @@ class EnhancedPublisherAgent:
                 "Develop advanced implementation guides",
                 "Plan developer community engagement"
             ])
-        
+
         # Audience-based follow-ups
         if "investor" in spec.audience.lower():
             follow_ups.extend([
@@ -514,7 +520,7 @@ class EnhancedPublisherAgent:
                 "Prepare code review sessions",
                 "Develop technical training materials"
             ])
-        
+
         # Platform-based follow-ups
         if spec.platform == "linkedin":
             follow_ups.extend([
@@ -523,13 +529,13 @@ class EnhancedPublisherAgent:
                 "Connect with engaged commenters",
                 "Plan follow-up thought leadership posts"
             ])
-        
+
         # Research-driven follow-ups
         if research and research.research_gaps:
             follow_ups.extend([
                 f"Address research gap: {gap}" for gap in research.research_gaps[:2]
             ])
-        
+
         # Universal follow-ups
         follow_ups.extend([
             "Monitor and respond to comments within 24 hours",
@@ -538,9 +544,8 @@ class EnhancedPublisherAgent:
             "Plan content series based on performance data",
             "Develop repurposing strategy for high-performing content"
         ])
-        
-        return follow_ups
-    
+
+        return follow_ups    
     def _add_publication_metadata(self, content: str, state: EnrichedContentState) -> str:
         """Add comprehensive publication metadata to content"""
         
@@ -554,6 +559,10 @@ class EnhancedPublisherAgent:
             keywords.extend(seo_context.target_keywords[:5])
         if planning and planning.key_messages:
             keywords.extend([msg.lower().replace(' ', '_') for msg in planning.key_messages[:3]])
+        
+        key_messages = self._safe_get_planning_data(state, 'key_messages', [])
+        if key_messages:
+            keywords.extend([msg.lower().replace(' ', '_') for msg in key_messages[:3]])
         
         # Generate comprehensive metadata
         metadata = f"""---

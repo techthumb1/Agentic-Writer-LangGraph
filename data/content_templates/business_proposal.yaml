@@ -1,100 +1,120 @@
-id: business_proposal
-name: Business Proposal
-description: Generate professional business proposals and executive summaries
-category: Business
-difficulty: intermediate
-estimatedLength: 20-30 min
-targetAudience: Business professionals and consultants
-icon: "💼"
-tags:
-  - business
-  - proposal
-  - professional
-  - sales
+name: "Business Proposal Generator"
+slug: "business_proposal"
+version: "2.0"
 
-suggested_sections:
-  - name: executive_summary
-    description: High-level overview and value proposition
-  - name: problem_statement
-    description: Clear definition of challenge or opportunity
-  - name: proposed_solution
-    description: Detailed approach and methodology
-  - name: timeline_budget
-    description: Implementation plan and investment
-  - name: next_steps
-    description: Clear action items and follow-up
+description: >
+  Professional business proposal generator. Creates formal business proposals and project proposals,
+  not blog posts about business strategy.
 
-parameters:
-  - name: client_name
-    type: text
-    label: Client/Company Name
-    description: "Who is this proposal for?"
-    commonly_used: true
-  - name: project_type
-    type: select
-    label: Project Category
-    description: "What type of work is being proposed?"
-    options:
-      - consulting
-      - software_development
-      - marketing_campaign
-      - business_strategy
-      - product_development
-      - training_program
-      - other
-    commonly_used: true
-  - name: problem_description
-    type: text
-    label: Problem/Opportunity
-    description: "What challenge are you solving?"
-    commonly_used: true
-  - name: budget_range
-    type: select
-    label: Budget Range
-    description: "Expected investment level"
-    options:
-      - under_10k
-      - 10k_to_50k
-      - 50k_to_100k
-      - 100k_to_500k
-      - over_500k
-      - tbd
-    commonly_used: false
-  - name: timeline
-    type: text
-    label: Project Timeline
-    description: "Expected duration (e.g., 3 months, 6 weeks)"
-    commonly_used: false
-  - name: proposal_tone
-    type: select
-    label: Proposal Style
-    description: "How formal should this be?"
-    options:
-      - formal
-      - professional
-      - collaborative
-      - innovative
-      - conservative
-    commonly_used: false
-  - name: key_stakeholders
-    type: text
-    label: Key Decision Makers
-    description: "Who will be evaluating this proposal?"
-    commonly_used: false
-  - name: competitive_advantage
-    type: text
-    label: Your Differentiator
-    description: "Why should they choose you?"
-    commonly_used: false
+# Inputs (resolved at runtime from request payload or style profile)
+inputs:
+  client_name: { required: true }
+  project_type: { required: true }                # "consulting", "software_development", "marketing_campaign"
+  problem_description: { required: true }
+  proposal_tone: { default: "professional" }      # "formal", "collaborative", "innovative", "conservative"
+  budget_range: { default: "tbd" }               # "under_10k", "10k_to_50k", "50k_to_100k", etc.
+  timeline: { default: "3_months" }
+  your_company: { default: "Your Company" }
+  key_stakeholders: { optional: true }
+  competitive_advantage: { optional: true }
+  deliverables: { optional: true }
+  payment_terms: { optional: true }
+  # Optional user overrides
+  include_case_studies: { optional: true }
+  include_team_bios: { optional: true }
+  risk_assessment: { optional: true }
+  warranty_terms: { optional: true }
 
-instructions: |
-  Create a compelling business proposal that clearly articulates value.
-  Structure the proposal to address client needs and concerns.
-  Include specific details about approach, timeline, and investment.
-  Focus on building confidence and demonstrating expertise.
+# Priority-based requirement resolution
+requirements:
+  min_words:
+    priority:
+      - dynamic.min_words
+      - style.length_limit.target
+      - 2500
+  min_sections:
+    priority:
+      - dynamic.min_sections
+      - 6
+  include_financials:
+    priority:
+      - dynamic.include_financials
+      - true
 
-metadata:
-  version: "1.0.0"
-  created_by: "content_team"
-  last_updated: "2025-07-10"
-  parameter_flexibility: "high"
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "business_proposal"               # CRITICAL: Actual business proposal document!
+  format: "formal_proposal"
+  include_executive_summary: true
+  generate_realistic_pricing: true
+  create_professional_structure: true
+  focus_on_client_value:
+    priority:
+      - dynamic.focus_on_client_value
+      - true
+
+mcp:
+  tool_sequence:
+    priority:
+      - dynamic.tool_sequence
+      - [business_analyzer, pricing_calculator, proposal_optimizer]
+
+sections:
+  order:
+    priority:
+      - dynamic.section_order
+      - ["executive_summary", "problem_statement", "proposed_solution", "timeline_budget", "team_qualifications", "next_steps"]
+
+prompt_schema:
+  system_preamble: |
+    You are a senior business development professional and proposal writer. Create compelling, professional
+    business proposals that win contracts. Generate actual proposal documents with specific recommendations,
+    pricing, and implementation plans - not explanatory content about business proposals.
+
+  content_template: |
+    # Business Proposal for {{client_name}}
+    **{{project_type}} Project Proposal**
+
+    ## Executive Summary
+    {{executive_summary}}
+
+    ## Problem Statement
+    {{problem_statement}}
+
+    ## Proposed Solution
+    {{proposed_solution}}
+
+    ## Timeline & Budget
+    {{timeline_budget}}
+
+    ## Team & Qualifications
+    {{team_qualifications}}
+
+    ## Investment & ROI
+    {{investment_roi}}
+
+    ## Next Steps
+    {{next_steps}}
+
+    ## Terms & Conditions
+    {{terms_conditions}}
+
+  placeholders:
+    - client_name
+    - project_type
+    - executive_summary
+    - problem_statement
+    - proposed_solution
+    - timeline_budget
+    - team_qualifications
+    - investment_roi
+    - next_steps
+    - terms_conditions
+
+output:
+  format: "markdown"
+  require:
+    executive_summary: true
+    specific_deliverables: true
+    pricing_details: true
+    clear_next_steps: true

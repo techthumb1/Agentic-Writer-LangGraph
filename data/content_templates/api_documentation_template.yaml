@@ -1,105 +1,116 @@
-# data/content_templates/api_documentation_template.yaml
-# Professional Content Template - API Documentation
-# Category: technical_documentation
+name: "API Documentation Template"
+slug: "api_documentation_template"
+version: "2.0"
 
-id: api_documentation_template
-name: API Documentation
-description: Dynamic API documentation template that adapts to any API or service
-category: technical_documentation
-difficulty: intermediate
-estimatedLength: 15-25 min
-targetAudience: Developers, technical writers, and API consumers
-icon: "🔧"
-tags:
-  - api
-  - documentation
-  - technical
-  - development
+description: >
+  Professional API documentation generator. Creates actual API reference docs, not blog posts about APIs.
+  Uses MCP tools for dynamic content generation.
 
-suggested_sections:
-  - name: overview
-    description: High-level introduction to the API and its purpose
-  - name: authentication
-    description: Security requirements and authentication methods
-  - name: endpoints
-    description: Detailed endpoint documentation with parameters
-  - name: examples
-    description: Request and response examples for each endpoint
-  - name: error_handling
-    description: Error codes, messages, and troubleshooting
-  - name: sdks_libraries
-    description: Available SDKs, libraries, and integration tools
+# Inputs (resolved at runtime from request payload or style profile)
+inputs:
+  api_name: { required: true }
+  api_domain: { default: "web_service" }          # "payments", "data", "messaging", "ai", etc.
+  auth_type: { default: "api_key" }               # "api_key", "oauth", "jwt", "basic"
+  programming_languages: { default: ["curl", "javascript", "python"] }
+  base_url: { optional: true }
+  version_number: { default: "v1" }
+  include_sdks: { default: true }
+  include_postman: { default: true }
+  complexity_level: { default: "intermediate" }   # "beginner", "intermediate", "advanced"
+  # Optional user overrides
+  min_endpoints: { optional: true }
+  code_examples_per_endpoint: { optional: true }
+  include_webhooks: { optional: true }
+  rate_limiting: { optional: true }
 
-# Recommended style profiles for this template
-recommended_styles:
-  - "api_documentation"
-  - "technical_specification"
-  - "implementation_guide"
-  - "deployment_guide"
-  - "integration_manual"
-
-system_prompt: |
-  You are an expert technical writer specializing in API documentation. Generate comprehensive, professional API documentation that follows industry best practices and provides exceptional developer experience.
-
-instructions: |
-  Create dynamic, comprehensive API documentation that adapts to the user's specific context and requirements. 
-  
-  Generate unique, professional documentation that includes:
-  1. **Overview Section**: Compelling introduction explaining the API's purpose, capabilities, and value proposition
-  2. **Authentication**: Clear, step-by-step authentication setup with multiple methods as appropriate
-  3. **Core Endpoints**: Detailed documentation of key endpoints with HTTP methods, parameters, and descriptions
-  4. **Practical Examples**: Working code examples in multiple programming languages
-  5. **Error Handling**: Comprehensive error codes, troubleshooting guides, and best practices
-  6. **Integration Resources**: SDKs, libraries, tools, and additional resources
-  
-  **Enterprise Standards**:
-  - Adapt content based on the user's industry, technical background, and specific use case
-  - Generate realistic, contextually appropriate API names, endpoints, and examples
-  - Create unique parameter names, response structures, and error codes for each generation
-  - Include industry-specific terminology and use cases
-  - Provide multiple implementation approaches and integration patterns
-  
-  **Dynamic Adaptation**:
-  - Infer the API domain from context (e.g., payments, data analytics, messaging, etc.)
-  - Adjust technical depth based on the target audience
-  - Generate fresh, original examples that haven't been used before
-  - Create unique base URLs, endpoint structures, and naming conventions
-  - Adapt authentication methods to match modern security standards
-  
-  Focus on creating documentation that developers can immediately understand and implement, with clear value propositions and practical guidance.
-
-# Content specifications
-target_length:
-  min_words: 3000
-  max_words: 8000
-  optimal_words: 5500
-
-# Template requirements
+# Priority-based requirement resolution
 requirements:
-  professional_standards: true
-  evidence_based: true
-  structured_format: true
-  audience_appropriate: true
-  actionable_content: true
-  code_examples: true
-  developer_focused: true
-  dynamic_generation: true
-  unique_content: true
+  min_endpoints:
+    priority:
+      - dynamic.min_endpoints
+      - style.requirements.min_endpoints
+      - 5
+  min_words:
+    priority:
+      - dynamic.min_words
+      - style.length_limit.target
+      - 3000
+  code_examples_per_endpoint:
+    priority:
+      - dynamic.code_examples_per_endpoint
+      - 2
 
-# Quality expectations
-quality_targets:
-  clarity: 95
-  coherence: 90
-  completeness: 95
-  professional_tone: 90
-  developer_experience: 95
-  uniqueness: 100
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "api_documentation"              # CRITICAL: Not a blog post!
+  format: "reference_manual"
+  include_working_examples: true
+  generate_realistic_endpoints: true
+  create_unique_api_structure: true
+  enforce_technical_accuracy:
+    priority:
+      - dynamic.enforce_technical_accuracy
+      - true
 
-metadata:
-  version: "3.0.0"
-  created_by: "content_team"
-  last_updated: "2025-08-07"
-  template_type: "professional"
-  category: "technical_documentation"
-  complexity_level: "intermediate"
-  parameter_flexibility: "dynamic"
+mcp:
+  tool_sequence:
+    priority:
+      - dynamic.tool_sequence
+      - [code_generator, api_validator, technical_reviewer]
+
+sections:
+  order:
+    priority:
+      - dynamic.section_order
+      - ["overview", "authentication", "endpoints", "examples", "error_handling", "sdks_libraries"]
+
+prompt_schema:
+  system_preamble: |
+    You are an expert API documentation specialist. Create comprehensive, professional API reference documentation
+    that developers can immediately use to integrate with the API. Generate actual API documentation with working
+    examples, not explanatory content about APIs.
+
+  content_template: |
+    # {{api_name}} API Documentation
+
+    {{overview_section}}
+
+    ## Authentication
+    {{authentication_section}}
+
+    ## Base URL
+    {{base_url_section}}
+
+    ## Endpoints
+    {{endpoints_section}}
+
+    ## Code Examples
+    {{examples_section}}
+
+    ## Error Handling
+    {{error_handling_section}}
+
+    ## SDKs & Libraries
+    {{sdks_section}}
+
+    ## Rate Limiting
+    {{rate_limiting_section}}
+
+  placeholders:
+    - api_name
+    - overview_section
+    - authentication_section
+    - base_url_section
+    - endpoints_section
+    - examples_section
+    - error_handling_section
+    - sdks_section
+    - rate_limiting_section
+
+output:
+  format: "markdown"
+  require:
+    working_examples: true
+    multiple_languages: true
+    realistic_endpoints: true
+    error_codes: true

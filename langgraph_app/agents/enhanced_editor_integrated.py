@@ -17,8 +17,21 @@ class EnhancedEditorAgent:
         """Interface method for RunnableLambda compatibility"""
         return self.execute(state)
 
+    def _safe_get_planning_data(self, state: EnrichedContentState, attribute: str, default=None):
+        """Safely get planning data whether it's a dict or object"""
+        if not state.planning_output:
+            return default
+
+        if isinstance(state.planning_output, dict):
+            return state.planning_output.get(attribute, default)
+        else:
+            return getattr(state.planning_output, attribute, default)
+
+
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
         """Execute editing with UNIVERSAL configuration-driven logic"""
+
+        # Convert objects to dicts if needed for compatibility
         if hasattr(state, 'template_config') and hasattr(state.template_config, '__dict__') and not hasattr(state.template_config, 'get'):
             state.template_config = vars(state.template_config)
 
@@ -27,49 +40,45 @@ class EnhancedEditorAgent:
 
         if hasattr(state, 'research_plan') and hasattr(state.research_plan, '__dict__') and not hasattr(state.research_plan, 'get'):
             state.research_plan = vars(state.research_plan)
-        planning_output = getattr(state, 'planning_output', None)
-    
-        estimated_sections = []
-        if planning_output:
-            if hasattr(planning_output, 'estimated_sections'):
-                # Object format
-                estimated_sections = planning_output.estimated_sections
-            elif isinstance(planning_output, dict):
-                # Dictionary format
-                estimated_sections = planning_output.get('estimated_sections', [])
-    
+
+        # FIXED: Use safe access throughout
+        estimated_sections = self._safe_get_planning_data(state, 'estimated_sections', [])
+        key_messages = self._safe_get_planning_data(state, 'key_messages', [])
+        content_strategy = self._safe_get_planning_data(state, 'content_strategy', '')
+
+        # Create fallback planning if needed
         if not hasattr(state, 'planning_output') or not state.planning_output:
             state.planning_output = self._create_universal_planning_output(state)
-        
+
         if not hasattr(state, 'template_config') or not state.template_config:
             state.template_config = self._extract_universal_template_config(state)
-    
+
         instructions = state.get_agent_instructions(self.agent_type)
-        
+
         state.log_agent_execution(self.agent_type, {
             "status": "started",
             "content_length": len(state.draft_content.split()),
             "has_writing_context": bool(state.writing_context),
             "target_audience": state.content_spec.audience
         })
-        
+
         editing_guidance = self._create_editing_guidance_universal(state, instructions)
         state.editing_guidance = editing_guidance
-        
+
         edited_content = self._edit_content_with_guidance_universal(state, instructions)
         state.draft_content = edited_content
-        
+
         state.update_phase(ContentPhase.FORMATTING)
-        
+
         state.log_agent_execution(self.agent_type, {
             "status": "completed",
             "improvements_made": len(editing_guidance.structural_improvements),
             "confidence_score": editing_guidance.editing_confidence,
             "final_length": len(edited_content.split())
         })
-        
+
         return state
-    
+ 
     def _create_universal_planning_output(self, state: EnrichedContentState):
         """Create universal planning output based on content analysis"""
         template_config = self._extract_universal_template_config(state)

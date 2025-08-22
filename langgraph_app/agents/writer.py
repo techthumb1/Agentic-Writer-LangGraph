@@ -183,36 +183,126 @@ class TemplateAwareWriterAgent:
         print(f"⚠️ Template config not found for: {template_id}")
         return {}
 
-    def get_template_specific_prompt(self, template_config: Dict[str, Any], template_id: str) -> str:
-        """UNIVERSAL: Generate template-specific writer prompt from configuration"""
-        
-        # PRIORITY 1: Generate from template configuration
+    # File: langgraph_app/agents/writer.py
+    # REPLACE the existing get_template_specific_prompt method (Lines ~135-180) with this:
+
+    def get_template_specific_prompt(self, template_config: Dict[str, Any], template_id: str, state: Dict = None) -> str:
+        """FIXED: MCP Research-Aware prompt generation"""
+
+        # PRIORITY 1: Use MCP research if available
+        if state and self.has_mcp_research(state):
+            print("🔬 Using MCP research-integrated prompt")
+            return self._build_research_integrated_prompt(template_config, template_id, state)
+
+        # PRIORITY 2: Generate from template configuration
         if template_config:
             dynamic_prompt = self._generate_prompt_from_config(template_config, template_id)
             if dynamic_prompt:
                 print(f"✅ Generated dynamic prompt from template config")
                 return dynamic_prompt
-        
-        # PRIORITY 2: Try to find matching prompt file as fallback
+
+        # PRIORITY 3: Try to find matching prompt file as fallback
         template_type = template_config.get('template_type', template_id)
         print(f"🔍 Looking for fallback prompt file for: {template_type}")
-        
+
         prompt_files = [
             f"{template_type}_writer.txt",
             f"{template_id}_writer.txt",
             f"{template_type}.txt",
             f"{template_id}.txt"
         ]
-        
+
         for prompt_file in prompt_files:
             prompt_content = self._load_prompt_file(prompt_file)
             if prompt_content:
                 print(f"✅ Using fallback prompt file: {prompt_file}")
                 return prompt_content
-        
-        # PRIORITY 3: Generate universal prompt
+
+        # PRIORITY 4: Generate universal prompt
         print(f"⚠️ No prompt file found, generating universal prompt")
         return self._generate_universal_prompt(template_config, template_type)
+    
+    # File: langgraph_app/agents/writer.py
+    # ADD THESE METHODS after line ~180 (after get_template_specific_prompt method)
+
+    def has_mcp_research(self, state: Dict) -> bool:
+        """Check if MCP research data is available"""
+        research_indicators = [
+            state.get('research_findings'),
+            state.get('mcp_results'),
+            state.get('tools_executed'),
+            state.get('research_data'),
+            state.get('quality_enhancements')
+        ]
+
+        # Check if any research data exists and is substantial
+        for indicator in research_indicators:
+            if indicator:
+                if isinstance(indicator, dict) and len(indicator) > 0:
+                    return True
+                elif isinstance(indicator, list) and len(indicator) > 0:
+                    return True
+                elif isinstance(indicator, str) and len(indicator.strip()) > 10:
+                    return True
+
+        print("🔍 No MCP research detected - using template-based generation")
+        return False
+
+    def extract_mcp_research_data(self, state: Dict) -> Dict[str, Any]:
+        """Extract and consolidate MCP research data from state"""
+        research_data = {
+            'academic_sources': [],
+            'technical_findings': [],
+            'industry_insights': [],
+            'code_examples': [],
+            'api_documentation': [],
+            'validation_results': [],
+            'raw_findings': {}
+        }
+
+        # Extract from various state locations
+        if state.get('research_findings'):
+            research_data['raw_findings'].update(state['research_findings'])
+
+        if state.get('mcp_results'):
+            mcp_results = state['mcp_results']
+
+            # Extract by tool type
+            for tool_name, result in mcp_results.items():
+                if 'academic' in tool_name:
+                    research_data['academic_sources'].extend(self._extract_sources(result))
+                elif 'code' in tool_name or 'api' in tool_name:
+                    research_data['technical_findings'].append(result)
+                    if 'api' in tool_name:
+                        research_data['api_documentation'].append(result)
+                elif 'industry' in tool_name or 'trend' in tool_name:
+                    research_data['industry_insights'].append(result)
+                elif 'validation' in tool_name or 'fact' in tool_name:
+                    research_data['validation_results'].append(result)
+
+        # Extract from tools_executed if available
+        if state.get('tools_executed'):
+            research_data['tools_used'] = state['tools_executed']
+
+        print(f"📊 Extracted MCP research: {len(research_data['raw_findings'])} findings from {len(research_data.get('tools_used', []))} tools")
+        return research_data
+
+    def _extract_sources(self, result: Any) -> List[str]:
+        """Extract source information from research results"""
+        sources = []
+        if isinstance(result, dict):
+            if 'sources' in result:
+                sources.extend(result['sources'])
+            if 'findings' in result:
+                sources.extend(result['findings'])
+            if 'data' in result:
+                sources.append(str(result['data'])[:200] + "...")
+        elif isinstance(result, list):
+            sources.extend([str(item)[:100] + "..." for item in result[:3]])
+        elif isinstance(result, str):
+            sources.append(result[:200] + "..." if len(result) > 200 else result)
+
+        return sources
 
     def _generate_prompt_from_config(self, template_config: Dict[str, Any], template_id: str) -> str:
         """Generate prompt dynamically from template configuration"""
@@ -666,6 +756,129 @@ CONTENT REQUIREMENTS:
             base_tone['formality'] = 'medium'
             base_tone['persuasiveness'] = 'supportive'
         return base_tone
+    
+
+    # File: langgraph_app/agents/writer.py
+    # ADD THIS METHOD after the MCP research detection methods
+
+    def _build_research_integrated_prompt(self, template_config: Dict[str, Any], template_id: str, state: Dict) -> str:
+        """Build prompt that integrates MCP research findings into content generation"""
+
+        # Extract research data
+        research_data = self.extract_mcp_research_data(state)
+
+        # Get topic and audience from context
+        topic = (template_config.get("topic") or 
+                 state.get("dynamic_parameters", {}).get("topic") or 
+                 state.get("topic", "the specified topic"))
+
+        audience = (template_config.get("target_audience") or
+                    state.get("dynamic_parameters", {}).get("target_audience") or
+                    state.get("audience", "general audience"))
+
+        # Build research-driven prompt
+        prompt_parts = []
+
+        # Header - Research-focused
+        template_type = template_config.get('template_type', template_id)
+        prompt_parts.append(f"""You are an expert content creator writing {template_type.replace('_', ' ')} about {topic} for {audience}.
+
+    CRITICAL: You have access to comprehensive research findings. Use this research to create ACTUAL, SUBSTANTIVE content - NOT template placeholders or generic examples.""")
+
+        # Research Integration Section
+        if research_data['academic_sources']:
+            prompt_parts.append(f"ACADEMIC RESEARCH FINDINGS:")
+            for i, source in enumerate(research_data['academic_sources'][:3], 1):
+                prompt_parts.append(f"{i}. {source}")
+
+        if research_data['technical_findings']:
+            prompt_parts.append(f"TECHNICAL INSIGHTS:")
+            for i, finding in enumerate(research_data['technical_findings'][:3], 1):
+                prompt_parts.append(f"{i}. {finding}")
+
+        if research_data['industry_insights']:
+            prompt_parts.append(f"INDUSTRY ANALYSIS:")
+            for i, insight in enumerate(research_data['industry_insights'][:3], 1):
+                prompt_parts.append(f"{i}. {insight}")
+
+        if research_data['api_documentation']:
+            prompt_parts.append(f"API/TECHNICAL DOCUMENTATION:")
+            for i, doc in enumerate(research_data['api_documentation'][:2], 1):
+                prompt_parts.append(f"{i}. {doc}")
+
+        # Raw research findings
+        if research_data['raw_findings']:
+            prompt_parts.append(f"ADDITIONAL RESEARCH DATA:")
+            for tool_name, findings in list(research_data['raw_findings'].items())[:3]:
+                prompt_parts.append(f"- {tool_name.title()}: {str(findings)[:200]}...")
+
+        # Content Requirements - Research-focused
+        prompt_parts.append(f"""
+    CONTENT GENERATION REQUIREMENTS:
+    - Integrate ALL research findings naturally into the content
+    - Use specific data, examples, and insights from the research
+    - DO NOT use placeholder text like [Insert here] or [Example needed]
+    - Generate REAL, ACTIONABLE content based on the research
+    - Each section must contain substantive information from the research findings
+    - Minimum 2000 words with research-backed insights throughout""")
+
+        # Structure guidance based on template
+        if template_config.get('section_order'):
+            prompt_parts.append("REQUIRED SECTIONS:")
+            for section in template_config['section_order']:
+                prompt_parts.append(f"## {section}")
+                prompt_parts.append(f"   (Integrate relevant research findings for this section)")
+        else:
+            # Dynamic sections based on research
+            prompt_parts.append(f"""SUGGESTED STRUCTURE:
+    ## Introduction to {topic}
+       (Use research findings to establish context and importance)
+
+    ## Research-Based Analysis
+       (Present key findings from academic and technical research)
+
+    ## Practical Implementation
+       (Apply research insights to real-world scenarios)
+
+    ## Industry Perspectives
+       (Incorporate industry analysis and trends)
+
+    ## Conclusions and Recommendations
+       (Synthesize research into actionable takeaways)""")
+
+        # Final instruction - Research-focused
+        prompt_parts.append(f"""
+    CRITICAL INSTRUCTIONS:
+    - Every claim must be backed by the provided research
+    - Use specific examples and data from the research findings
+    - Write as an expert who has thoroughly researched {topic}
+    - NO generic content or template language
+    - Generate comprehensive, research-driven content that provides real value
+
+    Generate the complete {template_type.replace('_', ' ')} now, incorporating all research findings naturally:""")
+
+        return "\n".join(prompt_parts)
+
+    def _format_research_context(self, research_data: Dict[str, Any]) -> str:
+        """Format research data for prompt context"""
+        if not research_data or not any(research_data.values()):
+            return "No research data available - generate based on expertise"
+
+        context_parts = []
+
+        if research_data.get('academic_sources'):
+            context_parts.append(f"Academic Sources: {len(research_data['academic_sources'])} findings")
+
+        if research_data.get('technical_findings'):
+            context_parts.append(f"Technical Analysis: {len(research_data['technical_findings'])} insights")
+
+        if research_data.get('industry_insights'):
+            context_parts.append(f"Industry Data: {len(research_data['industry_insights'])} reports")
+
+        if research_data.get('tools_used'):
+            context_parts.append(f"Tools Used: {', '.join(research_data['tools_used'])}")
+
+        return "; ".join(context_parts) if context_parts else "Research integration enabled"
 
     def _create_enhanced_prompt(self, context: WritingContext, template_config: Dict[str, Any],
                                  style: Dict, state: Dict) -> str:
@@ -902,7 +1115,7 @@ CONTENT REQUIREMENTS:
         else:
             style = style_profile_input
             
-        template_specific_prompt = self.get_template_specific_prompt(template_config, template_id)
+        template_specific_prompt = self.get_template_specific_prompt(template_config, template_id, state)
         user_prompt = self._create_enhanced_prompt(context, template_config, style, state)
         
         template_enforcement = ""

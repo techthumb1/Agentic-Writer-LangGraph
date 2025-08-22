@@ -6,13 +6,29 @@ import { randomUUID } from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 
-const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL;
-const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
+// route.ts (top)
 
-// Security validation
-if (!FASTAPI_API_KEY) {
-  console.warn('⚠️ FASTAPI_API_KEY not found in environment variables. Add to .env.local');
+// Use the values you already set in .env.local
+const API_BASE_URL =
+  process.env.FASTAPI_BASE_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.BACKEND_URL ||
+  "http://127.0.0.1:8000";
+
+const API_KEY =
+  process.env.FASTAPI_API_KEY ||
+  process.env.LANGGRAPH_API_KEY ||
+  process.env.NEXT_PUBLIC_LANGGRAPH_API_KEY;
+
+// Warn if missing
+if (!API_KEY) {
+  console.warn("⚠️ No API key found. Add LANGGRAPH_API_KEY to .env.local");
 }
+
+// Temporary aliases so we don't have to touch every old reference
+const FASTAPI_BASE_URL = API_BASE_URL;
+const FASTAPI_API_KEY = API_KEY;
 
 // ✅ FIXED: Enhanced request interface with proper template/style separation
 interface GenerationRequest {
@@ -249,6 +265,7 @@ const logSuccess = (context: string, data: unknown, requestId?: string) => {
 const createFetchHeaders = (requestId: string, generationMode: string): Record<string, string> => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Authorization': `Bearer ${API_KEY}`,
     'Accept': 'application/json',
     'X-Request-ID': requestId || '',
     'X-Client-Version': '2.0.0',

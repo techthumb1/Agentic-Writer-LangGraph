@@ -179,7 +179,27 @@ class DynamicStyleProfileLoader:
         if 'voice' in content:
             tone_indicators.append(content['voice'].lower())
         if 'writing_style' in content:
-            tone_indicators.append(content['writing_style'].lower())
+            writing_style = content['writing_style']
+            if isinstance(writing_style, str):
+                tone_indicators.append(writing_style.lower())
+            elif isinstance(writing_style, dict):
+                # Handle dict case - extract relevant fields
+                if 'tone' in writing_style:
+                    tone_indicators.append(str(writing_style['tone']).lower())
+                elif 'style' in writing_style:
+                    tone_indicators.append(str(writing_style['style']).lower())
+                elif 'primary_tone' in writing_style:
+                    tone_indicators.append(str(writing_style['primary_tone']).lower())
+                else:
+                    # Fallback: use first string value found in dict
+                    for key, value in writing_style.items():
+                        if isinstance(value, str) and value.strip():
+                            tone_indicators.append(value.lower())
+                            break
+            elif isinstance(writing_style, list):
+                # Handle list case
+                if writing_style and isinstance(writing_style[0], str):
+                    tone_indicators.append(writing_style[0].lower())
         
         # Check for tone in template-specific fields
         if 'parameters' in content:

@@ -230,22 +230,55 @@ class ContentSpec:
             platform_max = min(platform_max, 3000)  # Beginners get overwhelmed
         
         return platform_max
-
 @dataclass
 class ContentSpecification:
-    """Core content requirements - the DNA of what we're creating"""
-    # FIXED: All required fields (no defaults) must come first
+    """Core content requirements with enterprise-grade type safety"""
     template_type: str
     topic: str
     audience: str
     platform: str
-    complexity_level: int  # 1-10
-    innovation_level: str  # conservative, balanced, innovative, experimental
-    # All fields with defaults come after required fields
-    target_length: int = field(default=0)  # Fixed typo: was ttarget_length
+    complexity_level: int  # CRITICAL: Must be integer
+    innovation_level: str
+    target_length: int = field(default=0)
     business_context: Dict[str, Any] = field(default_factory=dict)
     constraints: Dict[str, Any] = field(default_factory=dict)
-
+    
+    def __post_init__(self):
+        """Enterprise-grade type validation"""
+        # CRITICAL FIX: Ensure complexity_level is always integer
+        if isinstance(self.complexity_level, str):
+            try:
+                self.complexity_level = int(self.complexity_level)
+            except ValueError:
+                raise ValueError(f"Invalid complexity_level: {self.complexity_level}. Must be integer 1-10.")
+        
+        # Validate business range
+        if not isinstance(self.complexity_level, int) or not (1 <= self.complexity_level <= 10):
+            raise ValueError(f"complexity_level must be integer 1-10, got {self.complexity_level}")
+        
+        # Calculate target length if not set
+        if self.target_length == 0:
+            self.target_length = self._calculate_target_length()
+    
+    def _calculate_target_length(self) -> int:
+        """Calculate appropriate target length based on specifications"""
+        base_length = 800
+        
+        # Platform adjustments
+        platform_multipliers = {
+            "linkedin": 0.6,
+            "twitter": 0.2,
+            "medium": 1.5,
+            "blog": 1.3,
+            "documentation": 2.0
+        }
+        
+        multiplier = platform_multipliers.get(self.platform, 1.0)
+        
+        # Complexity adjustment (verified integer)
+        complexity_factor = 0.7 + (self.complexity_level / 10) * 0.8
+        
+        return int(base_length * multiplier * complexity_factor)
 @dataclass 
 class PlanningOutput:
     """What the Planner Agent discovered and decided"""
@@ -984,6 +1017,85 @@ class EnrichedContentState:
         
         self.overall_confidence = sum(confidences) / len(confidences) if confidences else 0.0
     
+
+    # File: langgraph_app/core/enriched_content_state.py 
+# ADD this method to your existing EnrichedContentState class (don't replace anything)
+
+    def to_serializable_dict(self) -> Dict[str, Any]:
+        """Convert to msgpack-serializable dictionary for LangGraph workflow execution"""
+        return {
+            "content_spec": {
+                "template_type": self.content_spec.template_type,
+                "topic": self.content_spec.topic,
+                "audience": self.content_spec.audience,
+                "platform": self.content_spec.platform,
+                "complexity_level": int(self.content_spec.complexity_level),
+                "innovation_level": self.content_spec.innovation_level,
+                "target_length": int(self.content_spec.target_length),
+                "business_context": dict(self.content_spec.business_context),
+                "constraints": dict(self.content_spec.constraints)
+            },
+            "request_id": str(self.request_id),
+            "current_phase": self.current_phase.value,
+            "completed_phases": [phase.value for phase in self.completed_phases],
+            "draft_content": str(self.draft_content),
+            "final_content": str(self.final_content),
+            "overall_confidence": float(self.overall_confidence),
+            "quality_metrics": dict(self.quality_metrics),
+            "agent_execution_log": list(self.agent_execution_log),
+            "generated_images": list(self.generated_images),
+            "generated_code": list(self.generated_code),
+            # Serialize complex objects safely
+            "planning_output": self._serialize_planning_output(),
+            "research_findings": self._serialize_research_findings(),
+            "seo_context": self._serialize_seo_context(),
+            "publishing_context": self._serialize_publishing_context()
+        }
+    
+    def _serialize_planning_output(self) -> Optional[Dict[str, Any]]:
+        """Serialize planning output to msgpack-compatible dict"""
+        if not self.planning_output:
+            return None
+        return {
+            "content_strategy": str(self.planning_output.content_strategy),
+            "structure_approach": str(self.planning_output.structure_approach),
+            "key_messages": list(self.planning_output.key_messages),
+            "research_priorities": list(self.planning_output.research_priorities),
+            "planning_confidence": float(self.planning_output.planning_confidence)
+        }
+    
+    def _serialize_research_findings(self) -> Optional[Dict[str, Any]]:
+        """Serialize research findings to msgpack-compatible dict"""
+        if not self.research_findings:
+            return None
+        return {
+            "primary_insights": list(self.research_findings.primary_insights),
+            "supporting_data": dict(self.research_findings.supporting_data),
+            "credibility_sources": list(self.research_findings.credibility_sources),
+            "research_confidence": float(self.research_findings.research_confidence)
+        }
+    
+    def _serialize_seo_context(self) -> Optional[Dict[str, Any]]:
+        """Serialize SEO context to msgpack-compatible dict"""
+        if not self.seo_context:
+            return None
+        return {
+            "target_keywords": list(self.seo_context.target_keywords),
+            "search_intent": str(self.seo_context.search_intent),
+            "optimization_confidence": float(self.seo_context.optimization_confidence)
+        }
+    
+    def _serialize_publishing_context(self) -> Optional[Dict[str, Any]]:
+        """Serialize publishing context to msgpack-compatible dict"""
+        if not self.publishing_context:
+            return None
+        return {
+            "publication_platform": str(self.publishing_context.publication_platform),
+            "distribution_channels": list(self.publishing_context.distribution_channels),
+            "publishing_confidence": float(self.publishing_context.publishing_confidence)
+        }
+
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert state to dictionary for serialization"""
         return {

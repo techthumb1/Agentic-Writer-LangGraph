@@ -1,8 +1,8 @@
 # langgraph_app/agents/mcp_enhanced_agents.py
 
-from ..mcp_integration import mcp_manager  
 from ..mcp_server_extension import MCPGenerationRequest
 from ..enhanced_model_registry import get_model
+from ..mcp_server_extension import execute_enhanced_mcp_generation
 
 try:
     from ..mcp_server_extension import (
@@ -11,7 +11,7 @@ try:
         enhance_generation_with_mcp,
         MCPGenerationRequest
     )
-    from ..mcp_enhanced_graph import execute_mcp_enhanced_generation
+    # Removed unused import: from ..mcp_integration import execute_enhanced_mcp_generation
     MCP_AVAILABLE = True
     print("✅ MCP modules loaded successfully")
 except ImportError as e:
@@ -48,30 +48,12 @@ import uvicorn
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
 import structlog
 
-# MCP Integration - fixed imports
-MCP_AVAILABLE = False
-try:
-    from ..mcp_server_extension import (
-        initialize_mcp_for_existing_server,
-        cleanup_mcp_for_existing_server,
-        enhance_generation_with_mcp,
-        MCPGenerationRequest
-    )
-    from ..mcp_enhanced_graph import execute_mcp_enhanced_generation
-    MCP_AVAILABLE = True
-    print("✅ MCP modules loaded successfully")
-except ImportError as e:
-    print(f"⚠️ MCP modules not available: {e}")
-   
-    mcp_options=None
-
 # Enhanced model registry
 try:
     from ..enhanced_model_registry import get_model, EnhancedModelRegistry
     print("✅ Model registry loaded successfully")
 except ImportError as e:
     print(f"❌ Model registry not available: {e}")
-
 # Configure structured logging
 structlog.configure(
     processors=[
@@ -496,7 +478,8 @@ async def execute_content_generation(
     
     # FIXED: Initialize result to None before try block
     result = None
-    
+    from ..mcp_server_extension import execute_enhanced_mcp_generation
+
     try:
         logger.info("Starting MCP-enhanced content generation",
                    requestId=request_id,
@@ -509,7 +492,6 @@ async def execute_content_generation(
             if mcp_options and mcp_options.get('enable_mcp', True):
                 logger.info(f"🚀 Using MCP-enhanced generation for {request_id}")
                 result = await enhance_generation_with_mcp(
-                    execute_mcp_enhanced_generation,
                     request_id,
                     template_config,
                     style_config,
@@ -518,7 +500,7 @@ async def execute_content_generation(
                 )
             else:
                 logger.info(f"🔄 Using direct MCP generation for {request_id}")
-                result = await execute_mcp_enhanced_generation(
+                result = await execute_enhanced_mcp_generation(
                     request_id=request_id,
                     template_config=template_config,
                     style_config=style_config
@@ -526,7 +508,7 @@ async def execute_content_generation(
         else:
             logger.warning(f"⚠️ MCP not available, falling back to basic generation")
             # Fallback to basic generation if MCP is not available
-            result = await execute_mcp_enhanced_generation(
+            result = await execute_enhanced_mcp_generation(
                 request_id=request_id,
                 template_config=template_config,
                 style_config=style_config,

@@ -86,7 +86,38 @@ class EnhancedSEOAgent:
             featured_snippet_opportunities=self._identify_snippet_opportunities(state, template_config),
             optimization_confidence=0.78
         )
-    
+        # File: langgraph_app/agents/enhanced_seo_agent_integrated.py
+    # ADD this safe access method in the SEO Agent:
+
+    def _safe_get_planning_data(self, state: EnrichedContentState, attribute: str, default=None):
+        """Safely get planning data whether it's a dict or object"""
+        if not state.planning_output:
+            return default
+
+        if isinstance(state.planning_output, dict):
+            return state.planning_output.get(attribute, default)
+        else:
+            return getattr(state.planning_output, attribute, default)
+
+    def _safe_get_research_data(self, state: EnrichedContentState, attribute: str, default=None):
+        """Safely get research data whether it's a dict or object"""
+        if not state.research_findings:
+            return default
+
+        if isinstance(state.research_findings, dict):
+            return state.research_findings.get(attribute, default)
+        else:
+            return getattr(state.research_findings, attribute, default)
+
+    def execute(self, state: EnrichedContentState) -> EnrichedContentState:
+        """Execute SEO optimization with safe data access"""
+
+        # Safe access to planning and research data
+        key_messages = self._safe_get_planning_data(state, 'key_messages', [])
+        research_priorities = self._safe_get_planning_data(state, 'research_priorities', [])
+        primary_insights = self._safe_get_research_data(state, 'primary_insights', [])
+
+
     def _extract_target_keywords(self, spec, research, planning, template_config: dict) -> list:
         """Extract keywords with template configuration taking precedence"""
         

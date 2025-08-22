@@ -106,112 +106,224 @@ class MCPContentOrchestrator:
             
             # Initialize content graph
             try:
-                from .mcp_enhanced_graph import MCPEnhancedContentGraph
-                self.content_graph = MCPEnhancedContentGraph()
+                from .mcp_server_extension import enhanced_mcp_manager
+                self.content_graph = enhanced_mcp_manager
             except ImportError:
                 logger.warning("MCP Enhanced Graph not available")
                 self.content_graph = None
-            
-            logger.info("MCP capabilities initialized successfully")
-            
+                logger.info("MCP capabilities initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize MCP capabilities: {e}")
         except Exception as e:
-            logger.error(f"Failed to initialize MCP capabilities: {e}")
-
-    async def execute_mcp_enhanced_generation(
-        self,
-        request_id=None,
-        template_config=None,
-        style_config=None,
-        app_state=None,
-        mcp_options=None
-    ):
+            logger.error(f"Error during MCP capability initialization: {e}")
+    
+    def _normalize_mcp_payload(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Main entry point for MCP-enhanced content generation
-        Coordinates all agents through MCP protocol
+        Normalize arbitrary MCP executor output into a stable, evidence-first shape.
+        Returns:
+          {
+            "executed_tools": [str],
+            "sources": [{"title": str, "url": str, "excerpt": str}],
+            "facts": [str],
+            "data_summaries": [Any],   # optional
+            "code_findings": [Any]     # optional
+          }
         """
-
-        logger.info(f"Starting MCP enhanced generation")
-
-        try:
-            # If we have a content graph, use it
-            if self.content_graph:
-                # Import state components
-                try:
-                    from .core.enriched_content_state import (
-                        EnrichedContentState, 
-                        ContentSpecification,
-                        ContentPhase
-                    )
-
-                    # Create content specification
-                    if template_config and style_config:
-                        content_spec = ContentSpecification(
-                            template_type=template_config.get('name', 'general'),
-                            topic=template_config.get('topic', template_config.get('name', 'General Content')),
-                            audience=style_config.get('audience', 'general'),
-                            platform=template_config.get('platform', 'web'),
-                            complexity_level=template_config.get('complexity_level', 5),
-                            innovation_level=template_config.get('innovation_level', 'balanced'),
-                            business_context=template_config.get('business_context', {}),
-                            constraints=template_config.get('constraints', {})
-                        )
+        def _coerce_sources(maybe_sources) -> List[Dict[str, str]]:
+            out = []
+            if isinstance(maybe_sources, list):
+                for s in maybe_sources:
+                    if isinstance(s, dict):
+                        title = str(s.get("title", "") or "")
+                        url = str(s.get("url", "") or "")
+                        excerpt = str(s.get("excerpt", "") or s.get("summary", "") or "")
                     else:
-                        # Fallback specification
-                        content_spec = ContentSpecification(
-                            template_type='general',
-                            topic='General Content',
-                            audience='general',
-                            platform='web',
-                            complexity_level=5,
-                            innovation_level='balanced'
-                        )
+                        # allow plain URL/string
+                        title, url, excerpt = "", str(s), ""
+                    if title or url:
+                        out.append({"title": title, "url": url, "excerpt": excerpt})
+            return out
 
-                    # Initialize enriched state
-                    initial_state = EnrichedContentState(
-                        content_spec=content_spec,
-                        current_phase=ContentPhase.PLANNING
-                    )
+        def _extend_list(dst: List[Any], src: Any, cast=str):
+            if isinstance(src, list):
+                for v in src:
+                    try:
+                        dst.append(cast(v) if cast else v)
+                    except Exception:
+                        dst.append(v)
 
-                    # Execute through MCP graph
-                    result = await self.content_graph.execute_coordinated_generation(
-                        initial_state,
-                        mcp_options=mcp_options or {}
-                    )
+        executed_tools: List[str] = []
+        sources: List[Dict[str, str]] = []
+        facts: List[str] = []
+        data_summaries: List[Any] = []
+        code_findings: List[Any] = []
 
-                    # Return the result (should be a dictionary)
-                    return result
+        # 1) Mine from execution logs (most common place tools/results live)
+        log = raw.get("agent_execution_log") or raw.get("execution_log") or raw.get("logs") or []
+        if isinstance(log, list):
+            for entry in log:
+                if not isinstance(entry, dict):
+                    continue
+                t = entry.get("tool") or entry.get("name") or entry.get("executor")
+                if t:
+                    executed_tools.append(str(t))
 
-                except ImportError as e:
-                    logger.error(f"Could not import state components: {e}")
-                    raise RuntimeError("MCP integration failed due to missing state components.") from e
-            else:
-                logger.error("MCP Enhanced Graph not initialized, cannot proceed.")
-                raise RuntimeError("MCP Enhanced Graph not initialized, cannot proceed.")
+                out = entry.get("output") or entry.get("result") or {}
+                if isinstance(out, dict):
+                    # sources in various keys
+                    for k in ("sources", "references", "citations"):
+                        _extend = _coerce_sources(out.get(k))
+                        if _extend:
+                            sources.extend(_extend)
+                    # facts / findings
+                    for k in ("facts", "key_facts", "findings"):
+                        _extend_list(facts, out.get(k), cast=str)
+                    # structured summaries / tables
+                    for k in ("data_summaries", "tables", "stats"):
+                        _extend_list(data_summaries, out.get(k), cast=None)
+                    # code-related
+                    for k in ("code_findings", "snippets", "notebook_outputs"):
+                        _extend_list(code_findings, out.get(k), cast=None)
 
-        except Exception as e:
-            logger.error(f"MCP generation failed: {e}")
-            return {
-                "status": "failed",
-                "content": "",
-                "metadata": {},
-                "errors": [f"Generation failed: {str(e)}"],
-                "warnings": [],
-                "metrics": {},
-                "progress": 0.0
-            }
-        
-    def get_server_status(self) -> Dict[str, Any]:
-        """Get current MCP server status"""
-        return {
-            "status": "running",
-            "capabilities": {
-                "model_registry": bool(getattr(self, 'model_registry', None)),
-                "content_graph": bool(self.content_graph),
-                "memory_store": len(self.memory_store),
-                "tool_registry": len(self.tool_registry)
-            },
-            "uptime": datetime.now().isoformat()
+        # 2) Mine from top-level fields if present
+        for k in ("sources", "references", "citations"):
+            sources.extend(_coerce_sources(raw.get(k)))
+        for k in ("facts", "key_facts", "findings"):
+            _extend_list(facts, raw.get(k), cast=str)
+        for k in ("data_summaries", "tables", "stats"):
+            _extend_list(data_summaries, raw.get(k), cast=None)
+        for k in ("code_findings", "snippets", "notebook_outputs"):
+            _extend_list(code_findings, raw.get(k), cast=None)
+
+        # 3) Deduplicate conservatively
+        executed_tools = list(dict.fromkeys([t for t in executed_tools if t]))
+        # dedupe sources primarily by URL, then title
+        seen = set()
+        dedup_sources = []
+        for s in sources:
+            key = (s.get("url", ""), s.get("title", ""))
+            if key in seen:
+                continue
+            seen.add(key)
+            dedup_sources.append({
+                "title": s.get("title", "") or "",
+                "url": s.get("url", "") or "",
+                "excerpt": s.get("excerpt", "") or ""
+            })
+
+        normalized = {
+            "executed_tools": executed_tools,
+            "sources": dedup_sources,
+            "facts": facts,
+            "data_summaries": data_summaries,
+            "code_findings": code_findings
         }
+
+        logger.info(
+            "MCP normalization summary | tools=%d, sources=%d, facts=%d, data_summaries=%d, code_findings=%d",
+            len(normalized["executed_tools"]),
+            len(normalized["sources"]),
+            len(normalized["facts"]),
+            len(normalized["data_summaries"]),
+            len(normalized["code_findings"]),
+        )
+        return normalized
+
+
+async def execute_mcp_enhanced_generation(
+    self,
+    request_id=None,
+    template_config=None,
+    style_config=None,
+    app_state=None,
+    mcp_options=None
+):
+    """
+    Main entry point for MCP-enhanced content generation.
+    This now returns a normalized evidence payload:
+      executed_tools, sources[{title,url,excerpt}], facts, data_summaries?, code_findings?
+    """
+    logger.info("Starting MCP enhanced generation")
+    try:
+        if not self.content_graph:
+            logger.error("MCP Enhanced Graph not initialized, cannot proceed.")
+            raise RuntimeError("MCP Enhanced Graph not initialized, cannot proceed.")
+        # Import state components lazily to avoid circular deps
+        try:
+            from .core.enriched_content_state import (
+                EnrichedContentState,
+                ContentSpecification,
+                ContentPhase
+            )
+        except ImportError as e:
+            logger.error(f"Could not import state components: {e}")
+            raise RuntimeError("MCP integration failed due to missing state components.") from e
+        # Build ContentSpecification from provided configs (robust to ints/strings)
+        if template_config and style_config:
+            raw_level = template_config.get('complexity_level', 5)
+            level_map = {
+                'very_low': 1, 'low': 2, 'basic': 3,
+                'medium': 5, 'high': 7, 'advanced': 8, 'expert': 9
+            }
+            if isinstance(raw_level, (int,)) or (isinstance(raw_level, str) and raw_level.isdigit()):
+                complexity_level = int(raw_level)
+            else:
+                complexity_level = level_map.get(str(raw_level).lower(), 5)
+            content_spec = ContentSpecification(
+                template_type=template_config.get('name', 'general'),
+                topic=template_config.get('topic', template_config.get('name', 'General Content')),
+                audience=style_config.get('audience', 'general'),
+                platform=template_config.get('platform', 'web'),
+                complexity_level=complexity_level,
+                innovation_level=template_config.get('innovation_level', 'balanced'),
+                business_context=template_config.get('business_context', {}),
+                constraints=template_config.get('constraints', {})
+            )
+        else:
+            content_spec = ContentSpecification(
+                template_type='general',
+                topic='General Content',
+                audience='general',
+                platform='web',
+                complexity_level=5,
+                innovation_level='balanced'
+            )
+        initial_state = EnrichedContentState(
+            content_spec=content_spec,
+            current_phase=ContentPhase.PLANNING
+        )
+        # Execute via MCP graph (may return diverse shapes)
+        raw = await self.content_graph.execute_coordinated_generation(
+            initial_state,
+            mcp_options=mcp_options or {}
+        ) or {}
+        # Normalize to evidence-first payload
+        normalized = self._normalize_mcp_payload(raw)
+        # Return ONLY the normalized evidence payload for downstream gating
+        return normalized
+    except Exception as e:
+        logger.error(f"MCP generation failed: {e}")
+        # Return a valid normalized empty payload on failure
+        return {
+            "executed_tools": [],
+            "sources": [],
+            "facts": [],
+            "data_summaries": [],
+            "code_findings": [],
+            "error": f"Generation failed: {str(e)}"
+        }
+def get_server_status(self) -> Dict[str, Any]:
+    """Get current MCP server status"""
+    return {
+        "status": "running",
+        "capabilities": {
+            "model_registry": bool(getattr(self, 'model_registry', None)),
+            "content_graph": bool(self.content_graph),
+            "memory_store": len(self.memory_store),
+            "tool_registry": len(self.tool_registry)
+        },
+        "uptime": datetime.now().isoformat()
+    }
 
 # Global MCP orchestrator instance
 mcp_orchestrator = MCPContentOrchestrator()
