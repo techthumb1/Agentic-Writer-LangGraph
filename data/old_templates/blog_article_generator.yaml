@@ -1,0 +1,88 @@
+name: "Blog Article Generator"
+slug: "blog_article_generator"
+version: "2.0"
+
+description: >
+  Evidence-driven longform article. Uses MCP tools. No narrative-only fallback.
+
+# Inputs (resolved at runtime from request payload or style profile)
+inputs:
+  topic: { required: true }
+  audience: { default: "general" }
+  research_depth: { default: "deep" }        # "shallow" | "moderate" | "deep"
+  enable_mcp: { default: true }
+  tone: { default: "analytical" }
+  voice: { default: "expert" }
+  target_platform: { default: "web" }
+  # Optional user overrides
+  min_words: { optional: true }
+  min_sources: { optional: true }
+  section_order: { optional: true }           # array of section ids/labels
+  tool_sequence: { optional: true }           # array of MCP tools in order
+  enforce_citations: { optional: true }       # boolean
+
+# Declarative requirement rules with priority resolution.
+# The engine should pick the FIRST non-null/valid value from the priority list.
+requirements:
+  min_sources:
+    priority:
+      - dynamic.min_sources
+      - style.requirements.min_sources
+      - 5
+  min_words:
+    priority:
+      - dynamic.min_words
+      - style.length_limit.target
+      - style.length_limit.min
+      - 900
+
+writer_instructions:
+  enforce_citations:
+    priority:
+      - dynamic.enforce_citations
+      - true
+  citation_style: "numeric"                   # writer-level formatting, not hard content
+  references_heading: "References"
+
+mcp:
+  tool_sequence:
+    priority:
+      - dynamic.tool_sequence
+      - [academic_search, citation_generator, fact_checker]
+
+sections:
+  order:
+    priority:
+      - dynamic.section_order
+      - []    # empty array fallback => writer derives sections from content spec
+
+prompt_schema:
+  system_preamble: |
+    You are a senior technical writer. Produce rigorous, evidence-driven content.
+    Cite sources in numeric style [1], [2]… and include a "References" section.
+
+  # Writer should be handed evidence/facts separately by the server/agents.
+  # This template declares the placeholders; content is fully dynamic.
+  content_template: |
+    {{title_line}}
+
+    {{intro_paragraph}}
+
+    {{body_sections}}  # rendered from sections.order or derived structure
+
+    {{conclusion_block}}
+
+    {{references_block}}
+
+  placeholders:
+    - title_line
+    - intro_paragraph
+    - body_sections
+    - conclusion_block
+    - references_block
+
+output:
+  format: "markdown"
+  require:
+    citations: true
+    references_section: true

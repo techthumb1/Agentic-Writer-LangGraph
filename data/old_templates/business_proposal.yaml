@@ -1,0 +1,100 @@
+id: business_proposal
+name: Business Proposal
+description: Generate professional business proposals and executive summaries
+category: Business
+difficulty: intermediate
+estimatedLength: 20-30 min
+targetAudience: Business professionals and consultants
+icon: "💼"
+tags:
+  - business
+  - proposal
+  - professional
+  - sales
+
+suggested_sections:
+  - name: executive_summary
+    description: High-level overview and value proposition
+  - name: problem_statement
+    description: Clear definition of challenge or opportunity
+  - name: proposed_solution
+    description: Detailed approach and methodology
+  - name: timeline_budget
+    description: Implementation plan and investment
+  - name: next_steps
+    description: Clear action items and follow-up
+
+parameters:
+  - name: client_name
+    type: text
+    label: Client/Company Name
+    description: "Who is this proposal for?"
+    commonly_used: true
+  - name: project_type
+    type: select
+    label: Project Category
+    description: "What type of work is being proposed?"
+    options:
+      - consulting
+      - software_development
+      - marketing_campaign
+      - business_strategy
+      - product_development
+      - training_program
+      - other
+    commonly_used: true
+  - name: problem_description
+    type: text
+    label: Problem/Opportunity
+    description: "What challenge are you solving?"
+    commonly_used: true
+  - name: budget_range
+    type: select
+    label: Budget Range
+    description: "Expected investment level"
+    options:
+      - under_10k
+      - 10k_to_50k
+      - 50k_to_100k
+      - 100k_to_500k
+      - over_500k
+      - tbd
+    commonly_used: false
+  - name: timeline
+    type: text
+    label: Project Timeline
+    description: "Expected duration (e.g., 3 months, 6 weeks)"
+    commonly_used: false
+  - name: proposal_tone
+    type: select
+    label: Proposal Style
+    description: "How formal should this be?"
+    options:
+      - formal
+      - professional
+      - collaborative
+      - innovative
+      - conservative
+    commonly_used: false
+  - name: key_stakeholders
+    type: text
+    label: Key Decision Makers
+    description: "Who will be evaluating this proposal?"
+    commonly_used: false
+  - name: competitive_advantage
+    type: text
+    label: Your Differentiator
+    description: "Why should they choose you?"
+    commonly_used: false
+
+instructions: |
+  Create a compelling business proposal that clearly articulates value.
+  Structure the proposal to address client needs and concerns.
+  Include specific details about approach, timeline, and investment.
+  Focus on building confidence and demonstrating expertise.
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-07-10"
+  parameter_flexibility: "high"
