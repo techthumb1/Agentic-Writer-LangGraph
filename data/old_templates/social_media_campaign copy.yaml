@@ -1,0 +1,95 @@
+id: social_media_campaign
+name: Social Media Campaign
+description: Generate cohesive social media content across multiple platforms
+category: Social Media
+difficulty: intermediate
+estimatedLength: 10-15 min
+targetAudience: Social media managers and marketers
+icon: "📱"
+tags:
+  - social-media
+  - marketing
+  - engagement
+
+suggested_sections:
+  - name: strategy_overview
+    description: Campaign goals and key messaging
+  - name: platform_content
+    description: Platform-specific posts and content
+  - name: engagement_plan
+    description: Community management and response strategy
+  - name: performance_metrics
+    description: Success measurement and KPIs
+
+parameters:
+  - name: campaign_goal
+    type: select
+    label: Primary Goal
+    description: "What's the main objective?"
+    options:
+      - brand_awareness
+      - lead_generation
+      - engagement
+      - sales
+      - community_building
+      - event_promotion
+    commonly_used: true
+  - name: target_platforms
+    type: text
+    label: Social Platforms
+    description: "Which platforms to focus on (e.g., Instagram, LinkedIn, TikTok)"
+    commonly_used: true
+  - name: target_audience
+    type: text
+    label: Audience Demographics
+    description: "Age, interests, behaviors, location, etc."
+    commonly_used: true
+  - name: brand_voice
+    type: select
+    label: Brand Personality
+    description: "How should the brand sound?"
+    options:
+      - professional
+      - playful
+      - inspirational
+      - educational
+      - humorous
+      - authoritative
+    commonly_used: true
+  - name: campaign_duration
+    type: text
+    label: Campaign Length
+    description: "How long will this campaign run?"
+    commonly_used: false
+  - name: budget_range
+    type: select
+    label: Budget Level
+    description: "Available resources for this campaign"
+    options:
+      - minimal
+      - moderate
+      - substantial
+      - premium
+    commonly_used: false
+  - name: content_types
+    type: text
+    label: Preferred Content
+    description: "Videos, images, carousels, stories, etc."
+    commonly_used: false
+  - name: hashtag_strategy
+    type: text
+    label: Hashtag Approach
+    description: "Branded, trending, niche hashtags to use"
+    commonly_used: false
+
+instructions: |
+  Create comprehensive social media campaign materials.
+  Use suggested parameters as starting points - users can customize extensively.
+  Adapt content strategy based on all provided specifications.
+  Include platform-specific optimizations and best practices.
+
+metadata:
+  version: "1.0.0"
+  created_by: "content_team"
+  last_updated: "2025-07-10"
+  parameter_flexibility: "high"

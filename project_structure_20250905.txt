@@ -1,0 +1,714 @@
+.
+├── .commitlintrc.json
+├── .env
+├── .env.example
+├── .eslintrc.js
+├── .github
+│   └── workflows
+│       └── ci.yml
+├── .gitignore
+├── .husky
+│   ├── _
+│   │   ├── .gitignore
+│   │   ├── applypatch-msg
+│   │   ├── commit-msg
+│   │   ├── h
+│   │   ├── husky.sh
+│   │   ├── post-applypatch
+│   │   ├── post-checkout
+│   │   ├── post-commit
+│   │   ├── post-merge
+│   │   ├── post-rewrite
+│   │   ├── pre-applypatch
+│   │   ├── pre-auto-gc
+│   │   ├── pre-commit
+│   │   ├── pre-merge-commit
+│   │   ├── pre-push
+│   │   ├── pre-rebase
+│   │   └── prepare-commit-msg
+│   ├── commit-msg
+│   └── pre-commit
+├── archive
+│   ├── content_quality.py
+│   ├── enhanced_mcp_integration.py
+│   ├── enhanced_template_loader.py
+│   ├── fix_template_validation.py
+│   ├── generate_template.py
+│   ├── integrated_server copy.py
+│   ├── integrated_server_template_fix.py
+│   ├── integrated_workflow.py
+│   ├── mcp_integration.py
+│   ├── mcp_server_integration.py
+│   ├── style_category_system.py
+│   ├── style_enforcement.py
+│   ├── style_patch.py
+│   ├── zz_enhanced_orchestration
+│   ├── zz_monitoring_server.py
+│   └── zz_start_enterprise.py
+├── backend
+├── CATEGORY_SYSTEM_README.md
+├── data
+│   ├── content_templates
+│   │   ├── api_documentation_template.yaml
+│   │   ├── blog_article_generator.yaml
+│   │   ├── business_proposal.yaml
+│   │   ├── email_newsletter.yaml
+│   │   ├── press_release.yaml
+│   │   ├── research_paper_template.yaml
+│   │   ├── social_media_campaign.yaml
+│   │   └── technical_documentation.yaml
+│   ├── old_templates
+│   │   ├── api_documentation_template.yaml
+│   │   ├── blog_article_generator.yaml
+│   │   ├── business_proposal.yaml
+│   │   ├── category_overview.yaml
+│   │   ├── email_newsletter.yaml
+│   │   ├── press_release.yaml
+│   │   ├── research_paper_template.yaml
+│   │   ├── social_media_campaign.yaml
+│   │   └── technical_documentation.yaml
+│   └── style_profiles
+│       ├── academic_book_chapter.yaml
+│       ├── academic_textbook.yaml
+│       ├── advanced_masterclass.yaml
+│       ├── ai_in_healthcare.yaml
+│       ├── ai_news_brief.yaml
+│       ├── api_documentation.yaml
+│       ├── beginner_tutorial.yaml
+│       ├── board_presentation.yaml
+│       ├── brand_storytelling.yaml
+│       ├── business_case_analysis.yaml
+│       ├── certification_prep.yaml
+│       ├── code_review_standards.yaml
+│       ├── competitive_analysis.yaml
+│       ├── conference_abstract.yaml
+│       ├── content_marketing.yaml
+│       ├── conversion_optimization.yaml
+│       ├── corporate_training.yaml
+│       ├── customer_success.yaml
+│       ├── deployment_guide.yaml
+│       ├── email_campaign.yaml
+│       ├── executive_summary.yaml
+│       ├── experimental_lab_log.yaml
+│       ├── founder_storytelling.yaml
+│       ├── future_of_llms.yaml
+│       ├── grant_application.yaml
+│       ├── implementation_guide.yaml
+│       ├── influencer_collaboration.yaml
+│       ├── integration_manual.yaml
+│       ├── investor_presentation.yaml
+│       ├── knowledge_base.yaml
+│       ├── learning_pathway.yaml
+│       ├── literature_review.yaml
+│       ├── market_flash.yaml
+│       ├── market_research_report.yaml
+│       ├── merger_acquisition.yaml
+│       ├── methodology_paper.yaml
+│       ├── online_course.yaml
+│       ├── peer_review_article.yaml
+│       ├── performance_analysis.yaml
+│       ├── phd_academic.yaml
+│       ├── phd_dissertation.yaml
+│       ├── phd_lit_review.yaml
+│       ├── policy_watch.yaml
+│       ├── popular_sci.yaml
+│       ├── product_launch.yaml
+│       ├── research_proposal.yaml
+│       ├── roi_analysis.yaml
+│       ├── sales_enablement.yaml
+│       ├── scholarly_commentary.yaml
+│       ├── security_protocol.yaml
+│       ├── skill_assessment.yaml
+│       ├── social_media_voice.yaml
+│       ├── startup_trends_brief.yaml
+│       ├── startup_usecases.yaml
+│       ├── strategic_planning.yaml
+│       ├── system_architecture.yaml
+│       ├── technical_dive.yaml
+│       ├── technical_specification.yaml
+│       ├── technical_tutor.yaml
+│       ├── thesis_defense.yaml
+│       ├── thought_leadership.yaml
+│       ├── troubleshooting_manual.yaml
+│       ├── venture_capital_pitch.yaml
+│       └── workshop_facilitator.yaml
+├── deployment
+│   └── render.yaml
+├── docker-compose.yaml
+├── docker-compose.yml
+├── frontend
+│   ├── .env.local
+│   ├── .eslintrc.js
+│   ├── .gitignore
+│   ├── .prettierignore
+│   ├── .prettierrc
+│   ├── app
+│   │   ├── about
+│   │   │   └── page.tsx
+│   │   ├── api
+│   │   │   ├── analytics
+│   │   │   │   └── insights
+│   │   │   │       └── route.ts
+│   │   │   ├── analyze
+│   │   │   │   └── content
+│   │   │   │       └── route.ts
+│   │   │   ├── auth
+│   │   │   │   ├── [...nextauth]
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── content
+│   │   │   │   ├── [contentID]
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── export
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── dashboard
+│   │   │   │   └── stats
+│   │   │   │       └── route.ts
+│   │   │   ├── generate
+│   │   │   │   ├── route.ts
+│   │   │   │   └── status
+│   │   │   │       └── [requestId]
+│   │   │   │           └── route.ts
+│   │   │   ├── generate-content
+│   │   │   │   └── route.ts
+│   │   │   ├── health
+│   │   │   │   ├── db
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── healthz
+│   │   │   │   └── route.ts
+│   │   │   ├── intelligence
+│   │   │   │   └── competitive
+│   │   │   │       └── route.ts
+│   │   │   ├── optimize
+│   │   │   │   └── content
+│   │   │   │       └── route.ts
+│   │   │   ├── publish
+│   │   │   │   └── route.ts
+│   │   │   ├── share
+│   │   │   │   └── content
+│   │   │   │       └── route.ts
+│   │   │   ├── status
+│   │   │   │   └── [requestId]
+│   │   │   │       └── rotue.tsx
+│   │   │   ├── style-profiles
+│   │   │   │   └── route.ts
+│   │   │   ├── templates
+│   │   │   │   └── route.ts
+│   │   │   └── user
+│   │   │       ├── export
+│   │   │       │   ├── route.ts
+│   │   │       │   └── route.ts.backup
+│   │   │       ├── notifications
+│   │   │       │   ├── route.ts
+│   │   │       │   └── route.ts.backup
+│   │   │       ├── preferences
+│   │   │       │   ├── route.ts
+│   │   │       │   └── route.ts.backup
+│   │   │       ├── privacy
+│   │   │       │   ├── route.ts
+│   │   │       │   └── route.ts.backup
+│   │   │       └── profile
+│   │   │           ├── route.ts
+│   │   │           └── route.ts.backup
+│   │   ├── api-access
+│   │   │   └── page.tsx
+│   │   ├── auth
+│   │   │   ├── error
+│   │   │   │   └── page.tsx
+│   │   │   ├── page.tsx
+│   │   │   ├── signin
+│   │   │   │   └── page.tsx
+│   │   │   └── signout
+│   │   │       └── route.ts
+│   │   ├── careers
+│   │   │   └── page.tsx
+│   │   ├── case-studies
+│   │   │   └── techflow-solutions
+│   │   │       └── page.tsx
+│   │   ├── community
+│   │   │   └── page.tsx
+│   │   ├── contact
+│   │   │   └── page.tsx
+│   │   ├── content
+│   │   │   ├── [contentID]
+│   │   │   │   ├── edit
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── page.tsx
+│   │   │   │   └── rotue.ts
+│   │   │   └── page.tsx
+│   │   ├── customers
+│   │   │   └── page.tsx
+│   │   ├── dashboard
+│   │   │   └── page.tsx
+│   │   ├── docs
+│   │   │   └── page.tsx
+│   │   ├── favicon.ico
+│   │   ├── generate
+│   │   │   ├── [template_id]
+│   │   │   │   └── page.tsx
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.copy.tsx
+│   │   │   └── page.tsx
+│   │   ├── globals.css
+│   │   ├── help
+│   │   │   └── page.tsx
+│   │   ├── integrations
+│   │   │   └── page.tsx
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   ├── press
+│   │   │   └── page.tsx
+│   │   ├── pricing
+│   │   │   └── page.tsx
+│   │   ├── privacy
+│   │   │   └── page.tsx
+│   │   ├── profile
+│   │   │   └── page.tsx
+│   │   ├── providers.tsx
+│   │   ├── settings
+│   │   │   └── page.tsx
+│   │   ├── solutions
+│   │   │   └── page.tsx
+│   │   ├── status
+│   │   │   └── page.tsx
+│   │   ├── templates
+│   │   │   └── page.tsx
+│   │   ├── terms
+│   │   │   └── page.tsx
+│   │   ├── testing
+│   │   │   └── page.tsx
+│   │   └── theme-provider.tsx
+│   ├── auth.config.ts
+│   ├── auth.ts
+│   ├── biliing_service.py
+│   ├── components
+│   │   ├── CollapsibleNavigation.tsx
+│   │   ├── content-editor.tsx
+│   │   ├── DynamicParameters.tsx
+│   │   ├── error-boundary.tsx
+│   │   ├── examples
+│   │   │   └── TooltipExamples.tsx
+│   │   ├── GeneratedContentDisplay.tsx
+│   │   ├── GeneratingDialog.tsx
+│   │   ├── GenerationPreview.tsx
+│   │   ├── mcp
+│   │   │   ├── mcp_dashboard.tsx
+│   │   │   └── MCPToolToaster.tsx
+│   │   ├── NavigationClient.tsx
+│   │   ├── PageHeader.tsx
+│   │   ├── ProfessionalCategories.tsx
+│   │   ├── PublishingManager.tsx
+│   │   ├── ResponsiveNavigation.tsx
+│   │   ├── SimpleThemeSwitcher.tsx
+│   │   ├── StyleProfilesSelector.tsx
+│   │   ├── TemplateSelector.tsx
+│   │   ├── ThemeBackground.tsx
+│   │   ├── ThemeSelector.tsx
+│   │   ├── ToastProvider.tsx
+│   │   ├── ui
+│   │   │   ├── badge.tsx
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── checkbox.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── form.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── label.tsx
+│   │   │   ├── progress.tsx
+│   │   │   ├── select.tsx
+│   │   │   ├── separator.tsx
+│   │   │   ├── simple-tooltip.tsx
+│   │   │   ├── switch.tsx
+│   │   │   ├── tabs.tsx
+│   │   │   ├── textarea.tsx
+│   │   │   ├── toast.tsx
+│   │   │   ├── toaster.tsx
+│   │   │   └── tooltip.tsx
+│   │   └── WriterzRoomLogo.tsx
+│   ├── components.json
+│   ├── create_routes.sh
+│   ├── debug.sh
+│   ├── Dockerfile
+│   ├── eslint.config.mjs
+│   ├── eslint.config.mjs.backup
+│   ├── generated_content
+│   ├── hooks
+│   │   ├── use-performance.ts
+│   │   ├── use-performance.ts.backup
+│   │   ├── use-toast.ts
+│   │   ├── useEnhancedGeneration.ts
+│   │   ├── useGenerationStatus.ts
+│   │   ├── useIntegratedContentGeneration.ts
+│   │   ├── useMCP.ts
+│   │   ├── usePublishing.ts
+│   │   ├── useRealContentGeneration.ts
+│   │   ├── useStyleProfiles.ts
+│   │   ├── useTemplates.ts
+│   │   └── useUnifiedTheme.ts
+│   ├── jest.config.js
+│   ├── jest.setup.js
+│   ├── middleware.ts
+│   ├── middleware.ts.backup
+│   ├── next-env.d.ts
+│   ├── next.config.ts
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── package.json.backup
+│   ├── playwright.config.ts
+│   ├── pnpm-lock.yaml
+│   ├── postcss.config.mjs
+│   ├── prisma
+│   │   ├── migrations
+│   │   │   ├── 20250615172554_reconcile_changes
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20250624012333_enhanced_schema
+│   │   │   │   └── migration.sql
+│   │   │   └── migration_lock.toml
+│   │   ├── schema.prisma
+│   │   ├── seed.ts
+│   │   └── seed.ts.backup
+│   ├── public
+│   │   ├── file.svg
+│   │   ├── globe.svg
+│   │   ├── next.svg
+│   │   ├── vercel.svg
+│   │   └── window.svg
+│   ├── README.md
+│   ├── schemas
+│   │   └── generateContentSchema.ts
+│   ├── styles
+│   │   └── globals.css
+│   ├── tailwinds.config.ts
+│   ├── test-simple-oauth.js
+│   ├── tests
+│   │   ├── e2e
+│   │   │   └── homepage.spec.ts
+│   │   └── unit
+│   ├── tsconfig.json
+│   ├── tsconfig.json.backup
+│   ├── types
+│   │   ├── api.ts
+│   │   ├── components.ts
+│   │   ├── content.ts
+│   │   ├── index.ts
+│   │   ├── models.ts
+│   │   ├── professional-categories.ts
+│   │   ├── template.ts
+│   │   └── theme.ts
+│   ├── utils
+│   │   ├── .env.example
+│   │   ├── formUtils.ts
+│   │   ├── safeListDirs.ts
+│   │   ├── typeAdapters.ts
+│   │   └── uniqueKeys.ts
+│   └── zz_launch_enterprise.py
+├── generated_content
+│   ├── week_2025_29
+│   │   ├── algorithmic_trading_20250717_d0726c00.json
+│   │   ├── algorithmic_trading_20250717_d0726c00.md
+│   │   ├── future_of_llms_20250718_61c724ec.json
+│   │   ├── future_of_llms_20250718_61c724ec.md
+│   │   ├── newsletter_content_in_email_campaign_format_20250721_c1321bbc.json
+│   │   ├── newsletter_content_in_email_campaign_format_20250721_c1321bbc.md
+│   │   ├── research_paper_template_content_using_methodology__20250719_6aaa6529.json
+│   │   ├── research_paper_template_content_using_methodology__20250719_6aaa6529.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250720_5261ed68.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250720_5261ed68.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250721_538f83e5.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250721_538f83e5.md
+│   │   ├── strategic_business_proposal_in_startup_usecases_ap_20250720_6545ba21.json
+│   │   ├── strategic_business_proposal_in_startup_usecases_ap_20250720_6545ba21.md
+│   │   ├── strategic_business_proposal_in_system_architecture_20250720_4f49b833.json
+│   │   ├── strategic_business_proposal_in_system_architecture_20250720_4f49b833.md
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250720_27c95293.json
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250720_27c95293.md
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250720_741e06e4.json
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250720_741e06e4.md
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250721_a79156e0.json
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250721_a79156e0.md
+│   │   ├── technical_documentation_with_phd_academic_style_20250719_78ec959a.json
+│   │   ├── technical_documentation_with_phd_academic_style_20250719_78ec959a.md
+│   │   ├── technical_documentation_with_technical_dive_style_20250718_dfee2ab8.json
+│   │   ├── technical_documentation_with_technical_dive_style_20250718_dfee2ab8.md
+│   │   ├── the_math_behind_data_science_an_overview_of_your_f_20250718_ff9ec3d9.json
+│   │   └── the_math_behind_data_science_an_overview_of_your_f_20250718_ff9ec3d9.md
+│   ├── week_2025_30
+│   │   ├── ai_in_healthcare_20250730_c68f4e75.json
+│   │   ├── ai_in_healthcare_20250730_c68f4e75.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250725_25354860.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250725_25354860.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250725_445ec26e.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250725_445ec26e.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250725_77ab434a.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250725_77ab434a.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250725_e6db1ffb.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250725_e6db1ffb.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250728_80aea585.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250728_80aea585.md
+│   │   ├── newsletter_content_in_email_campaign_format_20250727_02b79c0d.json
+│   │   ├── newsletter_content_in_email_campaign_format_20250727_02b79c0d.md
+│   │   ├── research_paper_template_content_using_experimental_20250728_f7d22d09.json
+│   │   ├── research_paper_template_content_using_experimental_20250728_f7d22d09.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250726_158a6d1a.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250726_158a6d1a.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250726_5a5fd3ac.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250726_5a5fd3ac.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250726_836d1900.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250726_836d1900.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250726_83f2eba8.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250726_83f2eba8.md
+│   │   ├── strategic_business_proposal_in_roi_analysis_approa_20250725_d0e92fc5.json
+│   │   ├── strategic_business_proposal_in_roi_analysis_approa_20250725_d0e92fc5.md
+│   │   ├── strategic_business_proposal_in_startup_trends_brie_20250729_01eaea87.json
+│   │   ├── strategic_business_proposal_in_startup_trends_brie_20250729_01eaea87.md
+│   │   ├── strategic_business_proposal_in_startup_usecases_ap_20250728_47d1b2b8.json
+│   │   ├── strategic_business_proposal_in_startup_usecases_ap_20250728_47d1b2b8.md
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250725_ed124a87.json
+│   │   └── strategic_business_proposal_in_venture_capital_pit_20250725_ed124a87.md
+│   ├── week_2025_31
+│   │   ├── api_documentation_template_content_using_api_docum_20250731_20ff5c93.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250731_20ff5c93.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250731_62bdd47c.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250731_62bdd47c.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250801_bf5fa513.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250801_bf5fa513.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250802_ed30538d.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250802_ed30538d.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250806_11601cac.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250806_11601cac.md
+│   │   ├── api_documentation_template_content_using_business__20250730_3cc9d4be.json
+│   │   ├── api_documentation_template_content_using_business__20250730_3cc9d4be.md
+│   │   ├── future_of_llms_20250804_fdb75c95.json
+│   │   ├── future_of_llms_20250804_fdb75c95.md
+│   │   ├── newsletter_content_in_email_campaign_format_20250731_8c63b77e.json
+│   │   ├── newsletter_content_in_email_campaign_format_20250731_8c63b77e.md
+│   │   ├── newsletter_content_in_email_campaign_format_20250731_e324e47b.json
+│   │   └── newsletter_content_in_email_campaign_format_20250731_e324e47b.md
+│   ├── week_2025_32
+│   │   ├── ai_20250807_6b61d2e1.json
+│   │   ├── ai_20250807_6b61d2e1.md
+│   │   ├── ai_20250807_a724a934.json
+│   │   ├── ai_20250807_a724a934.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250807_673bc98d.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250807_673bc98d.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250807_6cedb93f.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250807_6cedb93f.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250807_7b049800.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250807_7b049800.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250810_b113c4dd.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250810_b113c4dd.md
+│   │   ├── making_the_writerzroom_content_generation_applicat_20250808_b9a63660.json
+│   │   ├── making_the_writerzroom_content_generation_applicat_20250808_b9a63660.md
+│   │   ├── newsletter_content_in_email_campaign_format_20250810_1d543973.json
+│   │   ├── newsletter_content_in_email_campaign_format_20250810_1d543973.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250807_bc677849.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250807_bc677849.md
+│   │   ├── strategic_business_proposal_in_executive_summary_a_20250807_ce0a09b2.json
+│   │   ├── strategic_business_proposal_in_executive_summary_a_20250807_ce0a09b2.md
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250807_a0b800fa.json
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250807_a0b800fa.md
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250808_71b2f6c2.json
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250808_71b2f6c2.md
+│   │   ├── technical_documentation_with_deployment_guide_styl_20250807_8ab3504e.json
+│   │   ├── technical_documentation_with_deployment_guide_styl_20250807_8ab3504e.md
+│   │   ├── technical_documentation_with_deployment_guide_styl_20250807_8e1a6cb4.json
+│   │   └── technical_documentation_with_deployment_guide_styl_20250807_8e1a6cb4.md
+│   ├── week_2025_33
+│   │   ├── api_documentation_template_content_using_api_docum_20250816_51c4c7f4.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250816_51c4c7f4.md
+│   │   ├── research_paper_template_content_using_experimental_20250817_0ba59050.json
+│   │   ├── research_paper_template_content_using_experimental_20250817_0ba59050.md
+│   │   ├── research_paper_template_content_using_phd_academic_20250815_383b6f74.json
+│   │   ├── research_paper_template_content_using_phd_academic_20250815_383b6f74.md
+│   │   ├── research_paper_template_content_using_technical_di_20250816_67f4c8ef.json
+│   │   ├── research_paper_template_content_using_technical_di_20250816_67f4c8ef.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250816_73afdc72.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250816_73afdc72.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250816_73e78dd1.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250816_73e78dd1.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250816_a52b42e3.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250816_a52b42e3.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250818_955885b3.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250818_955885b3.md
+│   │   ├── strategic_business_proposal_in_strategic_planning__20250817_6855617f.json
+│   │   ├── strategic_business_proposal_in_strategic_planning__20250817_6855617f.md
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250817_59f13e29.json
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250817_59f13e29.md
+│   │   ├── strategic_business_proposal_in_venture_capital_pit_20250817_da91550d.json
+│   │   └── strategic_business_proposal_in_venture_capital_pit_20250817_da91550d.md
+│   ├── week_2025_34
+│   │   ├── aipowered_drug_discovery_how_machine_learning_is_r_20250823_35561ff7.json
+│   │   ├── aipowered_drug_discovery_how_machine_learning_is_r_20250823_35561ff7.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250822_7e959b49.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250822_7e959b49.md
+│   │   ├── api_documentation_template_content_using_security__20250823_0ef8563e.json
+│   │   ├── api_documentation_template_content_using_security__20250823_0ef8563e.md
+│   │   ├── newsletter_content_in_email_campaign_format_20250822_8e1e5a7b.json
+│   │   ├── newsletter_content_in_email_campaign_format_20250822_8e1e5a7b.md
+│   │   ├── nicewebrl_a_python_library_20250823_89f06de4.json
+│   │   ├── nicewebrl_a_python_library_20250823_89f06de4.md
+│   │   ├── press_release_content_using_business_case_analysis_20250825_b2d93f9b.json
+│   │   ├── press_release_content_using_business_case_analysis_20250825_b2d93f9b.md
+│   │   ├── press_release_content_using_phd_dissertation_appro_20250823_86dc0a20.json
+│   │   ├── press_release_content_using_phd_dissertation_appro_20250823_86dc0a20.md
+│   │   ├── research_paper_template_content_using_thesis_defen_20250823_409e2694.json
+│   │   ├── research_paper_template_content_using_thesis_defen_20250823_409e2694.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250824_9d384723.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250824_9d384723.md
+│   │   ├── strategic_business_proposal_in_board_presentation__20250825_3c7e1569.json
+│   │   └── strategic_business_proposal_in_board_presentation__20250825_3c7e1569.md
+│   ├── week_2025_35
+│   │   ├── api_documentation_template_content_using_api_docum_20250830_15098f0b.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250830_15098f0b.md
+│   │   ├── api_documentation_template_content_using_api_docum_20250830_391db414.json
+│   │   ├── api_documentation_template_content_using_api_docum_20250830_391db414.md
+│   │   ├── press_release_content_using_advanced_masterclass_a_20250830_fd32cd0a.json
+│   │   ├── press_release_content_using_advanced_masterclass_a_20250830_fd32cd0a.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250829_44289664.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250829_44289664.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250830_5d9f28de.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250830_5d9f28de.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250830_9bef68a8.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250830_9bef68a8.md
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250830_bf5516d6.json
+│   │   ├── social_media_campaign_using_social_media_voice_voi_20250830_bf5516d6.md
+│   │   ├── strategic_business_proposal_in_startup_trends_brie_20250827_666000a2.json
+│   │   ├── strategic_business_proposal_in_startup_trends_brie_20250827_666000a2.md
+│   │   ├── strategic_business_proposal_transforming_content_o_20250829_f9c4de79.json
+│   │   └── strategic_business_proposal_transforming_content_o_20250829_f9c4de79.md
+│   └── week_2025_36
+│       ├── api_documentation_template_content_using_api_docum_20250905_5f4f1113.json
+│       └── api_documentation_template_content_using_api_docum_20250905_5f4f1113.md
+├── langgraph_app
+│   ├── __init__.py
+│   ├── agent_coordination.py
+│   ├── agents
+│   │   ├── __init__.py
+│   │   ├── enhanced_call_writer_integrated.py
+│   │   ├── enhanced_code_agent_integrated.py
+│   │   ├── enhanced_editor_integrated.py
+│   │   ├── enhanced_formatter_integrated.py
+│   │   ├── enhanced_image_agent_integrated.py
+│   │   ├── enhanced_planner_integrated.py
+│   │   ├── enhanced_publisher_integrated.py
+│   │   ├── enhanced_researcher_integrated.py
+│   │   ├── enhanced_seo_agent_integrated.py
+│   │   ├── mcp_enhanced_agents.py
+│   │   └── writer.py
+│   ├── api
+│   ├── cache_system.py
+│   ├── config
+│   │   ├── auth.py
+│   │   └── settings.py
+│   ├── core
+│   │   ├── content_manager.py
+│   │   ├── enriched_content_state.py
+│   │   └── generation_engine.py
+│   ├── Dockerfile
+│   ├── enhanced_generate_endpoint.py
+│   ├── enhanced_model_registry.py
+│   ├── enhanced_template_loader.py
+│   ├── integrated_server.py
+│   ├── job_queue.py
+│   ├── mcp_enhanced_graph.py
+│   ├── mcp_integration.py
+│   ├── mcp_server_extension copy.py
+│   ├── mcp_server_extension.py
+│   ├── mcp_tools_registry.py
+│   ├── models
+│   │   ├── __init__.py
+│   │   └── api_models.py
+│   ├── monitoring
+│   │   ├── __init__.py
+│   │   └── metrics.py
+│   ├── project_structure.txt
+│   ├── schemas.py
+│   ├── semantic_search.py
+│   ├── style_profile_loader.py
+│   ├── template_loader.py
+│   ├── universal_style_enhancer.py
+│   ├── universal_system
+│   │   ├── __init__.py
+│   │   ├── universal_dynamic_generator.py
+│   │   ├── universal_integration.py
+│   │   └── universal_template_system.py
+│   ├── utils
+│   │   ├── __init__.py
+│   │   ├── content_extraction.py
+│   │   └── yaml_utils.py
+│   └── utils.py
+├── langgraph.json
+├── LICENSE
+├── package-lock.json
+├── package.json
+├── pnpm-lock.yaml
+├── PROFESSIONAL_CATEGORIES_GUIDE.md
+├── project_structure_20250905.txt
+├── project_structure.txt
+├── prompts
+│   └── writer
+│       ├── blog_article_writer.txt
+│       ├── business_proposal_writer.txt
+│       ├── business_writer.txt
+│       ├── conversational_mentor.txt
+│       ├── educator_writer.txt
+│       ├── email_newsletter_writer.txt
+│       ├── enhanced_technical_doc_writer.txt
+│       ├── grad_level_writer.txt
+│       ├── hands_on_developer.txt
+│       ├── journalistic_writer.txt
+│       ├── opinionated_thinker.txt
+│       ├── press_release_writer.txt
+│       ├── research_summarizer.txt
+│       ├── social_media_campaign_writer.txt
+│       ├── startup_storyteller.txt
+│       └── summary_plus_depth.txt
+├── README.md
+├── requirements.lock.txt
+├── requirements.txt
+├── scripts
+│   ├── auto_merge_state_returns.py
+│   ├── cleanup-console.ts
+│   ├── cleanup-script.sh
+│   ├── deploy.sh
+│   ├── dev.sh
+│   ├── generate_professional_categories.py
+│   ├── requestId-cleanup.sh
+│   ├── rotate-api-key.py
+│   ├── run_server.sh
+│   ├── safe_patch_final_state_returns.py
+│   ├── server_startup.sh
+│   ├── server_switch.sh
+│   ├── setup_mcp.sh
+│   ├── start_mcp_server.py
+│   ├── targeted-enhancement.sh
+│   ├── test_unified.py.backup.20250701_192650
+│   └── zz_enterprise_setup.sh
+├── storage
+│   ├── agent_memory
+│   │   └── experiments.json
+│   ├── causal_inference_guide
+│   │   ├── artificial_intelligence_mock.json
+│   │   └── artificial_intelligence_mock.md
+│   ├── content_fingerprints.json
+│   ├── decision_trees_intro
+│   │   ├── artificial_intelligence_mock.json
+│   │   └── artificial_intelligence_mock.md
+│   └── future_of_llms
+│       ├── artificial_intelligence_mock.json
+│       └── artificial_intelligence_mock.md
+├── test_unified.py
+├── tests
+│   └── test_agents.py
+└── writer
+    ├── include
+    │   ├── python3.12
+    │   └── site
+    │       └── python3.12
+    │           └── greenlet
+    │               └── greenlet.h
+    └── pyvenv.cfg
+
+132 directories, 580 files
