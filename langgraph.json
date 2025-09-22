@@ -1,0 +1,6 @@
+{
+  "dependencies": ["langgraph", "langchain", "openai", "anthropic"],
+  "graphs": {
+    "writerzroom": "langgraph_app.mcp_server_extension:graph"
+  }
+}
