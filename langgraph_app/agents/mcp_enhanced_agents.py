@@ -214,7 +214,7 @@ class GenerateRequest(BaseModel):
         return v
 
 class GenerationStatus(BaseModel):
-    requestId: str
+    request_id: str
     status: str = Field(..., pattern=r'^(pending|processing|completed|failed|cancelled)$')
     progress: float = Field(..., ge=0.0, le=1.0)
     current_step: str = Field(default="")
@@ -240,7 +240,7 @@ class APIResponse(BaseModel):
     data: Optional[Any] = None
     error: Optional[Dict[str, Any]] = None
     timestamp: datetime = Field(default_factory=datetime.now)
-    requestId: Optional[str] = None
+    request_id: Optional[str] = None
 
 # File loading utilities
 def get_template_paths() -> List[str]:
@@ -482,7 +482,7 @@ async def execute_content_generation(
 
     try:
         logger.info("Starting MCP-enhanced content generation",
-                   requestId=request_id,
+                   request_id=request_id,
                    template=template_config.get("name"),
                    style=style_config.get("name"),
                    mcp_enabled=mcp_options.get('enable_mcp', True) if mcp_options else True)
@@ -533,7 +533,7 @@ async def execute_content_generation(
             
             # Create status object
             status = GenerationStatus(
-                requestId=request_id,
+                request_id=request_id,
                 status=status_value,
                 progress=progress_value,
                 current_step="Completed" if status_value == "completed" else "Failed",
@@ -561,7 +561,7 @@ async def execute_content_generation(
             ).inc()
             
             logger.info("Content generation completed successfully",
-                       requestId=request_id,
+                       request_id=request_id,
                        status=status_value,
                        duration=duration,
                        mcp_enhanced=mcp_options.get('enable_mcp', True) if mcp_options else True)
@@ -574,12 +574,12 @@ async def execute_content_generation(
         
     except Exception as e:
         logger.error("Content generation failed",
-                    requestId=request_id,
+                    request_id=request_id,
                     error=str(e),
                     exc_info=True)
         
         error_status = GenerationStatus(
-            requestId=request_id,
+            request_id=request_id,
             status="failed",
             progress=0.0,
             current_step="Failed",
@@ -666,8 +666,8 @@ app.add_middleware(
 # Request tracking middleware
 @app.middleware("http")
 async def track_requests(request: Request, call_next):
-    requestId = str(uuid.uuid4())
-    request.state.requestId = requestId
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
     
     start_time = datetime.now()
     
@@ -682,11 +682,11 @@ async def track_requests(request: Request, call_next):
         status=response.status_code
     ).inc()
     
-    response.headers["X-Request-ID"] = requestId
+    response.headers["X-Request-ID"] = request_id
     response.headers["X-Response-Time"] = f"{duration:.3f}s"
     
     logger.info("Request completed",
-                requestId=requestId,
+                request_id=request_id,
                 method=request.method,
                 path=request.url.path,
                 status_code=response.status_code,
@@ -698,7 +698,7 @@ async def track_requests(request: Request, call_next):
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     logger.error("HTTP exception",
-                 requestId=getattr(request.state, 'requestId', None),
+                 request_id=getattr(request.state, 'request_id', None),
                  status_code=exc.status_code,
                  detail=exc.detail)
     
@@ -709,7 +709,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             "message": exc.detail,
             "timestamp": datetime.now().isoformat()
         },
-        requestId=getattr(request.state, 'requestId', None)
+        request_id=getattr(request.state, 'request_id', None)
     ).dict()
     
     response_data["timestamp"] = response_data["timestamp"].isoformat() if isinstance(response_data["timestamp"], datetime) else response_data["timestamp"]
@@ -722,7 +722,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     logger.error("Unhandled exception",
-                 requestId=getattr(request.state, 'requestId', None),
+                 request_id=getattr(request.state, 'request_id', None),
                  error=str(exc),
                  exc_info=True)
     
@@ -733,7 +733,7 @@ async def general_exception_handler(request: Request, exc: Exception):
             "message": "An unexpected error occurred",
             "timestamp": datetime.now().isoformat()
         },
-        requestId=getattr(request.state, 'requestId', None)
+        request_id=getattr(request.state, 'request_id', None)
     ).dict()
     
     response_data["timestamp"] = response_data["timestamp"].isoformat() if isinstance(response_data["timestamp"], datetime) else response_data["timestamp"]
@@ -769,7 +769,7 @@ async def root(request: Request):
                 "generate": "/api/generate"
             }
         },
-        requestId=request.state.requestId
+        request_id=request.state.request_id
     )
 
 @app.get("/health")
@@ -848,7 +848,7 @@ async def list_templates(request: Request, authenticated: bool = Depends(verify_
                 "items": [template.dict() for template in templates],
                 "count": len(templates)
             },
-            requestId=request.state.requestId
+            request_id=request.state.request_id
         )
         
     except Exception as e:
@@ -902,7 +902,7 @@ async def list_style_profiles(
                 "items": [profile.dict() for profile in paginated_profiles],
                 "pagination": pagination.dict()
             },
-            requestId=request.state.requestId
+            request_id=request.state.request_id
         )
         
     except Exception as e:
@@ -917,7 +917,7 @@ async def generate_content_endpoint(
     authenticated: bool = Depends(verify_api_key)
 ):
     """Start content generation through unified MCP pipeline"""
-    requestId = str(uuid.uuid4())
+    request_id = str(uuid.uuid4())
     
     try:
         logger.info(f"🔍 Generation request received: {request_data}")
@@ -980,7 +980,7 @@ async def generate_content_endpoint(
         
         # Initialize generation status
         initial_status = GenerationStatus(
-            requestId=requestId,
+            request_id=request_id,
             status="pending",
             progress=0.0,
             current_step="Initializing...",
@@ -1000,12 +1000,12 @@ async def generate_content_endpoint(
         
         if not hasattr(app.state, 'generation_tasks'):
             app.state.generation_tasks = {}
-        app.state.generation_tasks[requestId] = initial_status
+        app.state.generation_tasks[request_id] = initial_status
         
         # Start background generation through MCP pipeline
         background_tasks.add_task(
             execute_content_generation,
-            requestId,
+            request_id,
             template_config,
             style_config,
             app.state,
@@ -1013,7 +1013,7 @@ async def generate_content_endpoint(
         )
         
         logger.info("Content generation initiated",
-                   requestId=requestId,
+                   request_id=request_id,
                    template=template.name,
                    style_profile=profile.name,
                    mcp_enabled=mcp_options['enable_mcp'])
@@ -1021,11 +1021,11 @@ async def generate_content_endpoint(
         return APIResponse(
             success=True,
             data={
-                "requestId": requestId,
+                "request_id": request_id,
                 "status": "pending",
                 "metadata": initial_status.metadata
             },
-            requestId=request.state.requestId
+            request_id=request.state.request_id
         )
         
     except HTTPException:
@@ -1033,72 +1033,72 @@ async def generate_content_endpoint(
     except Exception as e:
         logger.error("Failed to start generation", 
                     error=str(e), 
-                    requestId=requestId)
+                    request_id=request_id)
         raise HTTPException(status_code=500, detail="Failed to start content generation")
 
-@app.get("/api/generate/{requestId}", response_model=APIResponse)
-async def get_generation_result(requestId: str, request: Request, authenticated: bool = Depends(verify_api_key)):
+@app.get("/api/generate/{request_id}", response_model=APIResponse)
+async def get_generation_result(request_id: str, request: Request, authenticated: bool = Depends(verify_api_key)):
     """Get generation status or final result"""
-    if not hasattr(app.state, 'generation_tasks') or requestId not in app.state.generation_tasks:
+    if not hasattr(app.state, 'generation_tasks') or request_id not in app.state.generation_tasks:
         raise HTTPException(status_code=404, detail="Generation request not found")
     
-    status = app.state.generation_tasks[requestId]
+    status = app.state.generation_tasks[request_id]
     
     return APIResponse(
         success=True,
         data=status.dict(),
-        requestId=request.state.requestId
+        request_id=request.state.request_id
     )
 
-@app.delete("/api/generate/{requestId}")
-async def cancel_generation(requestId: str, request: Request, authenticated: bool = Depends(verify_api_key)):
+@app.delete("/api/generate/{request_id}")
+async def cancel_generation(request_id: str, request: Request, authenticated: bool = Depends(verify_api_key)):
     """Cancel an ongoing generation"""
-    if not hasattr(app.state, 'generation_tasks') or requestId not in app.state.generation_tasks:
+    if not hasattr(app.state, 'generation_tasks') or request_id not in app.state.generation_tasks:
         raise HTTPException(status_code=404, detail="Generation request not found")
     
-    status = app.state.generation_tasks[requestId]
+    status = app.state.generation_tasks[request_id]
     if status.status in ["completed", "failed"]:
         raise HTTPException(status_code=400, detail="Cannot cancel completed generation")
     
     # Update status to cancelled
     status.status = "cancelled"
     status.updated_at = datetime.now()
-    app.state.generation_tasks[requestId] = status
+    app.state.generation_tasks[request_id] = status
     
-    logger.info("Generation cancelled", requestId=requestId)
+    logger.info("Generation cancelled", request_id=request_id)
     
     return APIResponse(
         success=True,
         data={"message": "Generation cancelled successfully"},
-        requestId=request.state.requestId
+        request_id=request.state.request_id
     )
 
-@app.get("/status/{requestId}")
-async def get_generation_status(requestId: str, request: Request):
+@app.get("/status/{request_id}")
+async def get_generation_status(request_id: str, request: Request):
     """Get generation status - frontend compatibility endpoint"""
     try:
-        logger.info(f"🔍 Status check for request: {requestId}")
+        logger.info(f"🔍 Status check for request: {request_id}")
         
-        if not hasattr(app.state, 'generation_tasks') or requestId not in app.state.generation_tasks:
-            logger.warning(f"❌ Request {requestId} not found")
+        if not hasattr(app.state, 'generation_tasks') or request_id not in app.state.generation_tasks:
+            logger.warning(f"❌ Request {request_id} not found")
             return JSONResponse(
                 status_code=404,
                 content={
                     "success": False,
                     "error": "Generation request not found",
                     "timestamp": datetime.now().isoformat(),
-                    "requestId": requestId
+                    "request_id": request_id
                 }
             )
         
-        status = app.state.generation_tasks[requestId]
+        status = app.state.generation_tasks[request_id]
         
         logger.info(f"✅ Status found: {status.status}, content_length: {len(status.content)}")
         
         response_data = {
             "success": True,
             "data": {
-                "requestId": requestId,
+                "request_id": request_id,
                 "status": status.status,
                 "progress": status.progress,
                 "current_step": status.current_step,
@@ -1113,13 +1113,13 @@ async def get_generation_status(requestId: str, request: Request):
             },
             "error": None,
             "timestamp": datetime.now().isoformat(),
-            "requestId": requestId
+            "request_id": request_id
         }
         
         return JSONResponse(content=response_data)
         
     except Exception as e:
-        logger.error("Status check failed", requestId=requestId, error=str(e))
+        logger.error("Status check failed", request_id=request_id, error=str(e))
         
         return JSONResponse(
             status_code=500,
@@ -1127,7 +1127,7 @@ async def get_generation_status(requestId: str, request: Request):
                 "success": False,
                 "error": f"Status check failed: {str(e)}",
                 "timestamp": datetime.now().isoformat(),
-                "requestId": requestId
+                "request_id": request_id
             }
         )
 
@@ -1150,7 +1150,7 @@ async def generate_content_with_explicit_mcp(
         timeout_seconds=request_data.timeout_seconds
     )
     
-    requestId = str(uuid.uuid4())
+    request_id = str(uuid.uuid4())
     
     try:
         # Load and validate template and profile (same as regular endpoint)
@@ -1198,7 +1198,7 @@ async def generate_content_with_explicit_mcp(
         
         # Initialize status
         initial_status = GenerationStatus(
-            requestId=requestId,
+            request_id=request_id,
             status="pending",
             progress=0.0,
             current_step="Initializing MCP generation...",
@@ -1220,12 +1220,12 @@ async def generate_content_with_explicit_mcp(
         
         if not hasattr(app.state, 'generation_tasks'):
             app.state.generation_tasks = {}
-        app.state.generation_tasks[requestId] = initial_status
+        app.state.generation_tasks[request_id] = initial_status
         
         # Start MCP-enhanced generation
         background_tasks.add_task(
             execute_content_generation,
-            requestId,
+            request_id,
             template_config,
             style_config,
             app.state,
@@ -1233,7 +1233,7 @@ async def generate_content_with_explicit_mcp(
         )
         
         logger.info("MCP-enhanced content generation initiated",
-                   requestId=requestId,
+                   request_id=request_id,
                    template=template.name,
                    style_profile=profile.name,
                    mcp_enabled=mcp_options['enable_mcp'],
@@ -1242,11 +1242,11 @@ async def generate_content_with_explicit_mcp(
         return APIResponse(
             success=True,
             data={
-                "requestId": requestId,
+                "request_id": request_id,
                 "status": "pending",
                 "metadata": initial_status.metadata
             },
-            requestId=request.state.requestId
+            request_id=request.state.request_id
         )
         
     except HTTPException:
@@ -1254,7 +1254,7 @@ async def generate_content_with_explicit_mcp(
     except Exception as e:
         logger.error("Failed to start MCP generation", 
                     error=str(e), 
-                    requestId=requestId)
+                    request_id=request_id)
         raise HTTPException(status_code=500, detail="Failed to start MCP content generation")
 
 @app.get("/api/content")
@@ -1479,7 +1479,7 @@ async def debug_mcp_status(request: Request):
                 "Real-time collaboration"
             ] if MCP_AVAILABLE else []
         },
-        requestId=request.state.requestId
+        request_id=request.state.request_id
     )
 
 @app.get("/debug/integration-status")
@@ -1499,7 +1499,7 @@ async def debug_integration_status(request: Request):
             "integration_type": "mcp_enhanced" if MCP_AVAILABLE else "fallback",
             "agent_coordination": "enabled" if MCP_AVAILABLE else "basic"
         },
-        requestId=request.state.requestId
+        request_id=request.state.request_id
     )
 
 if __name__ == "__main__":

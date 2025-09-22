@@ -82,7 +82,7 @@ export default function DocsPage() {
     },
     {
       method: 'GET',
-      endpoint: '/api/status/{requestId}',
+      endpoint: '/api/status/{request_id}',
       description: 'Check generation status for long-running tasks',
       category: 'Status'
     },

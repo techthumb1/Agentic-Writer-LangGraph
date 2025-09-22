@@ -12,6 +12,7 @@ from ..config.settings import settings
 from ..models.api_models import GenerationStatus, ContentTemplate, StyleProfile, GenerateRequest
 from ..utils.content_extraction import extract_content_from_langgraph_result, extract_sources_from_langgraph_result
 from ..utils.yaml_utils import safe_yaml_load, validate_template_structure
+from ..mcp_server_extension import enhance_generation_with_mcp
 
 logger = logging.getLogger(__name__)
 
@@ -188,14 +189,14 @@ class GenerationEngine:
             return status
 
         try:
-            logger.info(f"Starting LangGraph+MCP generation [requestId={request_id}, template={template_config.get('name')}, style={style_config.get('name')}]")
+            logger.info(f"Starting LangGraph+MCP generation [request_id={request_id}, template={template_config.get('name')}, style={style_config.get('name')}]")
 
             # ENTERPRISE: Strict validation - no fallbacks
             if not getattr(app_state, "mcp_available", False):
                 err = "MCP system not available - LangGraph agents require MCP tools"
-                logger.error(f"{err} [requestId={request_id}]")
+                logger.error(f"{err} [request_id={request_id}]")
                 return _persist_and_return(GenerationStatus(
-                    requestId=request_id, status="failed", progress=0.0, current_step="MCP Unavailable",
+                    request_id=request_id, status="failed", progress=0.0, current_step="MCP Unavailable",
                     content="", metadata={"error_details": err}, errors=[err], warnings=[],
                     metrics={"error_time": datetime.now().isoformat()}, created_at=start_time,
                     updated_at=datetime.now(), completed_at=datetime.now()
@@ -204,9 +205,9 @@ class GenerationEngine:
             # ENTERPRISE: Template validation
             if not template_config or not template_config.get("name"):
                 err = "Invalid template configuration - LangGraph requires template specification"
-                logger.error(f"{err} [requestId={request_id}]")
+                logger.error(f"{err} [request_id={request_id}]")
                 return _persist_and_return(GenerationStatus(
-                    requestId=request_id, status="failed", progress=0.0, current_step="Template Invalid",
+                    request_id=request_id, status="failed", progress=0.0, current_step="Template Invalid",
                     content="", metadata={"error_details": err}, errors=[err], warnings=[],
                     metrics={"error_time": datetime.now().isoformat()}, created_at=start_time,
                     updated_at=datetime.now(), completed_at=datetime.now()
@@ -215,16 +216,16 @@ class GenerationEngine:
             # ENTERPRISE: Style validation
             if not style_config or not style_config.get("name"):
                 err = "Invalid style configuration - LangGraph requires style specification"
-                logger.error(f"{err} [requestId={request_id}]")
+                logger.error(f"{err} [request_id={request_id}]")
                 return _persist_and_return(GenerationStatus(
-                    requestId=request_id, status="failed", progress=0.0, current_step="Style Invalid",
+                    request_id=request_id, status="failed", progress=0.0, current_step="Style Invalid",
                     content="", metadata={"error_details": err}, errors=[err], warnings=[],
                     metrics={"error_time": datetime.now().isoformat()}, created_at=start_time,
                     updated_at=datetime.now(), completed_at=datetime.now()
                 ))
 
             # Execute LangGraph+MCP generation
-            logger.info(f"Executing LangGraph+MCP generation [requestId={request_id}]")
+            logger.info(f"Executing LangGraph+MCP generation [request_id={request_id}]")
             
             # Import the enhanced MCP integration
             from ..mcp_server_extension import execute_enhanced_mcp_generation
@@ -240,9 +241,9 @@ class GenerationEngine:
             # Validate result
             if not isinstance(result, dict):
                 err = "LangGraph generation returned invalid result structure"
-                logger.error(f"{err} [requestId={request_id}]")
+                logger.error(f"{err} [request_id={request_id}]")
                 return _persist_and_return(GenerationStatus(
-                    requestId=request_id, status="failed", progress=0.0, current_step="Invalid Result",
+                    request_id=request_id, status="failed", progress=0.0, current_step="Invalid Result",
                     content="", metadata={"error_details": err}, errors=[err], warnings=[],
                     metrics={"error_time": datetime.now().isoformat()}, created_at=start_time,
                     updated_at=datetime.now(), completed_at=datetime.now()
@@ -252,7 +253,7 @@ class GenerationEngine:
             status_value = result.get("status", "failed")
             content_value = extract_content_from_langgraph_result(result)
             
-            logger.info(f"Content extraction [requestId={request_id}]:")
+            logger.info(f"Content extraction [request_id={request_id}]:")
             logger.info(f"   - Content length: {len(content_value)}")
             logger.info(f"   - Result keys: {list(result.keys())}")
             logger.info(f"   - Content preview: {content_value[:100]}..." if content_value else "   - No content extracted")
@@ -260,7 +261,7 @@ class GenerationEngine:
             # Validate content was generated
             if status_value == "completed" and not content_value:
                 err = f"LangGraph agents completed but produced no content - check agent workflow execution"
-                logger.error(f"{err} [requestId={request_id}]")
+                logger.error(f"{err} [request_id={request_id}]")
 
                 debug_info = {
                     "result_keys": list(result.keys()),
@@ -274,7 +275,7 @@ class GenerationEngine:
                 }
 
                 return _persist_and_return(GenerationStatus(
-                    requestId=request_id, status="failed", progress=0.0, current_step="No Content Generated",
+                    request_id=request_id, status="failed", progress=0.0, current_step="No Content Generated",
                     content="", metadata={"error_details": err, "debug_info": debug_info}, 
                     errors=[err], warnings=[], metrics={"error_time": datetime.now().isoformat()},
                     created_at=start_time, updated_at=datetime.now(), completed_at=datetime.now()
@@ -310,7 +311,7 @@ class GenerationEngine:
             
             if source_count < min_sources_required:
                 err = f"LangGraph agents failed to collect sufficient evidence (found {source_count}, required {min_sources_required})"
-                logger.error(f"{err} [requestId={request_id}]")
+                logger.error(f"{err} [request_id={request_id}]")
                 
                 debug_info = {
                     "evidence_container_keys": list(evidence_dict.keys()),
@@ -320,7 +321,7 @@ class GenerationEngine:
                 }
                 
                 return _persist_and_return(GenerationStatus(
-                    requestId=request_id, status="failed", progress=0.0, current_step="Insufficient Evidence",
+                    request_id=request_id, status="failed", progress=0.0, current_step="Insufficient Evidence",
                     content="", metadata={"error_details": err, "debug_info": debug_info},
                     errors=[err], warnings=[], metrics={"min_sources": min_sources_required, "source_count": source_count},
                     created_at=start_time, updated_at=datetime.now(), completed_at=datetime.now()
@@ -347,16 +348,16 @@ class GenerationEngine:
 
             if word_count < min_words:
                 err = f"Generated content too short (found {word_count} words, required {min_words})"
-                logger.error(f"{err} [requestId={request_id}]")
+                logger.error(f"{err} [request_id={request_id}]")
                 return _persist_and_return(GenerationStatus(
-                    requestId=request_id, status="failed", progress=0.0, current_step="Quality Check Failed",
+                    request_id=request_id, status="failed", progress=0.0, current_step="Quality Check Failed",
                     content="", metadata={"error_details": err},
                     errors=[err], warnings=[], metrics={"word_count": word_count, "min_words": min_words},
                     created_at=start_time, updated_at=datetime.now(), completed_at=datetime.now()
                 ))
 
             # SUCCESS: Real content generated by LangGraph agents
-            logger.info(f"LangGraph+MCP generation successful [requestId={request_id}, content_length={len(content_value)}, word_count={word_count}, sources={source_count}]")
+            logger.info(f"LangGraph+MCP generation successful [request_id={request_id}, content_length={len(content_value)}, word_count={word_count}, sources={source_count}]")
 
             # Add LangGraph-specific metadata
             metadata_value.update({
@@ -372,7 +373,7 @@ class GenerationEngine:
             })
 
             status = GenerationStatus(
-                requestId=request_id, status=status_value, progress=progress_value,
+                request_id=request_id, status=status_value, progress=progress_value,
                 current_step="Completed" if status_value == "completed" else "Processing",
                 content=content_value, metadata=metadata_value, errors=errors_value,
                 warnings=warnings_value, metrics=metrics_value,
@@ -382,9 +383,9 @@ class GenerationEngine:
             return _persist_and_return(status)
 
         except Exception as e:
-            logger.error(f"LangGraph+MCP generation failed [requestId={request_id}, error={str(e)}]", exc_info=True)
+            logger.error(f"LangGraph+MCP generation failed [request_id={request_id}, error={str(e)}]", exc_info=True)
             return _persist_and_return(GenerationStatus(
-                requestId=request_id, status="failed", progress=0.0, current_step="Exception",
+                request_id=request_id, status="failed", progress=0.0, current_step="Exception",
                 content="", metadata={"error_details": str(e)}, errors=[f"Generation failed: {str(e)}"],
                 warnings=[], metrics={"error_time": datetime.now().isoformat()},
                 created_at=start_time, updated_at=datetime.now(), completed_at=datetime.now()
@@ -419,7 +420,7 @@ class GenerationEngine:
                 enhanced_context['style_preference'] = style_profile
             
             # Execute Universal system processing
-            logger.info(f"Universal system processing request [requestId={request_id}, request_length={len(user_request)}]")
+            logger.info(f"Universal system processing request [request_id={request_id}, request_length={len(user_request)}]")
             
             result = await app_state.universal_integration.process_content_request(
                 user_request=user_request,
@@ -465,7 +466,7 @@ class GenerationEngine:
                 raise Exception(f"Style profile not found: {selected_style}")
             
             # Execute MCP generation with Universal selections
-            logger.info(f"Executing Universal+LangGraph+MCP generation [requestId={request_id}]")
+            logger.info(f"Executing Universal+LangGraph+MCP generation [request_id={request_id}]")
             
             mcp_result = await self.execute_content_generation(
                 request_id, 
@@ -496,14 +497,14 @@ class GenerationEngine:
                     "no_fallbacks_used": True
                 })
             
-            logger.info(f"Universal+LangGraph+MCP generation successful [requestId={request_id}, content_length={len(mcp_result.content)}]")
+            logger.info(f"Universal+LangGraph+MCP generation successful [request_id={request_id}, content_length={len(mcp_result.content)}]")
             return mcp_result
             
         except Exception as e:
             logger.error(f"Universal+LangGraph+MCP generation failed: {e}")
             
             error_status = GenerationStatus(
-                requestId=request_id,
+                request_id=request_id,
                 status="failed",
                 progress=0.0,
                 current_step="Universal Generation Failed",
@@ -551,7 +552,7 @@ class GenerationEngine:
                 enhanced_context['style_preference'] = style_profile
             
             # Execute Universal system processing
-            logger.info(f"Universal system processing request [requestId={request_id}, request_length={len(user_request)}]")
+            logger.info(f"Universal system processing request [request_id={request_id}, request_length={len(user_request)}]")
             
             result = await app_state.universal_integration.process_content_request(
                 user_request=user_request,
@@ -597,7 +598,7 @@ class GenerationEngine:
                 raise Exception(f"Style profile not found: {selected_style}")
             
             # Execute MCP generation with Universal selections
-            logger.info(f"Executing Universal+LangGraph+MCP generation [requestId={request_id}]")
+            logger.info(f"Executing Universal+LangGraph+MCP generation [request_id={request_id}]")
             
             mcp_result = await self.execute_content_generation(
                 request_id, 
@@ -628,14 +629,14 @@ class GenerationEngine:
                     "no_fallbacks_used": True
                 })
             
-            logger.info(f"Universal+LangGraph+MCP generation successful [requestId={request_id}, content_length={len(mcp_result.content)}]")
+            logger.info(f"Universal+LangGraph+MCP generation successful [request_id={request_id}, content_length={len(mcp_result.content)}]")
             return mcp_result
             
         except Exception as e:
             logger.error(f"Universal+LangGraph+MCP generation failed: {e}")
             
             error_status = GenerationStatus(
-                requestId=request_id,
+                request_id=request_id,
                 status="failed",
                 progress=0.0,
                 current_step="Universal Generation Failed",

@@ -1,0 +1,324 @@
+# data/content_templates/data_driven_report_template.yaml
+
+name: "Data-Driven Report Generator"
+slug: "data_driven_report_template"
+version: "1.0"
+category: "analytics"
+template_type: "data_driven_report"
+
+description: >
+  Professional data analysis report generator. Creates comprehensive reports 
+  with quantitative analysis, statistical insights, and data-driven recommendations.
+  Compatible with analytical and technical style profiles.
+
+# Core parameters for data-focused content
+parameters:
+  report_type:
+    type: "select"
+    required: true
+    options: ["performance_analysis", "market_intelligence", "operational_metrics", "financial_analysis", "customer_analytics", "product_metrics", "risk_assessment"]
+    label: "Report Type"
+    description: "Primary focus of data analysis"
+  
+  data_sources:
+    type: "multiselect"
+    required: true
+    options: ["internal_databases", "web_analytics", "financial_systems", "customer_surveys", "market_research", "public_datasets", "api_data", "sensor_data"]
+    label: "Data Sources"
+    description: "Primary data sources for analysis"
+  
+  analysis_period:
+    type: "select"
+    required: true
+    options: ["weekly", "monthly", "quarterly", "annual", "ytd", "custom_range"]
+    default: "quarterly"
+    label: "Analysis Period"
+    description: "Time period for data analysis"
+  
+  target_audience:
+    type: "select"
+    required: true
+    options: ["executives", "analysts", "operations_team", "product_managers", "stakeholders", "technical_team"]
+    default: "analysts"
+    label: "Target Audience"
+    description: "Primary audience for the report"
+  
+  key_metrics:
+    type: "multiselect"
+    required: true
+    options: ["growth_metrics", "performance_kpis", "efficiency_ratios", "customer_metrics", "financial_ratios", "operational_metrics", "quality_indicators"]
+    label: "Key Metrics"
+    description: "Primary metrics to analyze"
+  
+  analysis_depth:
+    type: "select"
+    required: true
+    options: ["summary", "detailed", "deep_dive", "statistical_analysis"]
+    default: "detailed"
+    label: "Analysis Depth"
+    description: "Level of analytical detail"
+  
+  comparison_baseline:
+    type: "select"
+    required: true
+    options: ["previous_period", "year_over_year", "industry_benchmark", "target_goals", "historical_average"]
+    default: "previous_period"
+    label: "Comparison Baseline"
+    description: "Reference point for comparative analysis"
+  
+  visualization_requirements:
+    type: "multiselect"
+    default: ["charts", "tables"]
+    options: ["charts", "tables", "dashboards", "heatmaps", "trend_lines", "statistical_plots"]
+    label: "Visualization Requirements"
+    description: "Types of data visualization needed"
+  
+  statistical_analysis:
+    type: "checkbox"
+    default: true
+    label: "Include Statistical Analysis"
+    description: "Include statistical significance and correlation analysis"
+  
+  predictive_insights:
+    type: "checkbox"
+    default: false
+    label: "Include Predictive Analysis"
+    description: "Include forecasting and trend predictions"
+
+# Content structure requirements for data reports
+requirements:
+  min_words: 2000
+  min_sections: 6
+  data_visualization_suggestions: true
+  quantitative_analysis: true
+  statistical_rigor: true
+  actionable_insights: true
+  executive_summary: true
+
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "data_driven_report"
+  format: "analytical_report"
+  focus_on_quantitative_insights: true
+  include_data_interpretation: true
+  statistical_approach: "evidence_based"
+  conclusion_type: "data_driven_recommendations"
+  technical_precision: true
+
+# Style profile compatibility
+style_compatibility:
+  highly_compatible:
+    - "market_flash"
+    - "technical_dive"
+    - "performance_analysis"
+    - "market_research_report"
+    - "roi_analysis"
+  moderately_compatible:
+    - "business_case_analysis"
+    - "competitive_analysis"
+    - "executive_summary"
+  incompatible:
+    - "social_media_voice"
+    - "beginner_tutorial"
+    - "brand_storytelling"
+    - "conversational_mentor"
+
+# Content sections optimized for data analysis
+sections:
+  order:
+    - "executive_summary"
+    - "methodology"
+    - "data_overview"
+    - "key_findings"
+    - "detailed_analysis"
+    - "trends_and_patterns"
+    - "recommendations"
+    - "appendix"
+  
+  executive_summary:
+    required: true
+    max_words: 300
+    focus: "key_insights_and_implications"
+    includes: ["headline_metrics", "critical_findings", "strategic_implications"]
+  
+  methodology:
+    required: true
+    max_words: 400
+    focus: "analytical_approach"
+    includes: ["data_sources", "analysis_methods", "limitations"]
+  
+  data_overview:
+    required: true
+    focus: "dataset_characteristics"
+    includes: ["data_volume", "time_periods", "key_dimensions"]
+  
+  key_findings:
+    required: true
+    focus: "primary_insights"
+    includes: ["metric_performance", "significant_changes", "anomalies"]
+  
+  detailed_analysis:
+    required: true
+    focus: "deep_dive_insights"
+    includes: ["segment_analysis", "correlation_analysis", "performance_drivers"]
+  
+  trends_and_patterns:
+    required: true
+    focus: "temporal_analysis"
+    includes: ["trend_identification", "pattern_recognition", "seasonal_effects"]
+  
+  recommendations:
+    required: true
+    focus: "actionable_insights"
+    includes: ["data_driven_recommendations", "optimization_opportunities", "next_steps"]
+  
+  appendix:
+    optional: true
+    focus: "supporting_data"
+    includes: ["detailed_tables", "statistical_tests", "data_dictionary"]
+
+# MCP tool integration for data analysis
+mcp:
+  tool_sequence:
+    - "data_analyzer"
+    - "statistical_processor"
+    - "trend_detector"
+    - "visualization_generator"
+    - "insight_synthesizer"
+  
+  data_requirements:
+    - "clean_datasets"
+    - "statistical_validation"
+    - "trend_analysis"
+    - "comparative_benchmarks"
+
+# Prompt schema for data-driven content
+prompt_schema:
+  system_preamble: |
+    You are a senior data analyst and business intelligence expert. Create 
+    comprehensive, data-driven reports that transform raw data into actionable 
+    business insights. Focus on statistical rigor, clear data interpretation, 
+    and practical recommendations. Generate analytical content that is 
+    methodologically sound, visually descriptive, and strategically valuable.
+
+  content_template: |
+    # Data Analysis Report: {{report_type}}
+    **{{analysis_period}} Analysis | {{target_audience}} | {{analysis_depth}}**
+
+    ## Executive Summary
+    {{executive_summary}}
+
+    ## Methodology
+    {{methodology}}
+
+    ## Data Overview
+    {{data_overview}}
+
+    ## Key Findings
+    {{key_findings}}
+
+    ## Detailed Analysis
+    {{detailed_analysis}}
+
+    ## Trends and Patterns
+    {{trends_and_patterns}}
+
+    ## Recommendations
+    {{recommendations}}
+
+    {{#if appendix}}
+    ## Appendix
+    {{appendix}}
+    {{/if}}
+
+    ---
+    *Data Sources: {{data_sources}} | Period: {{analysis_period}} | Baseline: {{comparison_baseline}}*
+
+  placeholders:
+    - report_type
+    - analysis_period
+    - target_audience
+    - analysis_depth
+    - data_sources
+    - comparison_baseline
+    - executive_summary
+    - methodology
+    - data_overview
+    - key_findings
+    - detailed_analysis
+    - trends_and_patterns
+    - recommendations
+    - appendix
+
+# Output specifications for analytical content
+output:
+  format: "markdown"
+  structure: "analytical_report"
+  require:
+    quantitative_insights: true
+    statistical_analysis: true
+    data_visualization_descriptions: true
+    actionable_recommendations: true
+    methodological_transparency: true
+  
+  style_requirements:
+    tone: "analytical_professional"
+    objectivity: "very_high"
+    evidence_based: true
+    technical_precision: true
+    data_focused: true
+
+# Quality assurance for data reports
+quality_requirements:
+  analytical_rigor: 95
+  data_accuracy: 100
+  insight_quality: 90
+  statistical_validity: 90
+  actionability: 85
+  professional_standard: 95
+  technical_precision: 90
+
+# Template metadata
+metadata:
+  version: "1.0.0"
+  created_by: "content_template_system"
+  last_updated: "2025-09-17"
+  difficulty: "expert"
+  estimated_time: "35-50 min"
+  target_audience: "data_analysts"
+  complexity_level: "expert"
+  enterprise_grade: true
+  template_classification: "data_driven_report"
+
+real_time_support:
+  enabled: true
+  max_age_hours: 48  # 2 days - data reports need recent metrics
+  verification_sources: 2
+  search_required: true
+  fail_if_unavailable: true
+  search_focus: "quantitative_data"
+  content_types: ["performance_metrics", "market_data", "statistical_reports", "trend_analysis"]
+
+# === WriterzRoom enterprise output controls ===
+post_config:
+  enabled: false        # set to true in social_media_campaign.yaml
+  min_posts: 3          # used only when enabled
+  max_posts: 5          # used only when enabled
+  paragraph_length: short   # short | medium | long
+  per_post_requirements:
+    min_words: 60
+    max_words: 120
+  composition:
+    include_cta: true
+    include_hashtags: 3      # 0 = none
+    include_links: optional  # optional | required | none
+
+output_policy:
+  no_code: true          # enforce: remove code blocks/inlines
+  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
+  min_paragraphs: 3      # minimum paragraphs after sanitation
+  paragraph_first: true  # prefer paragraphs over lists
+
+# Optional: planner override keys (validated upstream; no fallbacks here)
+planner_overrides:
+  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided

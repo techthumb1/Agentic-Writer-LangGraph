@@ -4,19 +4,31 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
+// File: frontend/hooks/useEnhancedGeneration.ts
+
 interface GenerationParams {
-  template: string;
-  style_profile: string; 
-  dynamic_parameters?: Record<string, unknown>;
-  priority?: number;
-  timeout_seconds?: number;
-  generation_mode?: 'standard' | 'premium' | 'enterprise';
-  topic?: string;
-  audience?: string;
-  tags?: string[];
-  platform?: string;
-  use_mock?: boolean;
+  template: string
+  style_profile: string
+  dynamic_parameters?: Record<string, unknown>
+  priority?: number
+  timeout_seconds?: number
+  generation_mode?: 'standard' | 'premium' | 'enterprise'
+  platform?: string
+  topic?: string
+  audience?: string
+  tags?: string[]
+  use_mock?: boolean
+
+  // NEW ↓
+  generation_settings?: {
+    quality_mode?: 'fast' | 'balanced' | 'premium'
+    max_tokens?: number
+    temperature?: number
+    auto_save?: boolean
+    backupFrequency?: string
+  }
 }
+
 
 interface GenerationResult {
   content: string;
@@ -53,7 +65,7 @@ interface GenerationResponse {
   request_id?: string;  // ✅ Add missing request_id field
   metadata?: Record<string, unknown>;  // ✅ Add missing metadata field
   data?: {
-    requestId?: string;
+    request_id?: string;
     status?: string;
     content?: string;
     metadata?: GenerationResult['metadata'];
@@ -66,7 +78,7 @@ interface GenerationResponse {
 interface GenerationStatusResponse {
   success: boolean;
   data: {
-    requestId: string;
+    request_id: string;
     status: 'queued' | 'pending' | 'running' | 'completed' | 'failed';
     progress?: number;
     current_agent?: string;
@@ -84,7 +96,7 @@ interface GenerationState {
   currentAgent: string;
   error: string | null;
   result: GenerationResult | null;
-  requestId: string | null;
+  request_id: string | null;
   qualityScore: GenerationResult['quality_score'] | null;
 }
 
@@ -96,7 +108,7 @@ export function useEnhancedGeneration() {
     currentAgent: '',
     error: null,
     result: null,
-    requestId: null,
+    request_id: null,
     qualityScore: null,
   });
 
@@ -109,24 +121,25 @@ const startGeneration = async (params: GenerationParams): Promise<GenerationResp
   // Use Next.js API route instead of calling backend directly
   const response = await fetch('/api/generate', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       template: params.template,
       style_profile: params.style_profile,
       dynamic_parameters: params.dynamic_parameters || {},
-      priority: params.priority || 1,
-      timeout_seconds: params.timeout_seconds || 300,
+      priority: params.priority ?? 1,
+      timeout_seconds: params.timeout_seconds ?? 300,
       generation_mode: params.generation_mode || 'standard',
+      platform: params.platform,
       topic: params.topic,
-      enable_mcp: true,
-      research_depth: 'deep',
       audience: params.audience,
       tags: params.tags,
-      platform: params.platform,
+      use_mock: params.use_mock,
+    
+      // NEW ↓
+      generation_settings: params.generation_settings,
     }),
-  });
+  })
+
 
   if (!response.ok) {
     const errorData = await response.json();
@@ -137,8 +150,8 @@ const startGeneration = async (params: GenerationParams): Promise<GenerationResp
 };
 
   // FIXED: Check generation status using correct endpoint
-  const checkStatus = async (requestId: string): Promise<GenerationStatusResponse> => {
-    const response = await fetch(`/api/generate/status/${requestId}`, {
+  const checkStatus = async (request_id: string): Promise<GenerationStatusResponse> => {
+    const response = await fetch(`/api/generate/status/${request_id}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${process.env.NEXT_PUBLIC_LANGGRAPH_API_KEY || 'dev-key'}`,
@@ -153,9 +166,9 @@ const startGeneration = async (params: GenerationParams): Promise<GenerationResp
   };
 
   // Enhanced polling with agent tracking
-  const pollStatus = useCallback(async (requestId: string) => {
+  const pollStatus = useCallback(async (request_id: string) => {
     try {
-      const statusResponse = await checkStatus(requestId);
+      const statusResponse = await checkStatus(request_id);
       
       // FIXED: Access data from correct nested structure
       const { status, progress = 0, current_agent, content, error, metadata } = statusResponse.data;
@@ -222,14 +235,14 @@ const startGeneration = async (params: GenerationParams): Promise<GenerationResp
 
   // Polling effect with enterprise intervals
   useEffect(() => {
-    if (isPolling && state.requestId) {
+    if (isPolling && state.request_id) {
       const interval = setInterval(() => {
-        pollStatus(state.requestId!);
+        pollStatus(state.request_id!);
       }, 1500); // Poll every 1.5 seconds for better UX
 
       return () => clearInterval(interval);
     }
-  }, [isPolling, state.requestId, pollStatus]);
+  }, [isPolling, state.request_id, pollStatus]);
 
   const mutation = useMutation({
     mutationFn: startGeneration,
@@ -242,13 +255,10 @@ const startGeneration = async (params: GenerationParams): Promise<GenerationResp
         currentAgent: 'initialize',
         error: null,
         result: null,
-        requestId: null,
+        request_id: null,
         qualityScore: null,
       }));
     },
-// In useEnhancedGeneration.ts, replace the onSuccess handler around line 180:
-
-// In useEnhancedGeneration.ts, replace the onSuccess handler around line 180:
 
 onSuccess: (data) => {
   console.log('🔍 [HOOK] Generation API Response:', data);
@@ -271,23 +281,23 @@ onSuccess: (data) => {
           quality_score: data.quality_score || {} as GenerationResult['quality_score'],
         },
         qualityScore: data.quality_score || null,
-        requestId: data.generation_id || data.request_id || data.data?.requestId || null,
+        request_id: data.generation_id || data.request_id || data.data?.request_id || null,
       }));
       
       console.log('✅ [HOOK] Content generation completed successfully:', content.length, 'characters');
       
-    } else if (data.generation_id || data.request_id || data.data?.requestId) {
+    } else if (data.generation_id || data.request_id || data.data?.request_id) {
       // Async processing - start polling
-      const requestId = data.generation_id || data.request_id || data.data?.requestId;
+      const request_id = data.generation_id || data.request_id || data.data?.request_id;
       setState(prev => ({
         ...prev,
-        requestId: requestId ?? null,
+        request_id: request_id ?? null,
         currentStep: 'Queued for processing...',
         currentAgent: 'queued',
       }));
       setIsPolling(true);
       
-      console.log('🔄 [HOOK] Starting polling for request:', requestId);
+      console.log('🔄 [HOOK] Starting polling for request:', request_id);
     } else {
       // ❌ No content and no request ID
       console.error('❌ [HOOK] No content or request ID found in response:', data);
@@ -340,7 +350,7 @@ onSuccess: (data) => {
       currentAgent: '',
       error: null,
       result: null,
-      requestId: null,
+      request_id: null,
       qualityScore: null,
     });
   }, []);

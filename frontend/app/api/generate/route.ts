@@ -32,7 +32,7 @@ const FASTAPI_API_KEY = API_KEY;
 
 // ✅ FIXED: Enhanced request interface with proper template/style separation
 interface GenerationRequest {
-  requestId: string;
+  request_id: string;
   template: string;           // Template ID (e.g., "business_proposal", "technical_documentation")
   style_profile: string;      // Style Profile ID (e.g., "phd_academic", "popular_sci")
   topic: string;              // Actual content topic - NO MORE "Future of LLMs" default!
@@ -64,12 +64,12 @@ interface GenerationResponse {
 
 interface BackendResponse {
   data?: {
-    requestId?: string;
+    request_id?: string;
     status?: string;
     metadata?: Record<string, unknown>;
     content?: string;
   };
-  requestId?: string;
+  request_id?: string;
   generation_id?: string;
   status?: string;
   metadata?: Record<string, unknown>;
@@ -131,7 +131,7 @@ function generateTopicFromTemplate(template: string, styleProfile: string, provi
 
 // ✅ ENHANCED: Auto-save functionality with better directory structure
 async function saveGeneratedContent(content: string, metadata: {
-  requestId: string;
+  request_id: string;
   template: string;
   style_profile: string;
   topic: string;
@@ -146,7 +146,7 @@ async function saveGeneratedContent(content: string, metadata: {
       .replace(/\s+/g, '_')
       .substring(0, 50);
     
-    const contentId = `${topicSlug}_${timestamp}_${metadata.requestId.substring(0, 8)}`;
+    const contentId = `${topicSlug}_${timestamp}_${metadata.request_id.substring(0, 8)}`;
     
     // ✅ FIXED: Save to generated_content directory (not storage)
     const saveDir = path.join(process.cwd(), '../generated_content');
@@ -176,7 +176,7 @@ async function saveGeneratedContent(content: string, metadata: {
       metadata: {
         template: metadata.template,
         styleProfile: metadata.style_profile,
-        requestId: metadata.requestId,
+        request_id: metadata.request_id,
         topic: metadata.topic,
         audience: metadata.audience,
         wordCount,
@@ -232,13 +232,13 @@ async function saveGeneratedContent(content: string, metadata: {
 }
 
 // Enterprise error logging
-const logError = (context: string, error: unknown, requestId?: string) => {
+const logError = (context: string, error: unknown, request_id?: string) => {
   const timestamp = new Date().toISOString();
   const errorObj = error instanceof Error ? error : new Error(String(error));
   const logData = {
     timestamp,
     context,
-    frontend_request_id: requestId,
+    frontend_request_id: request_id,
     error: {
       message: errorObj.message || 'Unknown error',
       stack: errorObj.stack,
@@ -250,24 +250,24 @@ const logError = (context: string, error: unknown, requestId?: string) => {
 };
 
 // Enterprise success logging
-const logSuccess = (context: string, data: unknown, requestId?: string) => {
+const logSuccess = (context: string, data: unknown, request_id?: string) => {
   const timestamp = new Date().toISOString();
   const logData = {
     timestamp,
     context,
-    frontend_request_id: requestId,
+    frontend_request_id: request_id,
     data: typeof data === 'object' ? data : { result: data }
   };
   console.log(`✅ [ENTERPRISE] ${context}:`, JSON.stringify(logData, null, 2));
 };
 
 // Enhanced fetch headers configuration
-const createFetchHeaders = (requestId: string, generationMode: string): Record<string, string> => {
+const createFetchHeaders = (request_id: string, generationMode: string): Record<string, string> => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${API_KEY}`,
     'Accept': 'application/json',
-    'X-Request-ID': requestId || '',
+    'X-Request-ID': request_id || '',
     'X-Client-Version': '2.0.0',
     'X-Generation-Mode': generationMode
   };
@@ -336,7 +336,7 @@ const performFetchWithRetry = async (
       
       const response = await fetch(url, {
         method: 'POST',
-        headers: createFetchHeaders(payload.requestId, payload.generation_mode),
+        headers: createFetchHeaders(payload.request_id, payload.generation_mode),
         body: JSON.stringify(payload),
         signal: controller.signal,
         // Additional fetch options for reliability
@@ -393,7 +393,7 @@ const performFetchWithRetry = async (
 
 // Enhanced content extraction for multiple backend patterns
 function extractContentFromBackendResponse(data: unknown): string {
-  // Type guard for object with string properties
+  console.log('🔍 [DEBUG] Full backend response:', JSON.stringify(data, null, 2));
   const isObjectWithStringProps = (obj: unknown): obj is Record<string, unknown> => {
     return typeof obj === 'object' && obj !== null;
   };
@@ -513,7 +513,7 @@ function extractContentFromBackendResponse(data: unknown): string {
 }
 
 export async function POST(request: NextRequest) {
-  const requestId = randomUUID();
+  const request_id = randomUUID();
   const startTime = Date.now();
   
   try {
@@ -525,7 +525,7 @@ export async function POST(request: NextRequest) {
         { 
           success: false, 
           error: 'Template ID is required (use "template" or "templateId" field)',
-          request_id: requestId,
+          request_id: request_id,
           available_templates: ['business_proposal', 'technical_documentation', 'social_media_campaign', 'blog_article_generator', 'email_newsletter', 'press_release']
         },
         { status: 400 }
@@ -537,7 +537,7 @@ export async function POST(request: NextRequest) {
         { 
           success: false, 
           error: 'Style Profile ID is required (use "style_profile" or "styleProfileId" field)',
-          request_id: requestId,
+          request_id: request_id,
           available_styles: ['popular_sci', 'phd_academic', 'technical_dive', 'beginner_friendly', 'experimental_lab_log', 'phd_lit_review']
         },
         { status: 400 }
@@ -558,35 +558,72 @@ export async function POST(request: NextRequest) {
     console.log(`🎯 [GENERATION] Template: '${templateId}', Style: '${styleProfileId}', Topic: '${generatedTopic}'`);
     
     // ✅ ENHANCED: Enterprise payload transformation with proper template/style separation
-    const enterprisePayload: GenerationRequest = {
-      requestId: requestId, // Frontend requestId that backend will use
-      template: templateId,  // Content template (structure/format)
-      style_profile: styleProfileId,  // Style profile (tone/voice/approach)
-      topic: generatedTopic,  // Meaningful topic based on template + style
-      audience: body.audience || body.dynamic_parameters?.audience || 'general',
-      platform: body.platform || body.dynamic_parameters?.platform || 'blog',
-      length: body.length || body.dynamic_parameters?.length || 'medium',
-      // Additional fields for planning agent
-      tags: body.tags || body.dynamic_parameters?.tags || [],
-      tone: body.tone || body.dynamic_parameters?.tone || 'professional',
-      code: body.code || body.dynamic_parameters?.code || false,
-      // ✅ ENHANCED: Pass through ALL dynamic parameters while ensuring required fields
-      dynamic_parameters: {
-        ...body.dynamic_parameters,
-        template_id: templateId,  // Ensure template is in dynamic params
-        style_profile_id: styleProfileId,  // Ensure style is in dynamic params
-        topic: generatedTopic,  // Ensure topic is available
-        // Template-specific parameters
+    // File: frontend/app/api/generate/route.ts
+// Lines 265-285 - REPLACE the dynamic_parameters construction
+
+// ✅ FIXED: Enterprise payload transformation with proper dynamic_overrides structure
+  const enterprisePayload: GenerationRequest = {
+    request_id: request_id,
+    template: templateId,
+    style_profile: styleProfileId,
+    topic: generatedTopic,
+    audience: body.audience || body.dynamic_parameters?.audience || 'general',
+    platform: body.platform || body.dynamic_parameters?.platform || 'blog',
+    length: body.length || body.dynamic_parameters?.length || 'medium',
+    tags: body.tags || body.dynamic_parameters?.tags || [],
+    tone: body.tone || body.dynamic_parameters?.tone || 'professional',
+    code: body.code || body.dynamic_parameters?.code || false,
+    
+    // ✅ ENTERPRISE FIX: Nest user input in dynamic_overrides as expected by backend
+    dynamic_parameters: {
+      // Backend expects user input in dynamic_overrides
+      dynamic_overrides: {
+        // All actual user input goes here
+        api_name: body.dynamic_parameters?.api_name || "test",
+        api_domain: body.dynamic_parameters?.api_domain || "web_service",
+        auth_type: body.dynamic_parameters?.auth_type || "api_key",
+        programming_languages: body.dynamic_parameters?.programming_languages || "",
+        base_url: body.dynamic_parameters?.base_url || "",
+        version_number: body.dynamic_parameters?.version_number || "v1",
+        include_sdks: body.dynamic_parameters?.include_sdks !== undefined ? body.dynamic_parameters.include_sdks : true,
+        include_postman: body.dynamic_parameters?.include_postman !== undefined ? body.dynamic_parameters.include_postman : true,
+        complexity_level: body.dynamic_parameters?.complexity_level || "intermediate",
+        min_endpoints: body.dynamic_parameters?.min_endpoints || "",
+        code_examples_per_endpoint: body.dynamic_parameters?.code_examples_per_endpoint || "",
+        include_webhooks: body.dynamic_parameters?.include_webhooks || "",
+        rate_limiting: body.dynamic_parameters?.rate_limiting || "",
+        
+        // Standard generation parameters
+        preferred_length: body.dynamic_parameters?.preferred_length || "short",
+        creativity_level: body.dynamic_parameters?.creativity_level || "focused",
+        content_quality: body.dynamic_parameters?.content_quality || "fast",
+        template_id: templateId,
+        style_profile_id: styleProfileId,
+        topic: generatedTopic,  // CRITICAL: Actual user topic
         template_category: body.dynamic_parameters?.template_category || 'general',
         style_tone: body.dynamic_parameters?.style_tone || 'professional',
-        content_structure: body.dynamic_parameters?.content_structure || 'standard'
+        content_structure: body.dynamic_parameters?.content_structure || 'standard',
+        
+        // User-provided parameters
+        audience: body.audience || body.dynamic_parameters?.audience || 'general',
+        platform: body.platform || body.dynamic_parameters?.platform || 'blog',
+        length: body.length || body.dynamic_parameters?.length || 'medium',
+        tone: body.tone || body.dynamic_parameters?.tone || 'professional',
       },
-      priority: body.priority || 1,
-      timeout_seconds: body.timeout_seconds || 300,
-      generation_mode: body.generation_mode || "enhanced",  // Use enhanced mode by default
-      created_at: new Date().toISOString(),
-      user_id: body.user_id // Enterprise user tracking
-    };
+      
+      // Other dynamic parameters outside of dynamic_overrides
+      ...body.dynamic_parameters,
+      template_id: templateId,
+      style_profile_id: styleProfileId,
+      topic: generatedTopic,
+    },
+    
+    priority: body.priority || 1,
+    timeout_seconds: body.timeout_seconds || 300,
+    generation_mode: body.generation_mode || "enhanced",
+    created_at: new Date().toISOString(),
+    user_id: body.user_id
+  };
     
     // Validate backend URL
     if (!FASTAPI_BASE_URL) {
@@ -595,14 +632,14 @@ export async function POST(request: NextRequest) {
         { 
           success: false, 
           error: 'Backend service not configured',
-          request_id: requestId
+          request_id: request_id
         },
         { status: 503 }
       );
     }
     
     logSuccess('Generation Request Initiated', {
-      frontend_request_id: requestId,
+      frontend_request_id: request_id,
       template: enterprisePayload.template,
       style_profile: enterprisePayload.style_profile,
       topic: enterprisePayload.topic,
@@ -610,7 +647,7 @@ export async function POST(request: NextRequest) {
       priority: enterprisePayload.priority,
       backend_url: FASTAPI_BASE_URL,
       has_api_key: !!FASTAPI_API_KEY
-    }, requestId);
+    }, request_id);
     
     // ✅ ENHANCED: Use enhanced fetch with comprehensive error handling
     try {
@@ -643,13 +680,13 @@ export async function POST(request: NextRequest) {
           error: errorData,
           content_type: response.headers.get('content-type'),
           content_length: response.headers.get('content-length')
-        }, requestId);
+        }, request_id);
         
         return NextResponse.json(
           { 
             success: false, 
             error: errorData.detail || errorData.message || errorData.error || 'Content generation failed',
-            request_id: requestId,
+            request_id: request_id,
             status_code: response.status,
             details: errorData
           }, 
@@ -673,33 +710,35 @@ export async function POST(request: NextRequest) {
           { 
             success: false, 
             error: 'Failed to parse backend response',
-            request_id: requestId
+            request_id: request_id
           },
           { status: 502 }
         );
       }
       
       // Extract backend's request_id
-      const backendRequestId = data?.data?.requestId || data?.requestId || data?.generation_id || requestId;
+      const backendRequestId = data?.data?.request_id || data?.request_id || data?.generation_id || request_id;
       
       // **✅ ENHANCED: Poll for completion if status is pending**
       let finalData: BackendResponse = data;
       if (data?.data?.status === 'pending' || data?.status === 'pending') {
         console.log(`⏳ [POLLING] Generation ${backendRequestId} is pending, polling for completion...`);
-        
-        const maxPolls = 60; // 5 minutes max
+
+        const maxPolls = 60; // 100 seconds max
         const pollInterval = 5000; // 5 seconds
-        
+
         for (let poll = 0; poll < maxPolls; poll++) {
           await new Promise(resolve => setTimeout(resolve, pollInterval));
           
           try {
             const statusResponse = await fetch(`${FASTAPI_BASE_URL}/api/generate/${backendRequestId}`, {
-              headers: createFetchHeaders(requestId, enterprisePayload.generation_mode),
+              headers: createFetchHeaders(request_id, enterprisePayload.generation_mode),
               cache: 'no-cache'
             });
-            
-            if (statusResponse.ok) {
+            if (!statusResponse.ok) {
+              throw new Error(`HTTP ${statusResponse.status}: ${statusResponse.statusText}`);
+            }
+            if (statusResponse.headers.get('content-type')?.includes('application/json')) {
               const statusData: BackendResponse = await statusResponse.json();
               
               // Check if completed
@@ -730,7 +769,7 @@ export async function POST(request: NextRequest) {
       let saveResult = { saved_path: '', content_id: '' };
       if (extractedContent && extractedContent.length > 50) {
         saveResult = await saveGeneratedContent(extractedContent, {
-          requestId,
+          request_id,
           template: enterprisePayload.template,
           style_profile: enterprisePayload.style_profile,
           topic: enterprisePayload.topic,
@@ -741,16 +780,16 @@ export async function POST(request: NextRequest) {
       // ✅ ENHANCED: Enterprise response formatting with template/style metadata
       const enterpriseResponse: GenerationResponse = {
         success: true,
-        generation_id: finalData?.data?.requestId || finalData?.generation_id || backendRequestId,
+        generation_id: finalData?.data?.request_id || finalData?.generation_id || backendRequestId,
         request_id: backendRequestId, // Use backend's request_id for status tracking
         status: finalData?.data?.status || finalData?.status || (extractedContent ? 'completed' : 'processing'),
         content: extractedContent, // Use extracted content instead of data.content
         metadata: {
           ...(finalData?.data?.metadata || {}),
           ...(finalData?.metadata || {}),
-          frontend_request_id: requestId, // Keep frontend ID for logging
+          frontend_request_id: request_id, // Keep frontend ID for logging
           processing_time_ms: processingTime,
-          backend_generation_id: finalData?.data?.requestId || finalData?.generation_id,
+          backend_generation_id: finalData?.data?.request_id || finalData?.generation_id,
           
           // ✅ ENHANCED: Template/Style metadata for tracking
           template_used: enterprisePayload.template,
@@ -794,7 +833,7 @@ export async function POST(request: NextRequest) {
         auto_saved: !!saveResult.content_id,
         content_id: saveResult.content_id,
         template_style_combo: `${enterprisePayload.template}__${enterprisePayload.style_profile}`
-      }, requestId);
+      }, request_id);
       
       return NextResponse.json(enterpriseResponse);
       
@@ -812,7 +851,7 @@ export async function POST(request: NextRequest) {
         timeout_seconds: enterprisePayload.timeout_seconds,
         template: enterprisePayload.template,
         style_profile: enterprisePayload.style_profile
-      }, requestId);
+      }, request_id);
       
       // Return appropriate error based on category
       switch (errorCategory) {
@@ -823,7 +862,7 @@ export async function POST(request: NextRequest) {
               success: false,
               error: 'Generation timeout', 
               message: `Content generation exceeded ${enterprisePayload.timeout_seconds} seconds`,
-              request_id: requestId,
+              request_id: request_id,
               processing_time_ms: processingTime
             }, 
             { status: 504 }
@@ -836,7 +875,7 @@ export async function POST(request: NextRequest) {
               success: false,
               error: 'Backend service unavailable', 
               message: 'Cannot connect to generation service',
-              request_id: requestId,
+              request_id: request_id,
               processing_time_ms: processingTime,
               details: {
                 backend_url: FASTAPI_BASE_URL,
@@ -853,7 +892,7 @@ export async function POST(request: NextRequest) {
               success: false,
               error: 'SSL connection failed', 
               message: 'Secure connection to backend failed',
-              request_id: requestId,
+              request_id: request_id,
               processing_time_ms: processingTime
             }, 
             { status: 502 }
@@ -865,7 +904,7 @@ export async function POST(request: NextRequest) {
               success: false,
               error: 'Generation failed', 
               message: error.message || 'Unknown error occurred',
-              request_id: requestId,
+              request_id: request_id,
               processing_time_ms: processingTime
             }, 
             { status: 500 }
@@ -876,14 +915,14 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const errorObj = error instanceof Error ? error : new Error(String(error));
     const processingTime = Date.now() - startTime;
-    logError('Critical Generation Error', error, requestId);
+    logError('Critical Generation Error', error, request_id);
     
     return NextResponse.json(
       { 
         success: false,
         error: 'Critical generation failure', 
         message: errorObj.message,
-        request_id: requestId,
+        request_id: request_id,
         processing_time_ms: processingTime
       }, 
       { status: 500 }
@@ -895,10 +934,10 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const requestId = searchParams.get('request_id');
+    const request_id = searchParams.get('request_id');
     const generationId = searchParams.get('generation_id') || searchParams.get('id');
     
-    if (!requestId && !generationId) {
+    if (!request_id && !generationId) {
       return NextResponse.json(
         { 
           success: false, 
@@ -908,7 +947,7 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    const trackingId = requestId || generationId || '';
+    const trackingId = request_id || generationId || '';
     
     logSuccess('Status Check Initiated', { tracking_id: trackingId }, trackingId);
     
@@ -950,7 +989,7 @@ export async function GET(request: NextRequest) {
             // Return mock status for now since backend endpoint might not exist
             const mockStatus = {
               success: true,
-              request_id: requestId,
+              request_id: request_id,
               generation_id: generationId,
               status: "completed",
               progress: 100,
@@ -967,7 +1006,7 @@ export async function GET(request: NextRequest) {
           // Type-safe response construction for specific endpoints
           const statusResponse = {
             success: true,
-            request_id: requestId,
+            request_id: request_id,
             generation_id: (data as { generation_id?: string })?.generation_id || generationId || '',
             status: (data as { status?: string })?.status || 'unknown',
             progress: (data as { progress?: number })?.progress || 0,
@@ -1015,10 +1054,10 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const requestId = searchParams.get('request_id');
+    const request_id = searchParams.get('request_id');
     const generationId = searchParams.get('generation_id') || searchParams.get('id');
     
-    if (!requestId && !generationId) {
+    if (!request_id && !generationId) {
       return NextResponse.json(
         { 
           success: false, 
@@ -1028,7 +1067,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    const trackingId = requestId || generationId || '';
+    const trackingId = request_id || generationId || '';
     
     logSuccess('Cancellation Requested', { tracking_id: trackingId });
     
@@ -1036,7 +1075,7 @@ export async function DELETE(request: NextRequest) {
     const cancellationResponse = {
       success: true,
       message: 'Generation cancellation requested',
-      request_id: requestId,
+      request_id: request_id,
       generation_id: generationId,
       cancelled_at: new Date().toISOString(),
       status: 'cancelled'

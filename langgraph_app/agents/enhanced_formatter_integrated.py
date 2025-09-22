@@ -14,45 +14,36 @@ class EnhancedFormatterAgent:
         self.agent_type = AgentType.FORMATTER
         
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Execute formatting with UNIVERSAL configuration-driven logic"""
-        
-        template_config = getattr(state, 'template_config', {})
-        if not template_config and hasattr(state, 'content_spec'):
-            template_config = state.content_spec.business_context.get('template_config', {})
-        
-        if not template_config:
-            template_config = self._generate_intelligent_config(state)
-        
+        """Format content universally"""
+        template_config = state.template_config or {}
         instructions = state.get_agent_instructions(self.agent_type)
-        
+    
         state.log_agent_execution(self.agent_type, {
             "status": "started",
             "platform": state.content_spec.platform,
-            "content_length": len(state.draft_content.split()),
-            "config_type": template_config.get('type', 'intelligent_generated')
+            "length": len(state.draft_content.split())
         })
-        
-        formatting_requirements = self._create_formatting_requirements_universal(state, instructions, template_config)
-        state.formatting_requirements = formatting_requirements
-        
-        formatted_content = self._apply_universal_formatting(state, instructions, template_config)
-        state.draft_content = formatted_content
-        
-        state.update_phase(ContentPhase.SEO_OPTIMIZATION)
-        
+    
+        requirements = self._create_formatting_requirements_universal(state, instructions, template_config)
+        state.formatting_requirements = requirements
+    
+        formatted = self._apply_universal_formatting(state, instructions, template_config)
+        state.draft_content = formatted
+    
+        state.update_phase(ContentPhase.OPTIMIZATION)
+    
         state.log_agent_execution(self.agent_type, {
             "status": "completed",
-            "formatting_applied": len(formatting_requirements.formatting_elements),
-            "confidence_score": formatting_requirements.formatting_confidence,
-            "universal_formatting_applied": True
+            "formatting_applied": len(requirements.formatting_elements),
+            "confidence_score": requirements.formatting_confidence
         })
-        
-        return state
     
+        return state
+
     def _generate_intelligent_config(self, state: EnrichedContentState) -> dict:
         """Generate intelligent config based on content analysis"""
         content = state.draft_content
-        spec = state.content_spec
+        spec = state.get("content_spec", {})
         
         # Analyze content patterns
         content_analysis = {
@@ -100,7 +91,7 @@ class EnhancedFormatterAgent:
     def _create_formatting_requirements_universal(self, state: EnrichedContentState, instructions, template_config: dict) -> FormattingRequirements:
         """Create UNIVERSAL formatting requirements from ANY template configuration"""
         
-        spec = state.content_spec
+        spec = state.get("content_spec", {})
         platform = spec.platform
         
         platform_specs = self._get_platform_specifications_universal(platform, template_config)
@@ -427,7 +418,7 @@ class EnhancedFormatterAgent:
     
     def _generate_publication_metadata_universal(self, state: EnrichedContentState, template_config: dict) -> dict:
         """Generate publication metadata universally"""
-        spec = state.content_spec
+        spec = state.get("content_spec", {})
         
         metadata = {
             "title": template_config.get('title', f"{spec.topic}: Analysis"),

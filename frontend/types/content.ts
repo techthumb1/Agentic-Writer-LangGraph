@@ -451,7 +451,7 @@ export interface ApiResponse<T = unknown> {
   message?: string;
   metadata?: {
     timestamp: string;
-    requestId: string;
+    request_id: string;
     version: string;
     [key: string]: unknown;
   };
@@ -463,7 +463,7 @@ export interface GenerationStatusResponse {
   progress: number; // 0-100
   content?: GenerationResult;
   metadata?: GenerationMetadata;
-  requestId: string;
+  request_id: string;
   message?: string;
   estimatedTimeRemaining?: number;
 }

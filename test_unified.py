@@ -145,13 +145,13 @@ def test_server_endpoints():
             result = response.json()
             if result.get('success'):
                 print("   ✅ Generation request successful!")
-                requestId = result.get('data', {}).get('requestId')
-                print(f"   📋 Request ID: {requestId}")
+                request_id = result.get('data', {}).get('request_id')
+                print(f"   📋 Request ID: {request_id}")
                 
                 # Check the status
-                if requestId:
+                if request_id:
                     print("   🔄 Checking generation status...")
-                    status_response = requests.get(f"{base_url}/api/generate/{requestId}", timeout=10)
+                    status_response = requests.get(f"{base_url}/api/generate/{request_id}", timeout=10)
                     if status_response.status_code == 200:
                         status_data = status_response.json()
                         if status_data.get('success'):

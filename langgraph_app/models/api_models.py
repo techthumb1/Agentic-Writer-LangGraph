@@ -13,7 +13,7 @@ class APIResponse(BaseModel):
     data: Optional[Any] = None
     error: Optional[Dict[str, Any]] = None
     timestamp: datetime = Field(default_factory=datetime.now)
-    requestId: Optional[str] = None
+    request_id: Optional[str] = None
 
 class PaginationMetadata(BaseModel):
     page: int = Field(..., ge=1)
@@ -87,7 +87,7 @@ class GenerateRequest(BaseModel):
         return v
 
 class GenerationStatus(BaseModel):
-    requestId: str
+    request_id: str
     status: str = Field(..., pattern=r'^(pending|processing|completed|failed|cancelled)$')
     progress: float = Field(..., ge=0.0, le=1.0)
     current_step: str = Field(default="")

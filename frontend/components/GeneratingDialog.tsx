@@ -18,7 +18,7 @@ interface GeneratingDialogProps {
   progress?: number;
   templateName?: string;
   styleProfile?: string;
-  requestId?: string;
+  request_id?: string;
   onCancel?: () => void;
 }
 
@@ -69,7 +69,7 @@ export default function GeneratingDialog({
   progress = 0,
   templateName,
   styleProfile,
-  requestId,
+  request_id,
   onCancel
 }: GeneratingDialogProps) {
   const [timeElapsed, setTimeElapsed] = useState(0);
@@ -263,8 +263,8 @@ export default function GeneratingDialog({
           <div className="text-center space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <div className="flex justify-center items-center gap-4">
               <span>Time: {formatTime(timeElapsed)}</span>
-              {requestId && (
-                <span className="font-mono text-xs">ID: {requestId.slice(-8)}</span>
+              {request_id && (
+                <span className="font-mono text-xs">ID: {request_id.slice(-8)}</span>
               )}
             </div>
             <p className="text-xs">

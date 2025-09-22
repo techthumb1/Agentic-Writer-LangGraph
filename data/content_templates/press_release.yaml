@@ -1,6 +1,7 @@
 name: "Research Paper Generator"
 slug: "research_paper_template"
 version: "2.0"
+template_type: "press_release"
 
 description: >
   Academic research paper generator. Creates publication-quality research papers with methodology and findings,
@@ -118,3 +119,34 @@ output:
     proper_citations: true
     methodology_section: true
     peer_reviewable: true
+
+real_time_support:
+  enabled: true
+  max_age_hours: 6   # Very recent for breaking announcements
+  verification_sources: 3
+  search_required: true
+  fail_if_unavailable: true
+
+# === WriterzRoom enterprise output controls ===
+post_config:
+  enabled: false        # set to true in social_media_campaign.yaml
+  min_posts: 3          # used only when enabled
+  max_posts: 5          # used only when enabled
+  paragraph_length: short   # short | medium | long
+  per_post_requirements:
+    min_words: 60
+    max_words: 120
+  composition:
+    include_cta: true
+    include_hashtags: 3      # 0 = none
+    include_links: optional  # optional | required | none
+
+output_policy:
+  no_code: true          # enforce: remove code blocks/inlines
+  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
+  min_paragraphs: 3      # minimum paragraphs after sanitation
+  paragraph_first: true  # prefer paragraphs over lists
+
+# Optional: planner override keys (validated upstream; no fallbacks here)
+planner_overrides:
+  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided

@@ -1,6 +1,7 @@
 name: "Email Newsletter Generator"
 slug: "email_newsletter"
 version: "2.0"
+template_type: "email_newsletter"
 
 description: >
   Email newsletter content generator. Creates actual newsletter content with subject lines and CTAs,
@@ -10,12 +11,12 @@ description: >
 inputs:
   newsletter_type: { required: true }             # "weekly_roundup", "product_updates", "industry_news"
   primary_cta: { required: true }                # Main call-to-action for the newsletter
-  target_audience: { required: true }
+  target_audience: { required: true }            # 'tech professionals', 'small business owners')"
   tone: { default: "professional" }              # "friendly", "casual", "authoritative", "conversational"
   company_name: { default: "Your Company" }
   send_frequency: { default: "weekly" }          # "daily", "weekly", "bi_weekly", "monthly"
   personalization_level: { default: "medium" }   # "high", "medium", "low"
-  content_focus: { optional: true }
+  content_focus: { default: "general", optional: true }    # "Specific content focus or theme for the newsletter"
   include_images: { default: true }
   # Optional user overrides
   subject_line_style: { optional: true }
@@ -93,13 +94,13 @@ prompt_schema:
     {{performance_notes}}
 
   placeholders:
-    - newsletter_type
-    - subject_lines
-    - opening_section
-    - main_content
-    - cta_section
-    - closing_footer
-    - performance_notes
+    - newsletter_type: "Type of newsletter (weekly roundup, product updates, etc.)"
+    - subject_lines: "Multiple subject line options optimized for opens"
+    - opening_section: "Engaging opening that hooks the reader"
+    - main_content: "Core newsletter content with value for subscribers"
+    - cta_section: "Clear, compelling call-to-action"
+    - closing_footer: "Professional closing with unsubscribe and company info"
+    - performance_notes: "Brief notes on optimization and engagement strategy"
 
 output:
   format: "markdown"
@@ -108,3 +109,36 @@ output:
     scannable_format: true
     clear_ctas: true
     email_optimized: true
+
+real_time_support:
+  enabled: true
+  max_age_hours: 168  # 7 days - newsletters can aggregate weekly developments
+  verification_sources: 2
+  search_required: true
+  fail_if_unavailable: true
+  search_focus: "industry_updates"  # Focus on industry news and trends
+  content_types: ["industry_news", "product_updates", "market_trends"]
+
+# === WriterzRoom enterprise output controls ===
+post_config:
+  enabled: false        # set to true in social_media_campaign.yaml
+  min_posts: 3          # used only when enabled
+  max_posts: 5          # used only when enabled
+  paragraph_length: short   # short | medium | long
+  per_post_requirements:
+    min_words: 60
+    max_words: 120
+  composition:
+    include_cta: true
+    include_hashtags: 3      # 0 = none
+    include_links: optional  # optional | required | none
+
+output_policy:
+  no_code: true          # enforce: remove code blocks/inlines
+  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
+  min_paragraphs: 3      # minimum paragraphs after sanitation
+  paragraph_first: true  # prefer paragraphs over lists
+
+# Optional: planner override keys (validated upstream; no fallbacks here)
+planner_overrides:
+  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided

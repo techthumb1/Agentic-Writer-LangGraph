@@ -13,64 +13,92 @@ class EnhancedResearcherAgent:
         self.agent_type = AgentType.RESEARCHER
         
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Execute research with dynamic instructions, planning context, and template configuration"""
-        
-        # TEMPLATE INJECTION: Extract template_config
-        template_config = getattr(state, 'template_config', {})
-        if not template_config and hasattr(state, 'content_spec'):
-            template_config = state.content_spec.business_context.get('template_config', {})
-        
-        print(f"DEBUG researcher template_config: {template_config}")
-        
-        # Get dynamic instructions with null check
-        try:
-            instructions = state.get_agent_instructions(self.agent_type)
-        except:
-            instructions = None
-        
-        # Log execution start with safe access
-        try:
-            priorities_count = 0
-            if instructions and hasattr(instructions, 'specific_requirements'):
-                evidence_types = instructions.specific_requirements.get("evidence_types", [])
-                priorities_count = len(evidence_types)
-            
-            state.log_agent_execution(self.agent_type, {
-                "status": "started",
-                "research_priorities": priorities_count,
-                "planning_context": bool(state.planning_output),
-                "template_config_found": bool(template_config),
-                "template_type": template_config.get('template_type', 'default')
-            })
-        except Exception as e:
-            print(f"DEBUG: Failed to log start: {e}")
-        
-        # Execute research with context from planning and template config
+        """Execute research with template + planning context"""
+        template_config = state.template_config or state.content_spec.business_context.get('template_config', {})
+    
+        instructions = state.get_agent_instructions(self.agent_type)
+    
+        state.log_agent_execution(self.agent_type, {
+            "status": "started",
+            "template_type": getattr(template_config, 'template_type', 'default'),
+            "has_planning": bool(state.planning_output)
+        })
+    
         research_findings = self._execute_research_logic(state, instructions, template_config)
-        
-        # Update state
         state.research_findings = research_findings
         state.update_phase(ContentPhase.WRITING)
-        
-        # Log completion with safe access
-        try:
-            state.log_agent_execution(self.agent_type, {
-                "status": "completed",
-                "insights_found": len(research_findings.primary_insights),
-                "confidence_score": research_findings.research_confidence,
-                "sources_validated": len(research_findings.credibility_sources),
-                "template_research_completed": True
-            })
-        except Exception as e:
-            print(f"DEBUG: Failed to log completion: {e}")
-        
+    
+        state.log_agent_execution(self.agent_type, {
+            "status": "completed",
+            "insights_found": len(research_findings.primary_insights),
+            "confidence_score": research_findings.research_confidence,
+            "sources_validated": len(research_findings.credibility_sources)
+        })
+    
         return state
+ 
+    
+    # File: langgraph_app/agents/enhanced_researcher_integrated.py
+    # Replace _get_template_research_priorities method
+
+    def _get_template_research_priorities(self, template_config: dict, planning, spec, instructions) -> list:
+        """Dynamic research priorities based on template metadata with safe list handling"""
+
+        priorities = []
+
+        # Use template-defined research priorities first
+        template_priorities = template_config.get('research_priorities')
+        if isinstance(template_priorities, list):
+            priorities.extend([str(p) for p in template_priorities if p])
+        elif isinstance(template_priorities, str):
+            priorities.append(template_priorities)
+
+        # Use template research field if available
+        template_research = template_config.get('research', {})
+        if isinstance(template_research, dict):
+            research_priorities = template_research.get('priorities')
+            if isinstance(research_priorities, list):
+                priorities.extend([str(p) for p in research_priorities if p])
+            elif isinstance(research_priorities, str):
+                priorities.append(research_priorities)
+
+        # Extract from template parameters for context
+        parameters = template_config.get('parameters', {})
+        if isinstance(parameters, dict):
+            for param_name, param_config in parameters.items():
+                if isinstance(param_config, dict) and param_config.get('required'):
+                    priorities.append(f"{param_name.replace('_', ' ')} research")
+
+        # Add planning priorities if available - SAFE HANDLING
+        if planning and hasattr(planning, 'research_priorities'):
+            planning_priorities = getattr(planning, 'research_priorities', [])
+            if isinstance(planning_priorities, list):
+                priorities.extend([str(p) for p in planning_priorities if p])
+            elif isinstance(planning_priorities, str):
+                priorities.append(planning_priorities)
+
+        # Topic-based fallback
+        if not priorities and hasattr(spec, 'topic'):
+            topic = getattr(spec, 'topic', '')
+            if topic:
+                priorities = [f"{topic} overview", f"{topic} best practices"]
+
+        # Ensure all items are strings and remove duplicates
+        clean_priorities = []
+        seen = set()
+        for item in priorities:
+            if isinstance(item, str) and item.strip() and item not in seen:
+                clean_priorities.append(item.strip())
+                seen.add(item)
+
+        return clean_priorities[:8]  # Limit to 8
     
     def _execute_research_logic(self, state: EnrichedContentState, instructions, template_config: dict) -> ResearchFindings:
         """Execute research using planning context, dynamic instructions, and template configuration"""
         
         planning = state.planning_output
-        spec = state.content_spec
+        spec = state.get("content_spec", {})
+
         
         print(f"DEBUG: planning = {planning}")
         print(f"DEBUG: state.research_plan = {getattr(state, 'research_plan', 'NOT_SET')}")
@@ -88,8 +116,10 @@ class EnhancedResearcherAgent:
             
         # Extract research priorities with template priority
         research_priorities = self._get_template_research_priorities(template_config, planning, spec, instructions)
-        
+        research_priorities = [str(p) for p in research_priorities if p is not None]
+
         print(f"DEBUG: Final research_priorities = {research_priorities}")
+
         
         # Safe logging
         try:
@@ -140,127 +170,45 @@ class EnhancedResearcherAgent:
             credibility_sources=self._validate_sources(template_config),
             research_confidence=0.80
         )
-    
-    def _get_template_research_priorities(self, template_config: dict, planning, spec, instructions) -> list:
-        """Get research priorities with template configuration taking precedence"""
-        
-        priorities = []
-        
-        # TEMPLATE ENFORCEMENT: Use template-specific priorities first
-        if template_config.get('research_priorities'):
-            priorities.extend(template_config['research_priorities'])
-        
-        # Add template-type specific priorities
-        template_type = template_config.get('template_type', spec.template_type)
-        
-        if template_type == "business_proposal":
-            template_priorities = [
-                "Market analysis and sizing",
-                "Competitive landscape assessment", 
-                "Financial benchmarks and ROI data",
-                "Implementation case studies",
-                "Risk assessment factors"
-            ]
-            priorities.extend(template_priorities)
-            
-        elif template_type == "venture_capital_pitch":
-            template_priorities = [
-                "Market size and growth validation",
-                "Competitive differentiation analysis",
-                "Traction metrics and benchmarks",
-                "Industry exit strategy data",
-                "Team background validation",
-                "Product-market fit evidence"
-            ]
-            priorities.extend(template_priorities)
-            
-        elif template_type == "technical_documentation":
-            template_priorities = [
-                "Technical specification standards",
-                "Implementation best practices",
-                "Performance benchmarks",
-                "Common implementation challenges",
-                "Architecture pattern examples",
-                "Security and compliance requirements"
-            ]
-            priorities.extend(template_priorities)
-        
-        # Fallback to planning priorities
-        if planning and hasattr(planning, 'research_priorities') and planning.research_priorities:
-            priorities.extend(planning.research_priorities)
-            
-        elif planning and hasattr(planning, 'key_messages') and planning.key_messages:
-            priorities.extend([msg for msg in planning.key_messages[:3]])
-        
-        # Add instruction-based priorities
-        if instructions and hasattr(instructions, 'specific_requirements'):
-            evidence_types = instructions.specific_requirements.get("evidence_types", [])
-            priorities.extend(evidence_types[:3] if evidence_types else [])
-        
-        # Final fallback
-        if not priorities:
-            priorities = ["overview", "key_concepts", "examples"]
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_priorities = []
-        for priority in priorities:
-            if priority not in seen:
-                unique_priorities.append(priority)
-                seen.add(priority)
-    
-        return unique_priorities[:8]  # Limit to top 8 priorities
+
 
     def _research_priority(self, priority: str, spec, instructions, template_config: dict) -> list:
-      insights = []
+        """Generic research based on priority keywords"""
+        
+        insights = []
+        priority_lower = str(priority).lower()
+        
+        # Pattern-based research without hardcoded template types
+        research_patterns = [
+            (("market", "industry", "sector"), ("market_analysis", "industry_report")),
+            (("financial", "revenue", "cost", "roi"), ("financial_data", "financial_analysis")),
+            (("competitive", "competitor"), ("competitive_analysis", "market_research")),
+            (("user", "customer", "audience"), ("user_research", "user_study")),
+            (("trend", "emerging", "future"), ("trend_analysis", "trend_report")),
+        ]
+        
+        for keywords, (research_type, source_type) in research_patterns:
+            if any(k in priority_lower for k in keywords):
+                insights.append({
+                    "type": research_type,
+                    "finding": f"{research_type.replace('_', ' ').title()} for {spec.topic}",
+                    "relevance": "high",
+                    "source_type": source_type
+                })
+                break
 
-      try:
-          priority_lower = str(priority).lower()
+            
+        # Default research if no patterns match
+        if not insights:
+            insights.append({
+                "type": "general_research",
+                "finding": f"Research insights for {spec.topic}",
+                "relevance": "medium",
+                "source_type": "general_analysis"
+            })
+        
+        return insights
 
-          # Generic research by keyword matching
-          if any(keyword in priority_lower for keyword in ["market", "industry", "sector"]):
-              insights.append({
-                  "type": "market_analysis",
-                  "finding": f"Market opportunity analysis for {spec.topic}",
-                  "relevance": "high",
-                  "source_type": "industry_report"
-              })
-
-          elif any(keyword in priority_lower for keyword in ["financial", "revenue", "cost", "roi"]):
-              insights.append({
-                  "type": "financial_data",
-                  "finding": f"Financial benchmarks and metrics for {spec.topic}",
-                  "relevance": "high", 
-                  "source_type": "financial_analysis"
-              })
-
-          elif any(keyword in priority_lower for keyword in ["competitive", "competitor"]):
-              insights.append({
-                  "type": "competitive_analysis",
-                  "finding": f"Competitive positioning insights for {spec.topic}",
-                  "relevance": "medium",
-                  "source_type": "market_research"
-              })
-
-          elif any(keyword in priority_lower for keyword in ["technical", "technology", "implementation"]):
-              insights.append({
-                  "type": "technical_analysis",
-                  "finding": f"Technical implementation insights for {spec.topic}",
-                  "relevance": "high",
-                  "source_type": "technical_documentation"
-              })
-
-      except Exception as e:
-          insights.append({
-              "type": "error_recovery",
-              "finding": f"Basic research completed for {spec.topic}",
-              "relevance": "low",
-              "source_type": "fallback_analysis",
-              "error": str(e)
-          })
-
-      return insights
-    
     def _research_vc_priority(self, priority: str, spec, template_config: dict) -> list:
         """Research priorities specific to venture capital pitches"""
         insights = []
@@ -595,30 +543,39 @@ class EnhancedResearcherAgent:
         
         return gaps[:4]  # Limit to top 4 gaps
     
+# langgraph_app/agents/enhanced_researcher_integrated.py
+    def search_recent_events(self, topic: str, timeframe: str = "24h"):
+        results = self.web_search(f"{topic} {timeframe}")
+        return self.validate_and_synthesize(results)
+
     def _validate_sources(self, template_config: dict) -> list:
-        """Validate source credibility with template-appropriate sources"""
-        template_type = template_config.get('template_type')
-        
-        base_sources = ["Industry Research Reports", "Market Analysis Studies", "Expert Interviews"]
-        
-        if template_type == "venture_capital_pitch":
-            base_sources.extend([
-                "Venture Capital Database",
-                "Startup Traction Reports", 
-                "Exit Strategy Analysis",
-                "VC Portfolio Company Data"
-            ])
-        elif template_type == "business_proposal":
-            base_sources.extend([
-                "ROI Case Studies",
-                "Implementation Best Practices",
-                "Financial Benchmarking Reports"
-            ])
-        elif template_type == "technical_documentation":
-            base_sources.extend([
-                "Technical Standards Bodies",
-                "Performance Benchmarking Studies",
-                "Security Compliance Frameworks"
-            ])
-        
-        return base_sources
+        """Dynamic source validation based on template metadata"""
+
+        # Base sources for all content types
+        sources = ["Industry Research", "Market Analysis", "Expert Sources"]
+
+        # Extract source requirements from template config
+        template_sources = template_config.get('data_sources', [])
+        if template_sources:
+            sources.extend(template_sources)
+
+        # Add sources based on template parameters
+        parameters = template_config.get('parameters', {})
+
+        # Financial content needs financial sources
+        if any('budget' in key or 'cost' in key or 'roi' in key for key in parameters.keys()):
+            sources.extend(["Financial Reports", "ROI Studies"])
+
+        # Market-focused content needs market sources
+        if any('market' in key or 'competitive' in key for key in parameters.keys()):
+            sources.extend(["Market Research", "Competitive Analysis"])
+
+        # Technical content needs technical sources
+        if any('technical' in key or 'implementation' in key for key in parameters.keys()):
+            sources.extend(["Technical Standards", "Implementation Guides"])
+
+        # User/audience focused content needs user research
+        if any('audience' in key or 'user' in key or 'customer' in key for key in parameters.keys()):
+            sources.extend(["User Research", "Audience Studies"])
+
+        return list(dict.fromkeys(sources))  # Remove duplicates

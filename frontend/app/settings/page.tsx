@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useSettings } from '@/lib/settings-context'
 import { showToast } from '@/lib/toast-utils'
 import { useTheme } from 'next-themes'
 import { 
@@ -40,119 +41,111 @@ import {
 } from 'lucide-react'
 
 
-interface UserSettings {
-  name: string
-  email: string
-  bio: string
-  notifications: {
-    email: boolean
-    push: boolean
-    marketing: boolean
-  }
-  language: string
-  timezone: string
-}
-
-interface GenerationSettings {
-  maxTokens: number
-  temperature: number
-  autoSave: boolean
-  backupFrequency: string
-  contentQuality: 'fast' | 'balanced' | 'premium'
-  enableMultiModel: boolean
-}
-
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme() // Use next-themes instead of custom theme management
   const [isLoading, setIsLoading] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   
-  const [userSettings, setUserSettings] = useState<UserSettings>({
-    name: '',
-    email: '',
-    bio: '',
-    notifications: {
-      email: true,
-      push: false,
-      marketing: false
-    },
-    language: 'en',
-    timezone: 'UTC'
-  })
+const {
+  userSettings,
+  generationSettings,
+  updateUserSettings,
+  updateGenerationSettings
+} = useSettings()
+  
+// Use next-themes instead of custom theme handling
+const handleThemeChange = (newTheme: string) => {
+  setTheme(newTheme)
 
-  const [generationSettings, setGenerationSettings] = useState<GenerationSettings>({
-    maxTokens: 2000,
-    temperature: 0.7,
-    autoSave: true,
-    backupFrequency: 'daily',
-    contentQuality: 'balanced',
-    enableMultiModel: true
-  })
+  // Toast without duration since it's not supported
+  showToast.success(
+    'Theme Updated',
+    `Switched to ${newTheme === 'writerzroom' ? 'WriterzRoom' : newTheme} theme`
+  )
+}
 
-  // Use next-themes instead of custom theme handling
-  const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme)
-    
-    // Toast without duration since it's not supported
-    showToast.success(
-  'Theme Updated',
-  `Switched to ${newTheme === 'writerzroom' ? 'WriterzRoom' : newTheme} theme`
-)
-  }
+useEffect(() => {
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true)
 
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        setIsLoading(true)
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        setUserSettings(prev => ({
-          ...prev,
+      // Simulate API call (you can replace with actual API later)
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Demo data (replace with actual API response)
+      // Only update if fields are empty to avoid overwriting user changes
+      if (!userSettings.name && !userSettings.email) {
+        updateUserSettings({
           name: 'John Doe',
           email: 'john.doe@example.com',
           bio: 'Content creator using WriterzRoom'
-        }))
-      } catch (err) {
-        console.error('Failed to load settings:', err)
-        showToast.error('Error', 'Failed to load settings')
-
-      } finally {
-        setIsLoading(false)
+        })
       }
-    }
 
-    loadSettings()
-  }, [])
-
-  const saveUserSettings = async () => {
-    try {
-      setIsLoading(true)
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      showToast.success('Success', 'User settings saved successfully')
     } catch (err) {
-      console.error('Failed to save user settings:', err)
+      console.error('Failed to load settings:', err)
       showToast.error('Error', 'Failed to load settings')
-
     } finally {
       setIsLoading(false)
     }
   }
+
+  loadSettings()
+}, [userSettings.name, userSettings.email, updateUserSettings])
+
+const saveUserSettings = async () => {
+  try {
+    setIsLoading(true)
+    
+    // Simulate API call (replace with actual API endpoint)
+    await new Promise(resolve => setTimeout(resolve, 800))
+    
+    // TODO: Replace with actual API call
+    // const response = await fetch('/api/user/settings', {
+    //   method: 'PUT',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify(userSettings)
+    // })
+    
+    showToast.success('Success', 'User settings saved successfully')
+  } catch (err) {
+    console.error('Failed to save user settings:', err)
+    showToast.error('Error', 'Failed to save user settings')
+  } finally {
+    setIsLoading(false)
+  }
+}
 
   const saveGenerationSettings = async () => {
-    try {
-      setIsLoading(true)
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      showToast.success('Success', 'User settings saved successfully')
-    } catch (err) {
-      console.error('Failed to save generation settings:', err)
-      showToast.error('Error', 'Failed to load settings')
+  try {
+    setIsLoading(true)
 
-    } finally {
-      setIsLoading(false)
+    // Simulate API call (replace with actual API endpoint)
+    await new Promise(resolve => setTimeout(resolve, 800))
+    
+    // TODO: Replace with actual API call
+    // const response = await fetch('/api/user/generation-settings', {
+    //   method: 'PUT',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify(generationSettings)
+    // })
+    
+    showToast.success('Success', 'Generation settings saved successfully')
+    
+    // Also update global settings context if you have one
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('settings-updated', { 
+        detail: { generationSettings } 
+      }))
     }
+    
+  } catch (err) {
+    console.error('Failed to save generation settings:', err)
+    showToast.error('Error', 'Failed to save generation settings')
+  } finally {
+    setIsLoading(false)
   }
+}
 
   const exportSettings = async () => {
     try {
@@ -182,8 +175,8 @@ export default function SettingsPage() {
       const text = await file.text()
       const imported = JSON.parse(text)
       
-      if (imported.userSettings) setUserSettings(imported.userSettings)
-      if (imported.generationSettings) setGenerationSettings(imported.generationSettings)
+      if (imported.userSettings) updateUserSettings(imported.userSettings)
+      if (imported.generationSettings) updateGenerationSettings(imported.generationSettings)
       
       showToast.success('Success', 'User settings saved successfully')
     } catch (err) {
@@ -275,7 +268,7 @@ export default function SettingsPage() {
                       <Input
                         id="name"
                         value={userSettings.name}
-                        onChange={(e) => setUserSettings(prev => ({ ...prev, name: e.target.value }))}
+                        onChange={(e) => updateUserSettings({ name: e.target.value })}
                         placeholder="Enter your full name"
                       />
                     </div>
@@ -285,7 +278,7 @@ export default function SettingsPage() {
                         id="email"
                         type="email"
                         value={userSettings.email}
-                        onChange={(e) => setUserSettings(prev => ({ ...prev, email: e.target.value }))}
+                        onChange={(e) => updateUserSettings({ email: e.target.value })}
                         placeholder="Enter your email"
                       />
                     </div>
@@ -296,7 +289,7 @@ export default function SettingsPage() {
                     <Textarea
                       id="bio"
                       value={userSettings.bio}
-                      onChange={(e) => setUserSettings(prev => ({ ...prev, bio: e.target.value }))}
+                      onChange={(e) => updateUserSettings({ bio: e.target.value })}
                       placeholder="Tell us about yourself"
                       rows={3}
                     />
@@ -307,7 +300,7 @@ export default function SettingsPage() {
                       <Label htmlFor="language">Language</Label>
                       <Select
                         value={userSettings.language}
-                        onValueChange={(value) => setUserSettings(prev => ({ ...prev, language: value }))}
+                        onValueChange={(value) => updateUserSettings({ language: value })}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -325,7 +318,7 @@ export default function SettingsPage() {
                       <Label htmlFor="timezone">Timezone</Label>
                       <Select
                         value={userSettings.timezone}
-                        onValueChange={(value) => setUserSettings(prev => ({ ...prev, timezone: value }))}
+                        onValueChange={(value) => updateUserSettings({ timezone: value })}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -375,10 +368,9 @@ export default function SettingsPage() {
                     <Switch
                       checked={userSettings.notifications.email}
                       onCheckedChange={(checked) => 
-                        setUserSettings(prev => ({
-                          ...prev,
-                          notifications: { ...prev.notifications, email: checked }
-                        }))
+                        updateUserSettings({
+                          notifications: { ...userSettings.notifications, email: checked }
+                        })
                       }
                     />
                   </div>
@@ -393,10 +385,9 @@ export default function SettingsPage() {
                     <Switch
                       checked={userSettings.notifications.push}
                       onCheckedChange={(checked) => 
-                        setUserSettings(prev => ({
-                          ...prev,
-                          notifications: { ...prev.notifications, push: checked }
-                        }))
+                        updateUserSettings({
+                          notifications: { ...userSettings.notifications, push: checked }
+                        })
                       }
                     />
                   </div>
@@ -411,10 +402,9 @@ export default function SettingsPage() {
                     <Switch
                       checked={userSettings.notifications.marketing}
                       onCheckedChange={(checked) => 
-                        setUserSettings(prev => ({
-                          ...prev,
-                          notifications: { ...prev.notifications, marketing: checked }
-                        }))
+                        updateUserSettings({
+                          notifications: { ...userSettings.notifications, marketing: checked }
+                        })
                       }
                     />
                   </div>
@@ -506,7 +496,7 @@ export default function SettingsPage() {
                       <Select
                         value={generationSettings.contentQuality}
                         onValueChange={(value: 'fast' | 'balanced' | 'premium') => 
-                          setGenerationSettings(prev => ({ ...prev, contentQuality: value }))
+                          updateGenerationSettings({ contentQuality: value })
                         }
                       >
                         <SelectTrigger>
@@ -541,10 +531,7 @@ export default function SettingsPage() {
                         <Select
                           value={generationSettings.maxTokens.toString()}
                           onValueChange={(value) => 
-                            setGenerationSettings(prev => ({ 
-                              ...prev, 
-                              maxTokens: parseInt(value) 
-                            }))
+                            updateGenerationSettings({ maxTokens: parseInt(value) })
                           }
                         >
                           <SelectTrigger>
@@ -584,7 +571,7 @@ export default function SettingsPage() {
                         <Select
                           value={generationSettings.backupFrequency}
                           onValueChange={(value) => 
-                            setGenerationSettings(prev => ({ ...prev, backupFrequency: value }))
+                            updateGenerationSettings({ backupFrequency: value })
                           }
                         >
                           <SelectTrigger>
@@ -632,10 +619,7 @@ export default function SettingsPage() {
                         step="0.1"
                         value={generationSettings.temperature}
                         onChange={(e) => 
-                          setGenerationSettings(prev => ({ 
-                            ...prev, 
-                            temperature: parseFloat(e.target.value) 
-                          }))
+                          updateGenerationSettings({ temperature: parseFloat(e.target.value) })
                         }
                         className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
                       />
@@ -655,7 +639,7 @@ export default function SettingsPage() {
                       <Switch
                         checked={generationSettings.autoSave}
                         onCheckedChange={(checked) => 
-                          setGenerationSettings(prev => ({ ...prev, autoSave: checked }))
+                          updateGenerationSettings({ autoSave: checked })
                         }
                       />
                     </div>

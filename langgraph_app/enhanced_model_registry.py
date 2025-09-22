@@ -26,19 +26,19 @@ logger = logging.getLogger(__name__)
 def get_model_name(agent_name: str) -> str:
     """
     Returns the model name for a given agent.
-    Priority: Environment variable > default fallback
+    Priority: Environment variable > NO default fallback
     """
     default_models = {
-        "writer": "gpt-4o",
-        "editor": "gpt-4o-mini",
+        "writer": "gpt-5",
+        "editor": "gpt-5",
         "seo": "gpt-4o-mini",
-        "image": "dall-e-3",
-        "code": "gpt-4o",
-        "researcher": "gpt-4o",
+        "image": "gpt-image-1",
+        "code": "gpt-5",
+        "researcher": "gpt-5",
     }
 
     env_key = f"{agent_name.upper()}_MODEL"
-    return os.getenv(env_key, default_models.get(agent_name, "gpt-4o"))
+    return os.getenv(env_key, default_models.get(agent_name, "gpt-5"))
 
 def get_model(agent_name: str):
     """
@@ -281,6 +281,26 @@ def get_optimal_model_for_style(style_profile: str, agent_type: str = "writer") 
     # Balanced for professional content
     else:
         return "gpt-4o" if agent_type == "writer" else "gpt-4o-mini"
+
+def get_model_for_generation(settings: Dict[str, Any], mode: str = None) -> str:
+    """
+    Choose optimal model name based on generation settings.
+    - Enterprise/premium/very_long -> premium tier (gpt-4o, claude-sonnet)
+    - Balanced/medium -> standard tier (gpt-4o-mini, claude-haiku)
+    - Fast/short -> budget tier (gpt-3.5-turbo or local)
+    """
+    quality = str(settings.get("quality_mode", settings.get("contentQuality", ""))).lower()
+    max_tokens = int(settings.get("max_tokens", settings.get("maxTokens", 0)) or 0)
+    mode = (mode or "").lower()
+
+    if mode in ["enterprise", "premium"] or quality == "premium" or max_tokens >= 8000:
+        return "gpt-4o"  # swap for claude-3-5-sonnet if preferred
+    elif quality == "balanced" or max_tokens >= 4000:
+        return "gpt-4o-mini"
+    elif quality == "fast":
+        return "gpt-3.5-turbo"
+    return "gpt-4o"
+
 
 class EnhancedModelRegistry:
     """Enhanced model registry with multi-provider support and failover"""

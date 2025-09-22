@@ -38,9 +38,11 @@ class ContentGenerationRequest:
     style_profile: Optional[str] = None
     custom_parameters: Optional[Dict[str, Any]] = None
     user_context: Optional[Dict[str, Any]] = None
-    length_preference: Optional[str] = None  # short, medium, long, auto
-    audience_level: Optional[str] = None     # beginner, intermediate, expert, auto
-    
+    length_preference: Optional[str] = None  
+    audience_level: Optional[str] = None     
+    generation_settings: Optional[Dict[str, Any]] = None  
+    generation_mode: Optional[str] = None                 
+
 class ContentGenerationResponse(BaseModel):
     """Response model for generated content"""
     request_id: str
@@ -212,10 +214,16 @@ def integrate_with_existing_server(app):
         
         request = ContentGenerationRequest(
             user_request=request_data.get("user_request", ""),
+            template_id=request_data.get("template_id"),
+            style_profile=request_data.get("style_profile"),
+            custom_parameters=request_data.get("custom_parameters"),
             user_context=request_data.get("user_context", {}),
             length_preference=request_data.get("length_preference"),
-            audience_level=request_data.get("audience_level")
+            audience_level=request_data.get("audience_level"),
+            generation_settings=request_data.get("generation_settings"),  
+            generation_mode=request_data.get("generation_mode")           
         )
+
         
         # Force dynamic generation
         result = await generator.universal_integration.process_content_request(

@@ -1,108 +1,117 @@
-name: "Social Media Campaign Generator"
+name: "Social Media Campaign"
 slug: "social_media_campaign"
-version: "2.0"
+version: "3.0"
+category: "marketing"
+template_type: "social_media_campaign"
 
 description: >
-  Generates actual social media posts and campaign content. Creates ready-to-publish social media content,
-  not blog posts about social media strategy.
+  Generates ready-to-publish social media posts and campaign content.
+  Creates platform-specific content with captions, hashtags, and engagement elements.
 
-# Inputs (resolved at runtime from request payload or style profile)
-inputs:
-  campaign_goal: { required: true }               # "brand_awareness", "lead_generation", "engagement", etc.
-  target_platforms: { required: true }            # ["instagram", "linkedin", "twitter", "tiktok"]
-  brand_voice: { default: "professional" }        # "playful", "inspirational", "educational", etc.
-  target_audience: { default: "general" }
-  campaign_duration: { default: "1_week" }        # "3_days", "1_week", "1_month"
-  post_count: { default: 10 }                    # Number of individual posts to generate
-  content_types: { default: ["posts", "stories"] } # "posts", "stories", "reels", "carousels"
-  hashtag_strategy: { default: "mixed" }          # "branded", "trending", "niche", "mixed"
-  include_captions: { default: true }
-  include_hashtags: { default: true }
-  include_cta: { default: true }
-  # Optional user overrides
-  posting_schedule: { optional: true }
-  budget_level: { optional: true }
-  seasonal_themes: { optional: true }
-  brand_guidelines: { optional: true }
+# Core parameters
+parameters:
+  campaign_goal:
+    type: "select"
+    required: true
+    options: ["brand_awareness", "lead_generation", "engagement", "sales", "education"]
+    label: "Campaign Goal"
+  
+  target_platforms:
+    type: "multiselect"
+    required: true
+    options: ["instagram", "linkedin", "twitter", "tiktok", "facebook", "youtube"]
+    label: "Target Platforms"
+  
+  brand_voice:
+    type: "select"
+    default: "professional"
+    options: ["professional", "playful", "inspirational", "educational", "conversational"]
+    label: "Brand Voice"
+  
+  post_count:
+    type: "number"
+    default: 10
+    min: 5
+    max: 30
+    label: "Number of Posts"
+  
+  content_types:
+    type: "multiselect"
+    default: ["posts", "stories"]
+    options: ["posts", "stories", "reels", "carousels", "videos"]
+    label: "Content Types"
+  
+  campaign_duration:
+    type: "select"
+    default: "1_week"
+    options: ["3_days", "1_week", "2_weeks", "1_month"]
+    label: "Campaign Duration"
 
-# Priority-based requirement resolution
+# Content requirements
 requirements:
-  min_posts:
-    priority:
-      - dynamic.post_count
-      - style.requirements.min_posts
-      - 8
-  hashtags_per_post:
-    priority:
-      - dynamic.hashtags_per_post
-      - style.requirements.hashtags_per_post
-      - 5
-  platforms_count:
-    priority:
-      - dynamic.platforms_count
-      - 2
+  min_posts: 8
+  hashtags_per_post: 5
+  include_captions: true
+  include_hashtags: true
+  include_cta: true
+  platform_optimization: true
+  engagement_focused: true
 
-# Template-specific writer instructions
-writer_instructions:
-  content_type: "social_media_posts"              # CRITICAL: Actual social media content!
-  format: "structured_posts"
-  generate_platform_specific: true
-  include_engagement_hooks: true
-  create_cohesive_campaign: true
-  optimize_for_algorithms:
-    priority:
-      - dynamic.optimize_for_algorithms
-      - true
+# Style specifications
+style:
+  tone: "engaging"
+  formality: "casual_professional"
+  voice: "brand_aligned"
+  structure: "social_native"
 
-mcp:
-  tool_sequence:
-    priority:
-      - dynamic.tool_sequence
-      - [hashtag_generator, engagement_optimizer, platform_analyzer]
-
-sections:
-  order:
-    priority:
-      - dynamic.section_order
-      - ["campaign_overview", "platform_posts", "hashtag_strategy", "posting_schedule", "engagement_plan"]
-
-prompt_schema:
-  system_preamble: |
-    You are a social media content strategist and copywriter. Create actual, ready-to-publish social media posts
-    and campaign materials. Generate specific post content with captions, hashtags, and engagement elements -
-    not explanatory content about social media marketing.
-
-  content_template: |
-    # {{campaign_title}} - Social Media Campaign
-
-    ## Campaign Overview
-    {{campaign_overview}}
-
-    ## Platform-Specific Posts
-
-    {{platform_posts_section}}
-
-    ## Hashtag Strategy
-    {{hashtag_strategy_section}}
-
-    ## Posting Schedule
-    {{posting_schedule_section}}
-
-    ## Engagement Guidelines
-    {{engagement_guidelines}}
-
-  placeholders:
-    - campaign_title
-    - campaign_overview
-    - platform_posts_section
-    - hashtag_strategy_section
-    - posting_schedule_section
-    - engagement_guidelines
-
+# Output format
 output:
-  format: "markdown"
-  require:
-    actual_posts: true
-    platform_optimization: true
-    ready_to_publish: true
-    engagement_elements: true
+  format: "structured_posts"
+  include_hashtags: true
+  include_captions: true
+  platform_specific: true
+  ready_to_publish: true
+
+# Template metadata
+metadata:
+  version: "3.0.0"
+  created_by: "content_team"
+  last_updated: "{{ current_timestamp }}"
+  difficulty: "intermediate"
+  estimated_time: "20-30 min"
+  target_audience: "marketers"
+  complexity_level: "intermediate"
+
+real_time_support:
+  enabled: true
+  max_age_hours: 6   # 6 hours - social media needs very current trends
+  verification_sources: 2
+  search_required: true
+  fail_if_unavailable: true
+  search_focus: "trending_topics"  # Focus on viral content and trending hashtags
+  content_types: ["trending_hashtags", "viral_content", "social_trends", "platform_updates"]
+  velocity_tracking: true  # Track how fast topics are spreading
+
+# === WriterzRoom enterprise output controls ===
+post_config:
+  enabled: false        # set to true in social_media_campaign.yaml
+  min_posts: 3          # used only when enabled
+  max_posts: 5          # used only when enabled
+  paragraph_length: short   # short | medium | long
+  per_post_requirements:
+    min_words: 60
+    max_words: 120
+  composition:
+    include_cta: true
+    include_hashtags: 3      # 0 = none
+    include_links: optional  # optional | required | none
+
+output_policy:
+  no_code: true          # enforce: remove code blocks/inlines
+  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
+  min_paragraphs: 3      # minimum paragraphs after sanitation
+  paragraph_first: true  # prefer paragraphs over lists
+
+# Optional: planner override keys (validated upstream; no fallbacks here)
+planner_overrides:
+  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided

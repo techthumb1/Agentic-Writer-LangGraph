@@ -1,4 +1,6 @@
 # langgraph_app/template_loader.py
+# Clean template loader with YAML-first validation, no fallback overrides
+# RELEVANT FILES: mcp_enhanced_graph.py, integrated_server.py, data/content_templates/
 
 import os
 import yaml
@@ -8,8 +10,11 @@ from typing import Dict, Any, Optional, List
 
 logger = logging.getLogger(__name__)
 
+class TemplateValidationError(Exception):
+    """Template validation failures"""
+
 class TemplateLoader:
-    """✅ UPDATED: Template loader integrated with dynamic system - consistent with DynamicStyleProfileLoader"""
+    """Clean template loader - respects YAML metadata, no classification overrides"""
     
     _instance = None
     
@@ -20,30 +25,24 @@ class TemplateLoader:
         self.templates_cache: Dict[str, Dict[str, Any]] = {}
         self.templates_path: Optional[Path] = None
         self._find_and_load_templates()
+        
+        if not self.templates_cache:
+            logger.error("CRITICAL: No templates loaded during initialization")
+        else:
+            logger.info(f"Template loader initialized with {len(self.templates_cache)} templates")
     
     def _find_and_load_templates(self):
         """Find the templates directory and load all templates"""
-        
-        # Get current working directory
         cwd = Path.cwd()
         logger.info(f"Current working directory: {cwd}")
         
-        # ✅ CONSISTENT: Same search paths as DynamicStyleProfileLoader
         search_paths = [
-            # Primary paths for content templates
             cwd / "data" / "content_templates",
             cwd / "content_templates", 
-            
-            # If running from langgraph_app directory
             cwd / ".." / "data" / "content_templates",
             cwd / ".." / "content_templates",
-            
-            # Legacy paths (keep for backward compatibility)
-            cwd / "frontend" / "content-templates",
-            cwd / ".." / "frontend" / "content-templates",
         ]
         
-        # Try each path
         for path in search_paths:
             resolved_path = path.resolve()
             logger.debug(f"Checking templates path: {resolved_path}")
@@ -52,50 +51,110 @@ class TemplateLoader:
                 yaml_files = list(resolved_path.glob("*.yaml")) + list(resolved_path.glob("*.yml"))
                 
                 if yaml_files:
-                    logger.info(f"✅ Found templates directory: {resolved_path}")
+                    logger.info(f"Found templates directory: {resolved_path}")
                     logger.info(f"Found {len(yaml_files)} YAML files")
                     
                     self.templates_path = resolved_path
                     self._load_templates_from_directory(resolved_path)
                     return
-                else:
-                    logger.warning(f"Directory exists but no YAML files found: {resolved_path}")
         
-        # If no directory found, log available directories for debugging
-        logger.error("❌ No templates directory found!")
-        logger.error("Available directories from current working directory:")
-        
-        try:
-            for item in cwd.iterdir():
-                if item.is_dir():
-                    logger.error(f"  📁 {item.name}")
-        except Exception as e:
-            logger.error(f"Could not list directories: {e}")
+        logger.error("No templates directory found!")
+
     def normalize_v2_template(self, template_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert V2 template inputs to parameter format"""
-        if 'inputs' not in template_data:
-            return template_data
+        """ENTERPRISE: Use YAML metadata directly - no fallback overrides"""
+        
+        # Get template_type from YAML metadata
+        template_type = template_data.get('template_type')
+        if not template_type:
+            template_id = template_data.get('id', 'unknown')
+            raise TemplateValidationError(f"ENTERPRISE: Template {template_id} must specify template_type in YAML")
 
-        inputs = template_data['inputs']
-        parameters = []
+        # ONLY read image_agent_enabled from YAML if present
+        # Do not add any classification logic here
+        if template_data.get('image_agent_enabled'):
+            logger.info(f"ENABLED: Image agent for {template_data.get('id')} (YAML specified)")
 
-        for key, spec in inputs.items():
-            param = {
-                'name': key,
-                'label': key.replace('_', ' ').title(),
-                'type': self._infer_type(spec.get('default')),
-                'required': spec.get('required', False),
-                'default': spec.get('default', ''),
-                'commonly_used': key in ['topic', 'audience', 'tone']  # Mark common ones
-            }
-            parameters.append(param)
-
-        template_data['parameters'] = parameters
         return template_data
 
-    def _load_templates_from_directory(self, directory: Path):
-        """Load all YAML templates from the specified directory"""
+    def _convert_inputs_to_parameters(self, template_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert V2 inputs format to parameters format"""
+        inputs = template_data.get('inputs', {})
+        parameters = {}
+        
+        for key, spec in inputs.items():
+            if isinstance(spec, dict):
+                param = {
+                    'name': key,
+                    'label': spec.get('label', key.replace('_', ' ').title()),
+                    'type': self._infer_parameter_type(spec),
+                    'required': spec.get('required', False),
+                    'description': spec.get('description', ''),
+                    'default': spec.get('default', ''),
+                    'placeholder': spec.get('placeholder', ''),
+                    'validation': spec.get('validation', {})
+                }
+                
+                # Handle options for select types
+                if 'options' in spec:
+                    param['type'] = 'select'
+                    param['options'] = spec['options']
+                    
+            else:
+                # Simple value - create basic parameter
+                param = {
+                    'name': key,
+                    'label': key.replace('_', ' ').title(),
+                    'type': self._infer_type(spec),
+                    'required': False,
+                    'default': spec if spec is not None else '',
+                    'description': '',
+                    'validation': {}
+                }
+            
+            parameters[key] = param
+        
+        # Replace inputs with parameters
+        template_data['parameters'] = parameters
+        del template_data['inputs']
+        template_data['_converted_from_inputs'] = True
+        
+        logger.info(f"Converted {len(parameters)} inputs to parameters")
+        return template_data
 
+    def _infer_parameter_type(self, spec: Dict[str, Any]) -> str:
+        """Infer parameter type from specification"""
+        if 'type' in spec:
+            return spec['type']
+            
+        default_value = spec.get('default')
+        
+        if isinstance(default_value, bool):
+            return 'checkbox'
+        elif isinstance(default_value, (int, float)):
+            return 'number'
+        elif isinstance(default_value, list):
+            return 'select'
+        elif 'options' in spec:
+            return 'select'
+        else:
+            # Check length for textarea vs text
+            default_str = str(default_value) if default_value else ''
+            return 'textarea' if len(default_str) > 100 else 'text'
+
+    def _infer_type(self, value):
+        """Infer parameter type from default value"""
+        if isinstance(value, bool): 
+            return 'checkbox'
+        if isinstance(value, (int, float)): 
+            return 'number'
+        if isinstance(value, list): 
+            return 'select'
+        if value and len(str(value)) > 100:
+            return 'textarea'
+        return 'text'
+
+    def _load_templates_from_directory(self, directory: Path):
+        """Load all YAML templates from directory with proper normalization"""
         yaml_files = list(directory.glob("*.yaml")) + list(directory.glob("*.yml"))
         loaded_count = 0
 
@@ -104,169 +163,58 @@ class TemplateLoader:
                 with open(yaml_file, 'r', encoding='utf-8') as f:
                     documents = list(yaml.safe_load_all(f))
 
-                    if not documents:
-                        logger.warning(f"Empty YAML file: {yaml_file.name}")
-                        continue
+                if not documents or documents[0] is None:
+                    logger.warning(f"Empty YAML file: {yaml_file.name}")
+                    continue
 
-                    template_data = self.normalize_v2_template(documents[0])
-                    if template_data is None:
-                        logger.warning(f"Empty YAML document in file: {yaml_file.name}")
-                        continue
-                    
-                    if len(documents) > 1:
-                        logger.warning(f"Multiple documents found in {yaml_file.name}, using first document only")
+                template_data = documents[0]
+                
+                # Set ID if missing
+                if 'id' not in template_data:
+                    template_data['id'] = yaml_file.stem
 
-                # ✅ CONSISTENT: Use id field first, then filename (same as DynamicStyleProfileLoader)
-                template_name = template_data.get('id', yaml_file.stem)
+                # Apply normalization
+                template_data = self.normalize_v2_template(template_data)
+
+                template_name = template_data['id']
                 self.templates_cache[template_name] = template_data
                 loaded_count += 1
 
-                logger.debug(f"✅ Loaded template: {template_name}")
+                logger.info(f"Loaded: {template_name} | Type: {template_data.get('template_type')} | Images: {template_data.get('image_agent_enabled', False)}")
 
-            except yaml.YAMLError as e:
-                logger.error(f"❌ YAML parsing error in {yaml_file.name}: {e}")
             except Exception as e:
-                logger.error(f"❌ Error loading template {yaml_file.name}: {e}")
+                logger.error(f"Error loading template {yaml_file.name}: {e}")
         
         logger.info(f"Successfully loaded {loaded_count} templates")
-        logger.info(f"Available templates: {sorted(self.templates_cache.keys())}")
-    
+
     def get_template(self, template_name: str) -> Optional[Dict[str, Any]]:
-        """✅ NO FALLBACKS: Get a specific template by name - returns None if not found"""
-        
+        """Get template with logging for debugging"""
         if template_name not in self.templates_cache:
-            logger.warning(f"⚠️ Template '{template_name}' not found")
-            logger.warning(f"Available templates: {sorted(self.templates_cache.keys())}")
-            return None  # ✅ NO FALLBACKS - return None instead of generic content
+            logger.warning(f"Template '{template_name}' not found")
+            logger.warning(f"Available: {sorted(self.templates_cache.keys())}")
+            return None
         
-        logger.info(f"✅ Found template: {template_name}")
-        return self.templates_cache[template_name]
-    
+        template = self.templates_cache[template_name]
+        logger.info(f"Retrieved: {template_name} | Type: {template.get('template_type')} | Images: {template.get('image_agent_enabled', False)}")
+        return template
+
     def list_templates(self) -> List[str]:
         """Get list of all available template names"""
         return sorted(self.templates_cache.keys())
-    
-    def get_template_by_category(self, category: str) -> List[str]:
-        """Get templates filtered by category"""
-        matching_templates = []
-        for template_name, template_data in self.templates_cache.items():
-            if template_data.get('category', '').lower() == category.lower():
-                matching_templates.append(template_name)
-        return sorted(matching_templates)
-    
-    def get_template_metadata(self, template_name: str) -> Optional[Dict[str, Any]]:
-        """Get template metadata without full content"""
+
+    def get_templates_by_type(self, template_type: str) -> List[Dict[str, Any]]:
+        """Get all templates of a specific type"""
+        return [
+            template for template in self.templates_cache.values()
+            if template.get('template_type') == template_type
+        ]
+
+    def should_include_image_agent(self, template_name: str) -> bool:
+        """Check if template should include image generation"""
         template = self.get_template(template_name)
-        if not template:
-            return None
-        
-        return {
-            'id': template.get('id', template_name),
-            'name': template.get('name', ''),
-            'description': template.get('description', ''),
-            'category': template.get('category', ''),
-            'difficulty': template.get('difficulty', ''),
-            'targetAudience': template.get('targetAudience', ''),
-            'tags': template.get('tags', []),
-            'estimatedLength': template.get('estimatedLength', ''),
-            'icon': template.get('icon', ''),
-        }
-    
-    def search_templates(self, search_term: str) -> List[str]:
-        """Search templates by name, description, or tags"""
-        search_term = search_term.lower()
-        matching_templates = []
-        
-        for template_name, template_data in self.templates_cache.items():
-            # Search in name
-            if search_term in template_data.get('name', '').lower():
-                matching_templates.append(template_name)
-                continue
-            
-            # Search in description
-            if search_term in template_data.get('description', '').lower():
-                matching_templates.append(template_name)
-                continue
-            
-            # Search in tags
-            tags = template_data.get('tags', [])
-            if any(search_term in tag.lower() for tag in tags):
-                matching_templates.append(template_name)
-                continue
-        
-        return sorted(matching_templates)
-    
-    def validate_template(self, template_name: str) -> Dict[str, Any]:
-        """Validate a template structure and return validation report"""
-        template = self.get_template(template_name)
-        if not template:
-            return {
-                'valid': False,
-                'errors': [f"Template '{template_name}' not found"],
-                'warnings': []
-            }
-        
-        errors = []
-        warnings = []
-        
-        # Check required fields
-        required_fields = ['id', 'name', 'description', 'category']
-        for field in required_fields:
-            if not template.get(field):
-                errors.append(f"Missing required field: {field}")
-        
-        # Check recommended fields
-        recommended_fields = ['difficulty', 'targetAudience', 'tags', 'estimatedLength']
-        for field in recommended_fields:
-            if not template.get(field):
-                warnings.append(f"Missing recommended field: {field}")
-        
-        # Validate parameters structure
-        if 'parameters' in template:
-            parameters = template['parameters']
-            if not isinstance(parameters, list):
-                errors.append("Parameters should be a list")
-            else:
-                for i, param in enumerate(parameters):
-                    if not isinstance(param, dict):
-                        errors.append(f"Parameter {i} should be a dictionary")
-                        continue
-                    
-                    if not param.get('name'):
-                        errors.append(f"Parameter {i} missing required 'name' field")
-                    if not param.get('type'):
-                        errors.append(f"Parameter {i} missing required 'type' field")
-        
-        return {
-            'valid': len(errors) == 0,
-            'errors': errors,
-            'warnings': warnings
-        }
-    
-    def reload_templates(self):
-        """Force reload all templates"""
-        self.templates_cache.clear()
-        self.templates_path = None
-        self._find_and_load_templates()
-    
-    def get_debug_info(self) -> Dict[str, Any]:
-        """Get debug information about template loading"""
-        return {
-            "templates_path": str(self.templates_path) if self.templates_path else None,
-            "current_working_directory": str(Path.cwd()),
-            "available_templates": self.list_templates(),
-            "template_count": len(self.templates_cache),
-            "templates_loaded": bool(self.templates_cache)
-        }
+        return template.get('image_agent_enabled', False) if template else False
 
-
-    def _infer_type(self, value):
-        if isinstance(value, bool): return 'boolean'
-        if isinstance(value, (int, float)): return 'number'
-        if isinstance(value, list): return 'select'
-        return 'text'
-
-# ✅ CONSISTENT: Singleton pattern (same as DynamicStyleProfileLoader)
+# Singleton pattern
 def get_template_loader():
     """Get the singleton template loader instance"""
     if TemplateLoader._instance is None:
@@ -276,113 +224,22 @@ def get_template_loader():
 # Create global instance
 template_loader = get_template_loader()
 
-# ✅ NO FALLBACKS: Global functions for backward compatibility
+# Global functions for backward compatibility
 def get_template(template_name: str) -> Optional[Dict[str, Any]]:
-    """Get a template by name - NO FALLBACKS"""
+    """Get a template by name"""
     return template_loader.get_template(template_name)
+
+def should_include_image_agent(template_name: str) -> bool:
+    """Check if template should include image generation"""
+    return template_loader.should_include_image_agent(template_name)
 
 def list_available_templates() -> List[str]:
     """List all available template names"""
     return template_loader.list_templates()
 
-def get_template_metadata(template_name: str) -> Optional[Dict[str, Any]]:
-    """Get template metadata without full content"""
-    return template_loader.get_template_metadata(template_name)
-
-def search_templates(search_term: str) -> List[str]:
-    """Search templates by name, description, or tags"""
-    return template_loader.search_templates(search_term)
-
-def validate_template(template_name: str) -> Dict[str, Any]:
-    """Validate a template structure"""
-    return template_loader.validate_template(template_name)
-
 def reload_templates():
     """Force reload all templates"""
-    return template_loader.reload_templates()
-
-# ✅ INTEGRATION: Functions to work with the dynamic style profile system
-def get_template_with_style_recommendations(template_name: str) -> Optional[Dict[str, Any]]:
-    """Get template with style profile recommendations"""
-    try:
-        from style_profile_loader import get_profile_recommendations
-        
-        template = get_template(template_name)
-        if not template:
-            return None
-        
-        # Add dynamic style recommendations
-        recommendations = get_profile_recommendations(template_name)
-        template_with_recommendations = template.copy()
-        template_with_recommendations['recommended_style_profiles'] = recommendations
-        
-        return template_with_recommendations
-    
-    except ImportError as e:
-        logger.warning(f"Could not import style_profile_loader: {e}")
-        return get_template(template_name)
-
-def get_all_templates_with_recommendations() -> Dict[str, Dict[str, Any]]:
-    """Get all templates with their style profile recommendations"""
-    try:
-        from style_profile_loader import get_profile_recommendations
-        
-        all_templates = {}
-        for template_name in list_available_templates():
-            template = get_template(template_name)
-            if template:
-                recommendations = get_profile_recommendations(template_name)
-                template_with_recommendations = template.copy()
-                template_with_recommendations['recommended_style_profiles'] = recommendations
-                all_templates[template_name] = template_with_recommendations
-        
-        return all_templates
-    
-    except ImportError as e:
-        logger.warning(f"Could not import style_profile_loader: {e}")
-        return {name: get_template(name) for name in list_available_templates() if get_template(name)}
-
-# ✅ VALIDATION: Template system validation
-def validate_template_system() -> Dict[str, Any]:
-    """Validate the template system and return diagnostic information"""
-    loader = get_template_loader()
-    
-    validation_report = {
-        "system_status": "healthy",
-        "issues": [],
-        "templates_loaded": len(loader.templates_cache),
-        "templates_path": str(loader.templates_path) if loader.templates_path else None,
-        "available_templates": sorted(loader.templates_cache.keys()),
-        "validation_timestamp": yaml.safe_load("!!timestamp 2025-01-01T00:00:00")  # Using YAML timestamp
-    }
-    
-    # Check for common issues
-    if len(loader.templates_cache) == 0:
-        validation_report["system_status"] = "error"
-        validation_report["issues"].append("No templates loaded")
-    
-    if len(loader.templates_cache) < 5:
-        validation_report["system_status"] = "warning"
-        validation_report["issues"].append(f"Only {len(loader.templates_cache)} templates loaded - expected more")
-    
-    # Validate template structures
-    invalid_templates = []
-    template_categories = set()
-    
-    for template_name in loader.templates_cache.keys():
-        validation_result = validate_template(template_name)
-        if not validation_result['valid']:
-            invalid_templates.append(f"{template_name}: {validation_result['errors']}")
-        
-        template = get_template(template_name)
-        if template and template.get('category'):
-            template_categories.add(template['category'])
-    
-    if invalid_templates:
-        validation_report["system_status"] = "warning"
-        validation_report["issues"].append(f"Invalid template structures: {invalid_templates}")
-    
-    validation_report["template_categories"] = sorted(template_categories)
-    validation_report["categories_count"] = len(template_categories)
-    
-    return validation_report
+    global template_loader
+    TemplateLoader._instance = None
+    template_loader = get_template_loader()
+    return template_loader

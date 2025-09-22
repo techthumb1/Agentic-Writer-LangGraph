@@ -4,11 +4,13 @@ Consolidated MCP Server Extension - Single source of truth for MCP operations
 Combines all MCP functionality: orchestration, tools, execution, and Universal System integration
 """
 
+import copy, json, hashlib
 import logging
 import asyncio
 from typing import Dict, Any, Optional, List, AsyncGenerator
 from datetime import datetime
 from dataclasses import dataclass, asdict
+from langgraph_app.core.enriched_content_state import EnrichedContentState
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -17,9 +19,26 @@ from pydantic import BaseModel, Field
 # Import consolidated dependencies
 from .mcp_tools_registry import enhance_mcp_with_tools, MCPToolsRegistry
 from .enhanced_model_registry import get_model
+from .mcp_enhanced_graph import MCPEnhancedContentGraph
+from langgraph_app.mcp_enhanced_graph import MCPEnhancedContentGraph
+try:
+    # Preferred modern path
+    from .mcp_integration import (
+        execute_enhanced_mcp_generation as execute_mcp_enhanced_generation,
+    )
+except Exception:
+    # Legacy fallback if someone still imports the old name elsewhere
+    try:
+        from .mcp_integration import execute_mcp_enhanced_generation  # may not exist
+    except Exception:
+        # Final fallback: provide a stub to surface a clear runtime error
+        def execute_mcp_enhanced_generation(*args, **kwargs):
+            raise RuntimeError(
+                "No enhanced MCP generation function found. "
+                "Ensure enhanced_mcp_integration.py is present and importable."
+            )
 
 logger = logging.getLogger(__name__)
-
 @dataclass
 class MCPExecutionResult:
     tool_name: str
@@ -39,6 +58,10 @@ class MCPWorkflowState:
     metadata: Dict[str, Any]
     errors: List[str]
     warnings: List[str]
+
+
+def _fail(msg: str):
+    raise SystemExit(f"ENTERPRISE: {msg}")
 
 class ConsolidatedMCPOrchestrator:
     """Single MCP orchestrator handling all MCP operations"""
@@ -661,80 +684,213 @@ def add_mcp_endpoints(app: FastAPI) -> None:
             logger.error(f"❌ MCP tools retrieval failed: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
-# Main execution function
-async def execute_enhanced_mcp_generation(
+@staticmethod
+def build_initial_state(
     request_id: str,
     template_config: Dict[str, Any],
     style_config: Dict[str, Any],
-    app_state,
-    mcp_options: Dict[str, Any] = None
+    dynamic_parameters: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Main entry point for enhanced MCP generation"""
+    """
+    ENTERPRISE: Build initial state with sensible defaults for missing parameters
+    """
+    if not isinstance(template_config, dict) or not template_config:
+        raise ValueError("ENTERPRISE: template_config must be a non-empty dict")
+    if not isinstance(style_config, dict) or not style_config:
+        raise ValueError("ENTERPRISE: style_config must be a non-empty dict")
+
+    # Extract from dynamic_overrides (actual user input)
+    overrides = template_config.get("dynamic_overrides", {})
     
-    # Update app state
-    if enhanced_mcp_manager.app_state is None:
-        enhanced_mcp_manager.app_state = app_state
-    
-    if not enhanced_mcp_manager.initialized:
-        raise RuntimeError("MCP not initialized—enterprise mode requires MCP.")
-    
-    mcp_options = mcp_options or {}
-    dynamic_parameters = mcp_options.get('dynamic_parameters', {})
-    
-    # Initialize task tracking
-    if hasattr(app_state, 'generation_tasks') and request_id not in app_state.generation_tasks:
-        app_state.generation_tasks[request_id] = {
-            "status": "initializing",
-            "progress": 0.0,
-            "current_step": "Starting",
-            "metadata": {},
-            "errors": [],
-            "warnings": []
-        }
-    
-    # Execute generation
-    final_state = None
-    async for state in enhanced_mcp_manager.execute_enhanced_generation(
-        request_id, template_config, style_config, dynamic_parameters, mcp_options
-    ):
-        final_state = state
+    # FIXED: Topic extraction with better fallbacks
+    topic = (
+        dynamic_parameters.get("topic") or 
+        overrides.get("topic") or
+        template_config.get("name", "").strip() or
+        "General Content Topic"
+    )
+
+    # FIXED: Template type with fallback
+    template_type = template_config.get("template_type", "article")
+
+    # FIXED: Audience with multiple fallback sources
+    audience = (
+        dynamic_parameters.get("target_audience") or 
+        dynamic_parameters.get("audience") or 
+        overrides.get("target_audience") or
+        overrides.get("audience") or
+        template_config.get("target_audience") or
+        "general audience"
+    )
+
+    # FIXED: Platform with default
+    platform = dynamic_parameters.get("platform") or overrides.get("platform") or "web"
+
+    # Validate final values have reasonable defaults
+    if not topic.strip():
+        topic = "General Content Topic"
+    if not audience.strip():
+        audience = "general audience"
+    if not isinstance(platform, str):
+        platform = "web"
+
+    return {
+        "request_id": request_id,
+        "status": "pending",
+        "content_spec": {
+            "topic": topic.strip(),
+            "template_type": template_type,
+            "target_audience": audience.strip(),
+            "platform": platform,
+        },
+        "template_config": copy.deepcopy(template_config),
+        "style_config": copy.deepcopy(style_config),
+        "dynamic_parameters": copy.deepcopy(dynamic_parameters or {}),
+        "metadata": {
+            "created_at": datetime.utcnow().isoformat(),
+            "enterprise_mode": True,
+            "mcp": True,
+            "fallbacks_used": {
+                "topic": not dynamic_parameters.get("topic") and not overrides.get("topic"),
+                "audience": not dynamic_parameters.get("target_audience") and not overrides.get("target_audience"),
+                "platform": not dynamic_parameters.get("platform")
+            },
+        },
+    }
+async def execute_enhanced_mcp_generation(
+    request_id: str,
+    template_config: Dict[str, Any],
+    style_config: Dict[str, Any], 
+    dynamic_parameters: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Enterprise MCP generation - FAIL FAST, NO FALLBACKS
+    FIXED: Deep copy configs and add debug logging to trace template_config flow
+    """
+    from .core.enriched_content_state import EnrichedContentState, ContentSpec
+    from .mcp_enhanced_graph import MCPEnhancedContentGraph
+
+    logger.info(f"Starting enhanced MCP generation for request {request_id}")
+    logger.info(f"DEBUG: INITIAL template_config keys: {list(template_config.keys())[:5]}")
+
+    if not (isinstance(template_config, dict) and template_config):
+        _fail("template_config empty or invalid in background task")
+    if not (isinstance(style_config, dict) and style_config):
+        _fail("style_config empty or invalid in background task")
+    if dynamic_parameters is None:
+        dynamic_parameters = {}
         
-        # Update app state
-        if hasattr(app_state, 'generation_tasks') and request_id in app_state.generation_tasks:
-            task_status = app_state.generation_tasks[request_id]
-            task_status.update({
-                'progress': state.progress,
-                'current_step': state.current_step,
-                'status': state.status
-            })
-            task_status.setdefault('metadata', {}).update(state.metadata)
-            task_status.setdefault('errors', []).extend(state.errors)
-            task_status.setdefault('warnings', []).extend(state.warnings)
+    # Extract content specification parameters
+    topic = dynamic_parameters.get('topic', template_config.get('name', 'Generated Content'))
+    audience = dynamic_parameters.get('target_audience', dynamic_parameters.get('audience', 'general'))
+    platform = dynamic_parameters.get('platform', 'web')
+    template_type = template_config.get('slug', template_config.get('template_type', 'general'))
+
+    # Create ContentSpec
+    content_spec = ContentSpec(
+        topic=topic,
+        template_type=template_type, 
+        target_audience=audience,
+        platform=platform
+    )
     
-    # Return final result
-    if final_state and final_state.status == 'completed':
+    fingerprint = hashlib.sha256(json.dumps(template_config, sort_keys=True).encode()).hexdigest()
+    content_spec.business_context = {
+        "template_config": copy.deepcopy(template_config),
+        "style_config": copy.deepcopy(style_config),
+        "dynamic_parameters": dynamic_parameters,
+        "template_config_fingerprint": fingerprint,
+    }
+
+    # CRITICAL FIX: Deep copy configs to prevent reference issues
+    template_config_copy = copy.deepcopy(template_config)
+    style_config_copy = copy.deepcopy(style_config)
+    
+    initial_state = EnrichedContentState(
+        content_spec=content_spec,
+        template_config=template_config_copy,
+        style_config=style_config_copy,
+        request_id=request_id
+    )
+        
+    # DEBUG: Verify assignment worked
+    logger.info(f"DEBUG: After assignment - template_config exists: {hasattr(initial_state, 'template_config')}")
+    logger.info(f"DEBUG: After assignment - template_config type: {type(initial_state.template_config)}")
+    logger.info(f"DEBUG: After assignment - template_config bool: {bool(initial_state.template_config)}")
+    logger.info(f"DEBUG: After assignment - template_config keys: {list(initial_state.template_config.keys())[:5] if initial_state.template_config else 'NO KEYS'}")
+    
+    # Add dynamic parameters as attributes
+    for key, value in dynamic_parameters.items():
+        if hasattr(initial_state, key):
+            setattr(initial_state, key, value)
+
+    # Pre-graph validation - fail fast if template_config is invalid
+    if not (hasattr(initial_state, 'template_config') and isinstance(initial_state.template_config, dict) and initial_state.template_config):
+        _fail(f"PRE-GRAPH: template_config validation failed: {type(getattr(initial_state, 'template_config', None))}")
+
+    logger.info(f"State created: template={template_config.get('name')}, style={style_config.get('name')}")
+    logger.info(f"DEBUG: About to call graph with template_config: {bool(initial_state.template_config)}")
+
+    # Initialize the graph
+    graph = MCPEnhancedContentGraph()
+
+    try:
+        result = await graph.execute_coordinated_generation(
+            initial_state=initial_state,
+            mcp_options={'request_id': request_id}
+        )
+        
+        logger.info(f"Graph execution completed with status: {result.get('status')}")
+        
         return {
-            "status": "completed",
-            "content": final_state.metadata.get('final_content', ''),
-            "metadata": final_state.metadata,
-            "progress": 1.0,
-            "errors": final_state.errors,
-            "warnings": final_state.warnings,
-            "metrics": {
-                "tools_used": len(final_state.results),
-                "content_length": len(final_state.metadata.get('final_content', ''))
-            }
+            "status": result.get('status', 'completed'),
+            "request_id": request_id,
+            "content": result.get('content', ''),
+            "metadata": {
+                "template_config_used": bool(template_config),
+                "style_config_used": bool(style_config),
+                "template_type": template_type,
+                "template_name": template_config.get('name', 'unknown'),
+                "style_name": style_config.get('name', 'unknown'),
+                "topic": topic,
+                "audience": audience,
+                **result.get('metadata', {})
+            },
+            "errors": result.get('errors', []),
+            "warnings": result.get('warnings', []),
+            "metrics": result.get('metrics', {})
         }
-    else:
+
+    except Exception as e:
+        logger.error(f"MCP generation failed for {request_id}: {e}")
         return {
-            "status": "failed",
+            "status": "failed", 
+            "request_id": request_id,
             "content": "",
-            "metadata": final_state.metadata if final_state else {},
-            "progress": final_state.progress if final_state else 0.0,
-            "errors": final_state.errors if final_state else ["Unknown error"],
+            "metadata": {
+                "template_config_used": bool(template_config),
+                "style_config_used": bool(style_config),
+                "error": str(e)
+            },
+            "errors": [str(e)],
             "warnings": [],
             "metrics": {}
         }
+
+async def execute_enhanced_mcp_generation(
+    request_id: str,
+    template_config: dict,
+    style_config: dict,
+    dynamic_parameters: dict,
+):
+    graph = MCPEnhancedContentGraph()
+    initial = build_initial_state(request_id, template_config, style_config, dynamic_parameters)
+
+    mcp_opts = {"request_id": request_id}
+
+    return await graph.execute_coordinated_generation(initial, mcp_options=mcp_opts)
+
+
 
 # Integration functions
 async def initialize_mcp_for_existing_server(app: FastAPI) -> bool:
@@ -750,21 +906,18 @@ async def initialize_mcp_for_existing_server(app: FastAPI) -> bool:
         app.state.mcp_available = True
         app.state.universal_system_available = bool(enhanced_mcp_manager.universal_integration)
         
-        logger.info("✅ Consolidated MCP successfully integrated")
+        logger.info("Consolidated MCP successfully integrated")
         return True
         
     except Exception as e:
-        logger.error(f"❌ MCP initialization failed: {e}")
+        logger.error(f"MCP initialization failed: {e}")
         app.state.mcp_available = False
         app.state.universal_system_available = False
         raise e
 
-# Add this function to langgraph_app/mcp_server_extension.py
-# Around line 700, before the __all__ export
-
 async def enhance_generation_with_mcp(
     original_task_func,
-    requestId: str,
+    request_id: str,
     template_config: Dict[str, Any],
     style_config: Dict[str, Any],
     app_state,
@@ -786,18 +939,21 @@ async def enhance_generation_with_mcp(
     if not mcp_enabled:
         raise RuntimeError("MCP disabled—enterprise mode requires MCP.")
     
-    logger.info(f"🚀 Using Enhanced MCP generation for {requestId}")
+    # Extract dynamic_parameters from mcp_options
+    dynamic_parameters = mcp_options.get('dynamic_parameters', {}) if mcp_options else {}
+    
+    logger.info(f"🚀 Using Enhanced MCP generation for {request_id}")
     
     try:
         result = await execute_enhanced_mcp_generation(
-            requestId, template_config, style_config, app_state, mcp_options or {}
+            request_id, template_config, style_config, dynamic_parameters
         )
         
-        logger.info(f"✅ Enhanced MCP generation completed for {requestId}")
+        logger.info(f"✅ Enhanced MCP generation completed for {request_id}")
         return result
         
     except Exception as e:
-        logger.error(f"❌ Enhanced MCP generation failed for {requestId}: {e}")
+        logger.error(f"❌ Enhanced MCP generation failed for {request_id}: {e}")
         raise
 async def cleanup_mcp_for_existing_server(app: FastAPI):
     """Cleanup MCP for existing server"""
@@ -809,12 +965,15 @@ async def cleanup_mcp_for_existing_server(app: FastAPI):
         logger.error(f"❌ MCP cleanup failed: {e}")
         raise e
 
-# UPDATE the __all__ export to include:
+# Initialize MCP Graph instance
+_graph_instance = MCPEnhancedContentGraph()
+graph = _graph_instance.graph
+
 __all__ = [
     'ConsolidatedMCPOrchestrator',
     'enhanced_mcp_manager',
     'execute_enhanced_mcp_generation',
-    'enhance_generation_with_mcp',  # ADD THIS LINE
+    'enhance_generation_with_mcp',
     'initialize_mcp_for_existing_server',
     'cleanup_mcp_for_existing_server',
     'MCPGenerationRequest'

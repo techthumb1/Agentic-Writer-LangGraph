@@ -26,9 +26,22 @@ except ImportError:
     def load_style_profiles():
         return []
 
+# Make the function available for potential future use
+_load_style_profiles = load_style_profiles
+
 # Import the universal system
-from .universal_template_system import LangGraphUniversalIntegration
-from .universal_dynamic_generator import TrulyDynamicContentSystem
+# Import the universal system with error handling
+try:
+    from .universal_template_system import LangGraphUniversalIntegration
+except Exception as e:
+    print(f"Warning: Universal template system unavailable: {e}")
+    LangGraphUniversalIntegration = None
+
+try:
+    from .universal_dynamic_generator import TrulyDynamicContentSystem
+except Exception as e:
+    print(f"Warning: Dynamic generator unavailable: {e}")
+    TrulyDynamicContentSystem = None
 
 class WriterzRoomUniversalAdapter:
     """
@@ -36,35 +49,17 @@ class WriterzRoomUniversalAdapter:
     """
     
     def __init__(self):
-        self.universal_integration = LangGraphUniversalIntegration()
-        self.dynamic_system = TrulyDynamicContentSystem()
-        
+        if LangGraphUniversalIntegration:
+            self.universal_integration = LangGraphUniversalIntegration()
+        else:
+            self.universal_integration = None
+
+        if TrulyDynamicContentSystem:
+            self.dynamic_system = TrulyDynamicContentSystem()
+        else:
+            self.dynamic_system = None
+
         print("WriterzRoom Universal Adapter initialized")
-    
-    async def process_user_request(
-        self, 
-        user_request: str,
-        template_id: Optional[str] = None,
-        style_profile: Optional[str] = None,
-        user_context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        Main entry point that replaces your current template selection logic
-        
-        This handles ANY user request and returns everything needed for content generation
-        """
-        
-        print(f"🔍 Processing request: {user_request[:100]}...")
-        
-        # If user explicitly selected template/style, respect their choice
-        if template_id and style_profile:
-            return await self._handle_explicit_selection(
-                user_request, template_id, style_profile, user_context
-            )
-        
-        # Otherwise, use universal dynamic generation
-        return await self._handle_dynamic_generation(user_request, user_context)
-    
     async def _handle_dynamic_generation(
         self, 
         user_request: str, 
@@ -97,6 +92,32 @@ class WriterzRoomUniversalAdapter:
             "instructions": self._extract_instructions_from_yaml(template_yaml),
             "system_prompt": self._extract_system_prompt_from_yaml(template_yaml)
         }
+
+
+    async def process_user_request(
+        self, 
+        user_request: str,
+        template_id: Optional[str] = None,
+        style_profile: Optional[str] = None,
+        user_context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Main entry point that replaces your current template selection logic
+        
+        This handles ANY user request and returns everything needed for content generation
+        """
+        
+        print(f"🔍 Processing request: {user_request[:100]}...")
+        
+        # If user explicitly selected template/style, respect their choice
+        if template_id and style_profile:
+            return await self._handle_explicit_selection(
+                user_request, template_id, style_profile, user_context
+            )
+        
+        # Otherwise, use universal dynamic generation
+        return await self._handle_dynamic_generation(user_request, user_context)
+    
     
     async def _handle_explicit_selection(
         self,

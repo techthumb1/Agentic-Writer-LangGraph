@@ -666,7 +666,7 @@ class EnhancedImageAgent:
                 state.generated_images = [image_result]
             
             # Update phase
-            state.update_phase(ContentPhase.CODE_GENERATION)
+            state.update_phase(ContentPhase.FINALIZATION)
             
             # Log successful completion
             state.log_agent_execution(self.agent_type, {

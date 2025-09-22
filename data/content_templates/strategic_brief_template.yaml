@@ -1,0 +1,296 @@
+# data/content_templates/strategic_brief_template.yaml
+
+name: "Strategic Brief Generator"
+slug: "strategic_brief_template" 
+version: "1.0"
+category: "business"
+template_type: "strategic_brief"
+
+description: >
+  Executive-level strategic brief generator. Creates concise, actionable strategic 
+  documents for senior leadership and board presentations. Compatible with 
+  professional strategic planning style profiles.
+
+# Core parameters for strategic content
+parameters:
+  strategic_focus:
+    type: "select"
+    required: true
+    options: ["market_entry", "competitive_response", "growth_strategy", "cost_optimization", "digital_transformation", "merger_acquisition", "product_launch", "risk_mitigation"]
+    label: "Strategic Focus"
+    description: "Primary strategic initiative or challenge"
+  
+  stakeholder_level:
+    type: "select"
+    required: true
+    options: ["board_of_directors", "c_suite", "senior_leadership", "department_heads"]
+    default: "c_suite"
+    label: "Target Stakeholders"
+    description: "Primary audience for the strategic brief"
+  
+  urgency_level:
+    type: "select"
+    required: true
+    options: ["immediate", "quarterly", "annual", "long_term"]
+    default: "quarterly"
+    label: "Decision Urgency"
+    description: "Timeline for strategic decision-making"
+  
+  business_unit:
+    type: "text"
+    optional: true
+    label: "Business Unit/Division"
+    description: "Specific business unit or division focus"
+    placeholder: "e.g., North America Division, Product Group"
+  
+  strategic_horizon:
+    type: "select"
+    required: true
+    options: ["3_months", "6_months", "1_year", "3_years", "5_years"]
+    default: "1_year"
+    label: "Strategic Horizon"
+    description: "Time horizon for strategic planning"
+  
+  financial_impact:
+    type: "select"
+    required: true
+    options: ["revenue_growth", "cost_reduction", "margin_improvement", "risk_mitigation", "investment_decision"]
+    label: "Financial Impact Type"
+    description: "Primary financial consideration"
+  
+  competitive_context:
+    type: "checkbox"
+    default: true
+    label: "Include Competitive Analysis"
+    description: "Include competitive positioning context"
+  
+  risk_assessment:
+    type: "checkbox"
+    default: true
+    label: "Include Risk Assessment"
+    description: "Include strategic risk analysis"
+  
+  resource_requirements:
+    type: "checkbox"
+    default: true
+    label: "Include Resource Requirements"
+    description: "Include resource allocation needs"
+
+# Content structure requirements for strategic briefs
+requirements:
+  min_words: 800
+  max_words: 1500
+  min_sections: 4
+  executive_focused: true
+  decision_oriented: true
+  actionable_recommendations: true
+  financial_clarity: true
+  concise_format: true
+
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "strategic_brief"
+  format: "executive_summary"
+  focus_on_decisions: true
+  include_financial_impact: true
+  strategic_approach: "top_down_analysis"
+  conclusion_type: "clear_recommendations"
+  executive_language: true
+
+# Style profile compatibility matrix
+style_compatibility:
+  highly_compatible:
+    - "strategic_planning"
+    - "executive_summary"
+    - "board_presentation"
+    - "merger_acquisition"
+    - "investor_presentation"
+  moderately_compatible:
+    - "business_case_analysis"
+    - "competitive_analysis"
+    - "market_research_report"
+  incompatible:
+    - "beginner_tutorial"
+    - "social_media_voice"
+    - "technical_dive"
+    - "academic_textbook"
+
+# Content sections optimized for executive consumption
+sections:
+  order:
+    - "situation_summary"
+    - "strategic_options"
+    - "recommended_approach"
+    - "implementation_roadmap"
+    - "financial_implications"
+    - "next_steps"
+  
+  situation_summary:
+    required: true
+    max_words: 200
+    focus: "current_state_and_context"
+    includes: ["key_challenges", "market_context", "competitive_position"]
+  
+  strategic_options:
+    required: true
+    max_words: 300
+    focus: "alternative_approaches"
+    includes: ["option_analysis", "pros_and_cons", "strategic_trade_offs"]
+  
+  recommended_approach:
+    required: true
+    max_words: 250
+    focus: "preferred_strategy"
+    includes: ["strategic_rationale", "key_initiatives", "success_factors"]
+  
+  implementation_roadmap:
+    required: true
+    max_words: 200
+    focus: "execution_plan"
+    includes: ["key_milestones", "timeline", "dependencies"]
+  
+  financial_implications:
+    required: true
+    max_words: 150
+    focus: "financial_impact"
+    includes: ["investment_required", "expected_returns", "financial_risks"]
+  
+  next_steps:
+    required: true
+    max_words: 100
+    focus: "immediate_actions"
+    includes: ["decision_points", "action_items", "timeline"]
+
+# MCP tool integration for strategic analysis
+mcp:
+  tool_sequence:
+    - "strategic_analyzer"
+    - "financial_modeler"
+    - "competitive_intelligence"
+    - "risk_assessor"
+    - "implementation_planner"
+  
+  analysis_requirements:
+    - "strategic_context"
+    - "financial_modeling"
+    - "competitive_positioning"
+    - "implementation_feasibility"
+
+# Prompt schema for strategic content
+prompt_schema:
+  system_preamble: |
+    You are a senior strategy consultant and executive advisor. Create concise, 
+    executive-level strategic briefs that enable informed decision-making by 
+    senior leadership. Focus on strategic clarity, financial impact, and 
+    actionable recommendations. Generate content that is authoritative, 
+    data-driven, and presentation-ready for board and C-suite audiences.
+
+  content_template: |
+    # Strategic Brief: {{strategic_focus}}
+    **{{stakeholder_level}} | {{urgency_level}} Decision | {{strategic_horizon}} Horizon**
+
+    ## Situation Summary
+    {{situation_summary}}
+
+    ## Strategic Options
+    {{strategic_options}}
+
+    ## Recommended Approach
+    {{recommended_approach}}
+
+    ## Implementation Roadmap
+    {{implementation_roadmap}}
+
+    ## Financial Implications
+    {{financial_implications}}
+
+    ## Next Steps
+    {{next_steps}}
+
+    ---
+    *Strategic Analysis | {{business_unit}} | {{urgency_level}} Priority*
+
+  placeholders:
+    - strategic_focus
+    - stakeholder_level
+    - urgency_level
+    - strategic_horizon
+    - business_unit
+    - situation_summary
+    - strategic_options
+    - recommended_approach
+    - implementation_roadmap
+    - financial_implications
+    - next_steps
+
+# Output specifications for executive consumption
+output:
+  format: "markdown"
+  structure: "executive_brief"
+  require:
+    strategic_clarity: true
+    actionable_recommendations: true
+    financial_impact: true
+    implementation_focus: true
+    decision_orientation: true
+  
+  style_requirements:
+    tone: "authoritative_professional"
+    objectivity: "high"
+    evidence_based: true
+    executive_language: true
+    concise: true
+
+# Quality assurance for strategic content
+quality_requirements:
+  strategic_depth: 90
+  executive_readiness: 95
+  actionability: 90
+  financial_clarity: 85
+  decision_support: 95
+  professional_standard: 95
+
+# Template metadata
+metadata:
+  version: "1.0.0"
+  created_by: "content_template_system"
+  last_updated: "2025-09-17"
+  difficulty: "expert"
+  estimated_time: "20-30 min"
+  target_audience: "executives"
+  complexity_level: "expert"
+  enterprise_grade: true
+  template_classification: "strategic_brief"
+
+real_time_support:
+  enabled: true
+  max_age_hours: 72  # 3 days - strategic decisions need current market conditions
+  verification_sources: 3
+  search_required: true
+  fail_if_unavailable: true
+  search_focus: "market_intelligence"
+  content_types: ["market_data", "competitor_moves", "regulatory_changes", "economic_indicators"]
+
+# === WriterzRoom enterprise output controls ===
+post_config:
+  enabled: false        # set to true in social_media_campaign.yaml
+  min_posts: 3          # used only when enabled
+  max_posts: 5          # used only when enabled
+  paragraph_length: short   # short | medium | long
+  per_post_requirements:
+    min_words: 60
+    max_words: 120
+  composition:
+    include_cta: true
+    include_hashtags: 3      # 0 = none
+    include_links: optional  # optional | required | none
+
+output_policy:
+  no_code: true          # enforce: remove code blocks/inlines
+  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
+  min_paragraphs: 3      # minimum paragraphs after sanitation
+  paragraph_first: true  # prefer paragraphs over lists
+
+# Optional: planner override keys (validated upstream; no fallbacks here)
+planner_overrides:
+  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided

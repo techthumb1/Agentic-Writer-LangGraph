@@ -4,6 +4,7 @@
 
 id: research_paper_template
 name: Research Paper
+template_type: "research_paper"
 description: Dynamic academic research paper template that adapts to any field or methodology
 category: academic_research
 difficulty: expert
@@ -16,23 +17,23 @@ tags:
   - scholarly
   - publication
 
-suggested_sections:
-  - name: abstract
-    description: Concise summary of research objectives, methods, and findings
-  - name: introduction
-    description: Background, problem statement, and research questions
-  - name: literature_review
-    description: Analysis of existing research and theoretical framework
-  - name: methodology
-    description: Research design, data collection, and analysis methods
-  - name: results
-    description: Presentation of findings with data and analysis
-  - name: discussion
-    description: Interpretation of results and implications
-  - name: conclusion
-    description: Summary of contributions and future research directions
-  - name: references
-    description: Bibliography and citation of sources
+#suggested_sections:
+#  - name: abstract
+#    description: Concise summary of research objectives, methods, and findings
+#  - name: introduction
+#    description: Background, problem statement, and research questions
+#  - name: literature_review
+#    description: Analysis of existing research and theoretical framework
+#  - name: methodology
+#    description: Research design, data collection, and analysis methods
+#  - name: results
+#    description: Presentation of findings with data and analysis
+#  - name: discussion
+#    description: Interpretation of results and implications
+#  - name: conclusion
+#    description: Summary of contributions and future research directions
+#  - name: references
+#    description: Bibliography and citation of sources
 
 # Recommended style profiles for this template
 recommended_styles:
@@ -47,42 +48,42 @@ recommended_styles:
 system_prompt: |
   You are a distinguished academic researcher and scholarly writer with expertise across multiple disciplines. Generate rigorous, publication-quality research papers that meet the highest academic standards.
 
-instructions: |
-  Create dynamic, comprehensive academic research papers that adapt to the user's specific field, methodology, and research context.
-  
-  Generate unique, scholarly content that includes:
-  1. **Abstract**: Compelling 150-250 word summary that captures the essence and significance of the research
-  2. **Introduction**: Establishes context, identifies research gaps, and articulates clear research questions
-  3. **Literature Review**: Synthesizes existing research, identifies theoretical frameworks, and positions the current study
-  4. **Methodology**: Detailed research design that enables replication and demonstrates methodological rigor
-  5. **Results**: Clear presentation of findings with appropriate data visualization and statistical analysis
-  6. **Discussion**: Thoughtful interpretation connecting results to theory and broader implications
-  7. **Conclusion**: Strong summary of contributions, limitations, and future research directions
-  8. **References**: Properly formatted academic citations
-  
-  **Enterprise Academic Standards**:
-  - Adapt to any academic discipline (STEM, humanities, social sciences, etc.)
-  - Generate contextually appropriate research topics, methodologies, and findings
-  - Create unique theoretical frameworks, hypotheses, and research questions for each generation
-  - Include field-specific terminology, methodologies, and analytical approaches
-  - Develop original research problems that advance knowledge in the field
-  
-  **Dynamic Research Adaptation**:
-  - Infer the academic field and adjust methodology accordingly
-  - Generate realistic data sets, statistical analyses, and research findings
-  - Create unique participant populations, sample sizes, and research contexts
-  - Adapt citation styles and academic conventions to match the discipline
-  - Develop novel theoretical contributions and practical implications
-  - Generate fresh research gaps and future research directions
-  
-  **Scholarly Rigor**:
-  - Maintain academic tone while ensuring accessibility
-  - Include appropriate statistical methods and analytical techniques
-  - Create logical argument structures with evidence-based conclusions
-  - Demonstrate methodological sophistication and ethical considerations
-  - Show awareness of limitations and alternative explanations
-  
-  Focus on creating research that advances knowledge, demonstrates methodological rigor, and provides valuable contributions to the academic community.
+#instructions: |
+#  Create dynamic, comprehensive academic research papers that adapt to the user's specific field, methodology, and research context.
+#  
+#  Generate unique, scholarly content that includes:
+#  1. **Abstract**: Compelling 150-250 word summary that captures the essence and significance of the research
+#  2. **Introduction**: Establishes context, identifies research gaps, and articulates clear research questions
+#  3. **Literature Review**: Synthesizes existing research, identifies theoretical frameworks, and positions the current study
+#  4. **Methodology**: Detailed research design that enables replication and demonstrates methodological rigor
+#  5. **Results**: Clear presentation of findings with appropriate data visualization and statistical analysis
+#  6. **Discussion**: Thoughtful interpretation connecting results to theory and broader implications
+#  7. **Conclusion**: Strong summary of contributions, limitations, and future research directions
+#  8. **References**: Properly formatted academic citations
+#  
+#  **Enterprise Academic Standards**:
+#  - Adapt to any academic discipline (STEM, humanities, social sciences, etc.)
+#  - Generate contextually appropriate research topics, methodologies, and findings
+#  - Create unique theoretical frameworks, hypotheses, and research questions for each generation
+#  - Include field-specific terminology, methodologies, and analytical approaches
+#  - Develop original research problems that advance knowledge in the field
+#  
+#  **Dynamic Research Adaptation**:
+#  - Infer the academic field and adjust methodology accordingly
+#  - Generate realistic data sets, statistical analyses, and research findings
+#  - Create unique participant populations, sample sizes, and research contexts
+#  - Adapt citation styles and academic conventions to match the discipline
+#  - Develop novel theoretical contributions and practical implications
+#  - Generate fresh research gaps and future research directions
+#  
+#  **Scholarly Rigor**:
+#  - Maintain academic tone while ensuring accessibility
+#  - Include appropriate statistical methods and analytical techniques
+#  - Create logical argument structures with evidence-based conclusions
+#  - Demonstrate methodological sophistication and ethical considerations
+#  - Show awareness of limitations and alternative explanations
+#  
+#  Focus on creating research that advances knowledge, demonstrates methodological rigor, and provides valuable contributions to the academic community.
 
 # Content specifications
 target_length:
@@ -121,3 +122,37 @@ metadata:
   category: "academic_research"
   complexity_level: "expert"
   parameter_flexibility: "dynamic"
+
+real_time_support:
+  enabled: true
+  max_age_hours: 720  # 30 days - research papers need recent but not breaking news
+  verification_sources: 3
+  search_required: true
+  fail_if_unavailable: true
+  search_focus: "academic_developments"  # Focus on recent research and publications
+  content_types: ["research_publications", "academic_papers", "study_results", "conference_proceedings"]
+  quality_threshold: "peer_reviewed_preferred"
+
+# === WriterzRoom enterprise output controls ===
+post_config:
+  enabled: false        # set to true in social_media_campaign.yaml
+  min_posts: 3          # used only when enabled
+  max_posts: 5          # used only when enabled
+  paragraph_length: short   # short | medium | long
+  per_post_requirements:
+    min_words: 60
+    max_words: 120
+  composition:
+    include_cta: true
+    include_hashtags: 3      # 0 = none
+    include_links: optional  # optional | required | none
+
+output_policy:
+  no_code: true          # enforce: remove code blocks/inlines
+  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
+  min_paragraphs: 3      # minimum paragraphs after sanitation
+  paragraph_first: true  # prefer paragraphs over lists
+
+# Optional: planner override keys (validated upstream; no fallbacks here)
+planner_overrides:
+  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided

@@ -204,7 +204,7 @@ class DynamicStyleProfileLoader:
         # Check for tone in template-specific fields
         if 'parameters' in content:
             for param in content['parameters']:
-                if 'tone' in param.get('name', '').lower() and 'options' in param:
+                if isinstance(param, dict) and 'tone' in param.get('name', '').lower() and 'options' in param:
                     tone_indicators.extend([opt.lower() for opt in param['options']])
         
         # Determine domain focus from name and content
@@ -565,6 +565,33 @@ class DynamicStyleProfileLoader:
             "template_count": len(self.templates_cache),
             "compatibility_matrix_size": f"{len(self.compatibility_matrix)} x {len(self.profiles_cache) if self.profiles_cache else 0}",
             "content_loaded": bool(self.profiles_cache and self.templates_cache)
+        }
+
+    def get_enhanced_compatibility_score(self, template_id: str, style_id: str, 
+                                       dynamic_context: Dict = None) -> Dict[str, Any]:
+        """Enhanced compatibility with context-aware scoring"""
+
+        base_score = self.get_compatibility_score(template_id, style_id)
+
+        if not dynamic_context:
+            return {'base_score': base_score, 'adjusted_score': base_score}
+
+        # Context adjustments
+        topic = dynamic_context.get('topic', '').lower()
+        audience = dynamic_context.get('audience', '').lower()
+
+        # Boost technical styles for technical topics
+        if 'technical' in topic and 'technical' in style_id:
+            base_score += 0.1
+
+        # Boost academic styles for research topics  
+        if any(word in topic for word in ['research', 'study', 'analysis']) and 'academic' in style_id:
+            base_score += 0.1
+
+        return {
+            'base_score': self.get_compatibility_score(template_id, style_id),
+            'adjusted_score': min(base_score, 1.0),
+            'context_boost': base_score - self.get_compatibility_score(template_id, style_id)
         }
 
 # ✅ DYNAMIC: Updated singleton pattern
