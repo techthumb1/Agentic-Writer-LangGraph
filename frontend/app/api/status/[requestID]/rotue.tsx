@@ -1,19 +1,19 @@
-// frontend/app/api/generate/status/[requestId]/route.ts
+// frontend/app/api/generate/status/[request_id]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { requestId: string } }
+  { params }: { params: { request_id: string } }
 ) {
   try {
-    const { requestId } = params;
+    const { request_id } = params;
     
-    console.log(`🔍 Checking status for request: ${requestId}`);
+    console.log(`🔍 Checking status for request: ${request_id}`);
 
     // Forward the status check to your backend - FIXED URL
     const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
-    const backendStatusUrl = `${backendUrl}/status/${requestId}`;
+    const backendStatusUrl = `${backendUrl}/status/${request_id}`;
     
     console.log('🔍 [STATUS] Calling backend URL:', backendStatusUrl);
     
