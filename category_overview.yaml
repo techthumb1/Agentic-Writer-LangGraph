@@ -1,0 +1,135 @@
+system_info:
+  total_categories: 5
+  total_style_profiles: 50
+  generation_date: '2025-07-18'
+  version: 2.0.0
+categories:
+  academic_research:
+    name: Academic & Research
+    description: Scholarly writing for academic institutions, research papers, and
+      peer-reviewed publications
+    style_count: 10
+    complexity_distribution:
+      beginner: 0
+      intermediate: 1
+      advanced: 4
+      expert: 5
+    audience_types:
+    - Academic Committee
+    - Academic Readers
+    - Academics
+    - Conference Attendees
+    - Defense Committee
+    - Funding Committees
+    - Grant Reviewers
+    - Methodologists
+    - Researchers
+    - Scholarly Community
+  technical_documentation:
+    name: Technical Documentation
+    description: Precise technical writing for developers, engineers, and technical
+      professionals
+    style_count: 10
+    complexity_distribution:
+      beginner: 0
+      intermediate: 1
+      advanced: 6
+      expert: 3
+    audience_types:
+    - Architects
+    - Developers
+    - Development Teams
+    - Devops Engineers
+    - Engineers
+    - Implementers
+    - Integration Specialists
+    - Performance Engineers
+    - Security Engineers
+    - Support Engineers
+  business_strategy:
+    name: Business Strategy
+    description: Strategic business communication for executives, stakeholders, and
+      decision-makers
+    style_count: 10
+    complexity_distribution:
+      beginner: 0
+      intermediate: 2
+      advanced: 5
+      expert: 3
+    audience_types:
+    - Board Members
+    - Business Analysts
+    - C Suite
+    - Corporate Development
+    - Decision Makers
+    - Financial Analysts
+    - Investors
+    - Strategic Planners
+    - Strategy Teams
+    - Vc Partners
+  educational_content:
+    name: Educational Content
+    description: Instructional content for learning, training, and knowledge transfer
+    style_count: 10
+    complexity_distribution:
+      beginner: 1
+      intermediate: 7
+      advanced: 1
+      expert: 1
+    audience_types:
+    - Advanced Learners
+    - Beginners
+    - Certification Candidates
+    - Employees
+    - Guided Learners
+    - Knowledge Seekers
+    - Online Students
+    - Students
+    - Trainees
+    - Workshop Participants
+  marketing_communications:
+    name: Marketing Communications
+    description: Persuasive marketing content for brand building and customer engagement
+    style_count: 10
+    complexity_distribution:
+      beginner: 1
+      intermediate: 7
+      advanced: 2
+      expert: 0
+    audience_types:
+    - Brand Audiences
+    - Conversion Targets
+    - Email Subscribers
+    - Existing Customers
+    - Industry Peers
+    - Influencer Audiences
+    - Potential Customers
+    - Sales Prospects
+    - Social Followers
+    - Target Market
+template_style_mappings:
+  blog_article_generator:
+  - content_marketing
+  - brand_storytelling
+  - beginner_tutorial
+  - thought_leadership
+  business_proposal_template:
+  - executive_summary
+  - business_case_analysis
+  - strategic_planning
+  technical_documents:
+  - api_documentation
+  - system_architecture
+  - technical_specification
+  research_paper_template:
+  - phd_dissertation
+  - peer_review_article
+  - literature_review
+  email_campaign_template:
+  - email_campaign
+  - customer_success
+  - sales_enablement
+  training_module_template:
+  - corporate_training
+  - online_course
+  - workshop_facilitator
