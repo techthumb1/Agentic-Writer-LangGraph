@@ -202,11 +202,6 @@ def integrate_with_existing_server(app):
     Function to integrate enhanced generation with your existing FastAPI app
     """
     
-    @app.post("/api/enhanced-generate")
-    async def enhanced_generate_endpoint(request_data: Dict[str, Any]):
-        """Enhanced generation endpoint"""
-        return await enhanced_generate_content(request_data)
-    
     @app.post("/api/universal-generate")
     async def universal_generate_endpoint(request_data: Dict[str, Any]):
         """Pure universal generation endpoint (always uses dynamic templates)"""
@@ -258,42 +253,42 @@ def analyze_content_requirements(user_request: str) -> Dict[str, Any]:
     integration = LangGraphUniversalIntegration()
     return asyncio.run(integration.analyze_content_requirements(user_request))
 
-# Example usage and testing
-if __name__ == "__main__":
-    async def test_enhanced_generation():
-        """Test the enhanced generation system"""
-        
-        # Test 1: AI/ML content (your specialty)
-        request = ContentGenerationRequest(
-            user_request="Write a comprehensive guide about implementing gradient descent optimization for neural networks, including mathematical foundations and practical code examples",
-            length_preference="long",
-            audience_level="intermediate"
-        )
-        
-        generator = EnhancedContentGenerator()
-        result = await generator.generate_content(request)
-        
-        print("🤖 AI/ML Content Generation Test:")
-        print(f"Status: {result.status}")
-        print(f"Method: {result.metadata.get('generation_method')}")
-        print(f"Word Count: {result.metadata.get('word_count')}")
-        print(f"Content Preview: {result.content[:200] if result.content else 'None'}...")
-        print("\n" + "="*50 + "\n")
-        
-        # Test 2: Gardening content (non-technical)
-        request2 = ContentGenerationRequest(
-            user_request="How to grow heirloom tomatoes in containers for beginners",
-            length_preference="medium",
-            audience_level="beginner"
-        )
-        
-        result2 = await generator.generate_content(request2)
-        
-        print("🌱 Gardening Content Generation Test:")
-        print(f"Status: {result2.status}")
-        print(f"Method: {result2.metadata.get('generation_method')}")
-        print(f"Word Count: {result2.metadata.get('word_count')}")
-        print(f"Content Preview: {result2.content[:200] if result2.content else 'None'}...")
-        
-    # Run test
-    asyncio.run(test_enhanced_generation())
+## Example usage and testing
+#if __name__ == "__main__":
+#    async def test_enhanced_generation():
+#        """Test the enhanced generation system"""
+#        
+#        # Test 1: AI/ML content (your specialty)
+#        request = ContentGenerationRequest(
+#            user_request="Write a comprehensive guide about implementing gradient descent optimization for neural networks, including mathematical foundations and practical code examples",
+#            length_preference="long",
+#            audience_level="intermediate"
+#        )
+#        
+#        generator = EnhancedContentGenerator()
+#        result = await generator.generate_content(request)
+#        
+#        print("🤖 AI/ML Content Generation Test:")
+#        print(f"Status: {result.status}")
+#        print(f"Method: {result.metadata.get('generation_method')}")
+#        print(f"Word Count: {result.metadata.get('word_count')}")
+#        print(f"Content Preview: {result.content[:200] if result.content else 'None'}...")
+#        print("\n" + "="*50 + "\n")
+#        
+#        # Test 2: Gardening content (non-technical)
+#        request2 = ContentGenerationRequest(
+#            user_request="How to grow heirloom tomatoes in containers for beginners",
+#            length_preference="medium",
+#            audience_level="beginner"
+#        )
+#        
+#        result2 = await generator.generate_content(request2)
+#        
+#        print("🌱 Gardening Content Generation Test:")
+#        print(f"Status: {result2.status}")
+#        print(f"Method: {result2.metadata.get('generation_method')}")
+#        print(f"Word Count: {result2.metadata.get('word_count')}")
+#        print(f"Content Preview: {result2.content[:200] if result2.content else 'None'}...")
+#        
+#    # Run test
+#    asyncio.run(test_enhanced_generation())

@@ -9,10 +9,10 @@ description: >
 
 # Inputs (resolved at runtime from request payload or style profile)
 inputs:
-  newsletter_type: { required: true }             # "weekly_roundup", "product_updates", "industry_news"
-  primary_cta: { required: true }                # Main call-to-action for the newsletter
-  target_audience: { required: true }            # 'tech professionals', 'small business owners')"
-  tone: { default: "professional" }              # "friendly", "casual", "authoritative", "conversational"
+  newsletter_type: { required: true }   # "weekly_roundup", "product_updates", "industry_news"
+  primary_cta: { required: true }      # Main call-to-action for the newsletter
+  target_audience: { required: true }  # 'tech professionals', 'small business owners')"
+  tone: { default: "professional" }    # "friendly", "casual", "authoritative", "conversational"
   company_name: { default: "Your Company" }
   send_frequency: { default: "weekly" }          # "daily", "weekly", "bi_weekly", "monthly"
   personalization_level: { default: "medium" }   # "high", "medium", "low"

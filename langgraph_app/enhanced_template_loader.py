@@ -178,40 +178,7 @@ class EnhancedTemplateLoader:
 
         return parameters if isinstance(parameters, dict) else {}
     
-    def _get_fallback_template(self) -> EnhancedTemplate:
-        """Get fallback template when everything else fails"""
-        
-        fallback_content = {
-            "id": "universal_fallback",
-            "name": "Universal Content Generator",
-            "description": "Adaptive content generation for any topic",
-            "category": "general",
-            "system_prompt": """You are a versatile content creator who can write expertly on any topic.
-Adapt your expertise, tone, and approach to match the specific subject matter and audience.
-Generate substantial, engaging content that provides real value to readers.""",
-            "instructions": """Create comprehensive content that:
-1. Matches the topic expertise level required
-2. Uses appropriate tone and style for the subject  
-3. Includes relevant examples and insights
-4. Provides practical value to readers
-5. Is well-structured and easy to follow""",
-            "parameters": {},
-            "metadata": {
-                "fallback": True,
-                "universal": True
-            }
-        }
-        
-        return EnhancedTemplate(
-            id="universal_fallback",
-            name="Universal Content Generator", 
-            content=fallback_content,
-            source="fallback",
-            category="general",
-            parameters={},
-            metadata={"fallback": True}
-        )
-    
+   
     def list_templates(self) -> List[Dict[str, Any]]:
         """List all available static templates"""
         

@@ -1,120 +1,194 @@
+# File: data/content_templates/blog_article_generator.yaml
+# FIXED: Enforced no-code policy and aligned with blog writer prompt
+
 name: "Blog Article Generator"
 slug: "blog_article_generator"
-version: "2.0"
+version: "2.1"
 template_type: "blog_article"
 
 description: >
-  Evidence-driven longform article. Uses MCP tools. No narrative-only fallback.
+  SEO-optimized blog article generator. Creates engaging content marketing articles
+  with meta elements, headlines, and clear structure for reader engagement.
 
-# Inputs (resolved at runtime from request payload or style profile)
+# Core inputs for blog articles
 inputs:
   topic: { required: true }
-  audience: { default: "general" }
-  research_depth: { default: "deep" }        # "shallow" | "moderate" | "deep"
-  enable_mcp: { default: true }
-  tone: { default: "analytical" }
-  voice: { default: "expert" }
+  audience: { default: "general readers" }
+  tone: { default: "conversational" }
+  voice: { default: "engaging" }
   target_platform: { default: "web" }
+  seo_focus: { default: true }
   # Optional user overrides
   min_words: { optional: true }
-  min_sources: { optional: true }
-  section_order: { optional: true }           # array of section ids/labels
-  tool_sequence: { optional: true }           # array of MCP tools in order
-  enforce_citations: { optional: true }       # boolean
+  target_keywords: { optional: true }
+  headline_style: { optional: true }
+  cta_type: { optional: true }
+  include_code_examples: { optional: true, default: false }  # Enable for technical blogs
+  code_input: { optional: true, default: "" }  # User's project code to include
 
-# Declarative requirement rules with priority resolution.
-# The engine should pick the FIRST non-null/valid value from the priority list.
+# Word count and content requirements
 requirements:
-  min_sources:
-    priority:
-      - dynamic.min_sources
-      - style.requirements.min_sources
-      - 5
   min_words:
     priority:
       - dynamic.min_words
       - style.length_limit.target
       - style.length_limit.min
-      - 900
-
-writer_instructions:
-  enforce_citations:
+      - 1200
+  target_words:
     priority:
-      - dynamic.enforce_citations
-      - true
-  citation_style: "numeric"                   # writer-level formatting, not hard content
-  references_heading: "References"
+      - dynamic.target_words
+      - 1800
+  headline_variants:
+    priority:
+      - dynamic.headline_variants
+      - 5
 
+# Blog-specific writer instructions  
+writer_instructions:
+  content_type: "blog_article"
+  format: "seo_optimized_blog"
+  include_meta_elements: true
+  include_headlines: true
+  optimize_for_readability: true
+  include_cta: true
+  focus_on_engagement:
+    priority:
+      - dynamic.focus_on_engagement
+      - true
+
+# No MCP tools needed for standard blog articles
 mcp:
   tool_sequence:
     priority:
       - dynamic.tool_sequence
-      - [academic_search, citation_generator, fact_checker]
+      - []  # No tools required for blog articles
 
+# Blog article section structure
 sections:
   order:
     priority:
       - dynamic.section_order
-      - []    # empty array fallback => writer derives sections from content spec
+      - ["seo_elements", "headlines", "introduction", "main_content", "conclusion"]
 
 prompt_schema:
   system_preamble: |
-    You are a senior technical writer. Produce rigorous, evidence-driven content.
-    Cite sources in numeric style [1], [2]… and include a "References" section.
+    You are a professional blog writer and content marketing specialist.
+    Create SEO-optimized blog articles that engage readers and rank well in search engines.
+    Generate ACTUAL blog content with headlines, meta elements, and reader-focused value.
+    DO NOT include code blocks, technical specifications, or programming examples.
+    Focus on content marketing and reader engagement.
 
-  # Writer should be handed evidence/facts separately by the server/agents.
-  # This template declares the placeholders; content is fully dynamic.
   content_template: |
-    {{title_line}}
+    # SEO-Optimized Blog Article
 
-    {{intro_paragraph}}
+    ## SEO Elements
+    {{seo_title}}
+    {{meta_description}}
+    {{primary_keywords}}
+    {{url_slug}}
 
-    {{body_sections}}  # rendered from sections.order or derived structure
+    ## Headline Options
+    {{headline_variants}}
 
-    {{conclusion_block}}
+    ## Blog Article Content
+    
+    ### Introduction
+    {{engaging_introduction}}
 
-    {{references_block}}
+    ### Main Content Sections
+    {{main_content_sections}}
+
+    {{#if_code_provided}}
+    ### Technical Implementation
+    {{formatted_code_sections}}
+    {{/if_code_provided}}
+
+    ### Conclusion & CTA
+    {{conclusion_with_cta}}
+
+    ## Optimization Notes
+    {{seo_optimization_notes}}
 
   placeholders:
-    - title_line
-    - intro_paragraph
-    - body_sections
-    - conclusion_block
-    - references_block
+    - seo_title: "SEO-optimized title under 60 characters"
+    - meta_description: "Compelling meta description 150-160 characters"
+    - primary_keywords: "Target keywords for SEO optimization"
+    - url_slug: "SEO-friendly URL slug"
+    - headline_variants: "5 different headline options for A/B testing"
+    - engaging_introduction: "Hook that captures attention and previews value"
+    - main_content_sections: "3-7 sections with clear subheadings and actionable content"
+    - conclusion_with_cta: "Summary with clear call-to-action"
+    - seo_optimization_notes: "Brief optimization and internal linking suggestions"
 
 output:
   format: "markdown"
   require:
-    citations: true
-    references_section: true
+    seo_elements: true
+    multiple_headlines: true
+    scannable_format: true
+    clear_cta: true
+    reader_focused: true
 
+# No real-time data needed for standard blog articles
 real_time_support:
-  enabled: true
-  max_age_hours: 12
-  verification_sources: 2
-  search_required: true
-  fail_if_unavailable: true
+  enabled: false
+  max_age_hours: 168
+  verification_sources: 0
+  search_required: false
+  fail_if_unavailable: false
 
 # === WriterzRoom enterprise output controls ===
 post_config:
-  enabled: false        # set to true in social_media_campaign.yaml
-  min_posts: 3          # used only when enabled
-  max_posts: 5          # used only when enabled
-  paragraph_length: short   # short | medium | long
+  enabled: false        # Blog articles are single pieces, not post collections
+  min_posts: 1          
+  max_posts: 1          
+  paragraph_length: medium
   per_post_requirements:
-    min_words: 60
-    max_words: 120
+    min_words: 1200
+    max_words: 2500
   composition:
     include_cta: true
-    include_hashtags: 3      # 0 = none
-    include_links: optional  # optional | required | none
+    include_hashtags: 0   # No hashtags in blog articles
+    include_links: optional
 
+# SMART: Allow code blocks when user explicitly requests them for technical blogs
 output_policy:
-  no_code: true          # enforce: remove code blocks/inlines
-  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
-  min_paragraphs: 3      # minimum paragraphs after sanitation
-  paragraph_first: true  # prefer paragraphs over lists
+  no_code: false         # Allow code when user requests it
+  max_bullets: 15        # Allow bullet points for readability  
+  min_paragraphs: 5      # Ensure substantial content
+  paragraph_first: true  # Lead with engaging paragraphs
+  require_seo_elements: true      # Must include SEO optimization
 
-# Optional: planner override keys (validated upstream; no fallbacks here)
-planner_overrides:
-  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided
+# Template behavior enforcement - flexible for technical content
+template_behavior:
+  content_type: "blog_article"
+  output_format: "seo_blog_post"
+  prevent_documentation: false    # Allow technical content when appropriate
+  require_engagement_focus: true  # Reader-focused content
+  enforce_marketing_tone: false   # Allow technical tone when needed
+  respect_user_code_preference: true  # Honor include_code_examples setting
+
+# Content format enforcement
+format_enforcement:
+  forbidden_formats:
+    - "technical_guide"
+    - "code_tutorial" 
+    - "api_documentation"
+    - "implementation_guide"
+    - "configuration_manual"
+    - "press_release"
+    - "social_media_post"
+  required_formats:
+    - "blog_article"
+    - "seo_optimized_content"
+    - "marketing_content"
+    - "reader_engagement"
+
+# Coordination with style profiles
+coordination_rules:
+  style_override: "blog_marketing_content"
+  ignore_technical_formatting: true
+  ignore_academic_structure: true
+  force_conversational_tone: true
+  require_seo_optimization: true
+  require_reader_value: true

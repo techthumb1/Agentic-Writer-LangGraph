@@ -68,52 +68,48 @@ class MCPEnhancedContentGraph:
         self.seo_agent = None
         self.publisher_agent = None
         self.image_agent = None
-        self.code_agent = None
+        # Code agent removed
 
     def _initialize_graph(self) -> None:
         """Initialize the StateGraph with EnrichedContentState"""
         workflow: StateGraph = StateGraph(EnrichedContentState)
 
-        # Register nodes
+        # Register nodes (code agent removed)
         workflow.add_node("planner", self._planner_node)
         workflow.add_node("researcher", self._researcher_node)
         workflow.add_node("call_writer", self._call_writer_node)
         workflow.add_node("writer", self._writer_node)
         workflow.add_node("editor", self._editor_node)
-        workflow.add_node("image", self._image_node)  # ADDED: Image agent node
+        workflow.add_node("image", self._image_node)
         workflow.add_node("formatter", self._formatter_node)
         workflow.add_node("seo", self._seo_node)
-        workflow.add_node("code", self._code_node)
         workflow.add_node("publisher", self._publisher_node)
 
-        # FIXED: Entry and main sequence
+        # Entry and main sequence
         workflow.set_entry_point("planner")
         workflow.add_edge("planner", "researcher")
         workflow.add_edge("researcher", "call_writer")
         workflow.add_edge("call_writer", "writer")
         workflow.add_edge("writer", "editor")
-        workflow.add_edge("editor", "image")     # ADDED: Image after editor
-        workflow.add_edge("image", "formatter")  # ADDED: Formatter after image
+        workflow.add_edge("editor", "image")
+        workflow.add_edge("image", "formatter")
 
-        # Conditional branches
+        # Simplified conditional branches (code paths removed)
         workflow.add_conditional_edges(
             "formatter",
             self._determine_specialized_agents,
             {
                 "seo_only": "seo",
-                "code_only": "code",
-                "seo_code": "seo",
                 "publisher": "publisher",
             },
         )
 
-        workflow.add_edge("seo", "code")
-        workflow.add_edge("code", "publisher")
+        # Direct flow without code agent
+        workflow.add_edge("seo", "publisher")
         workflow.add_edge("publisher", END)
 
         self.graph = workflow.compile()
-        logger.info("MCP Enhanced Content Graph initialized with image agent")
-
+        logger.info("MCP Enhanced Content Graph initialized without code agent")
     # ----------------------------- Nodes with On-Demand Creation -------------
     
 # File: langgraph_app/mcp_enhanced_graph.py

@@ -10,108 +10,106 @@ subcategory: beginner
 platform: professional
 tone: friendly
 voice: helpful
-structure: introduction → main_content → conclusion
+structure: social_native_posts
 audience: social_followers
 
 system_prompt: >
-  Write in the social media voice style for social followers audience. 
-        Focus on persuasive marketing content for brand building and customer engagement. 
-        Maintain beginner complexity level throughout. 
-        Ensure content aligns with professional marketing communications standards.
-        CRITICAL: Avoid casual language and maintain strict professional tone.
+  You are a social media content creator. Generate ACTUAL social media posts, not documentation about social media.
+  Create ready-to-publish posts with captions, hashtags, and CTAs.
+  Output format: Individual social media posts, not technical guides or documentation.
+  Focus on engagement and platform-native content that users can immediately copy and post.
 
-writing_style:
-  tone: friendly
-  voice: helpful
-  formality: moderate
-  technical_level: beginner
-  objectivity: high
-  evidence_based: False
+#writing_style:
+#  tone: friendly
+#  voice: helpful
+#  formality: casual
+#  technical_level: beginner
+#  objectivity: moderate
+#  evidence_based: false
 
-# Strict enforcement rules
-forbidden_patterns:
-  - "hey there"
-  - "hi there"
-  - "awesome"
-  - "cool"
+# CRITICAL: Override content type to prevent documentation generation
+content_type_override: "social_media_posts"
+output_format_override: "individual_posts"
+
+# Strict enforcement rules - MODIFIED for social media
+#forbidden_patterns:
+#  - "technical implementation guide"
+#  - "step-by-step guide"
+#  - "documentation"
+#  - "appendix"
+#  - "technical specification"
 
 required_opening_patterns:
-  - "This analysis presents"
-  - "The following examination"
-  - "This discussion covers"
+  - "POST 1:"
+  - "📱 Social Media Post"
+  - "CAPTION:"
+  - "✨ Ready to post:"
 
 required_elements:
-  - "clear objectives"
-  - "structured content"
-  - "practical examples"
-  - "actionable insights"
+  - "individual social posts"
+  - "hashtags"
+  - "captions"
+  - "call to actions"
 
-# Content structure requirements
-content_structure:
-  opening_style: "direct_introduction"
-  paragraph_style: "structured"
-  transition_style: "clear_connectors"
-  conclusion_style: "summary_and_next_steps"
-  evidence_requirement: "optional"
-
-# Language precision requirements
-language_requirements:
-  vocabulary_level: beginner
-  sentence_complexity: simple
-  use_jargon: False
-  technical_precision: moderate
-  objectivity_level: high
+# Content structure requirements - SOCIAL MEDIA SPECIFIC
+#content_structure:
+#  opening_style: "social_hook"
+#  paragraph_style: "short_social_blocks"
+#  transition_style: "emoji_connectors"
+#  conclusion_style: "clear_cta"
+#  evidence_requirement: "none"
+#
+## Language precision requirements - SOCIAL OPTIMIZED
+#language_requirements:
+#  vocabulary_level: accessible
+#  sentence_complexity: simple
+#  use_jargon: false
+#  technical_precision: low
+#  objectivity_level: moderate
 
 length_limit:
-  words: 1500
-  min: 1200
-  max: 1800
+  words: 300  # Total for ALL posts combined
+  min: 200
+  max: 500
 
 settings:
-  use_analogies: True
-  avoid_jargon: True
-  include_examples: true
-  conversational_tone: False
-  encourage_questions: False
-  reading_level: "beginner"
-  eliminate_casual_language: False
-  enforce_professional_standards: true
-  require_evidence_support: False
+  conversational_tone: true
+  avoid_jargon: true
+  reading_level: "accessible"
 
-formatting:
-  use_headers: true
-  use_bullet_points: False
-  use_callouts: False
-  code_blocks: minimal
-  academic_structure: False
-  professional_layout: true
+#formatting:
+#  use_headers: false  # NO headers in social posts
+#  use_bullet_points: false  # NO bullets in social posts
+#  use_callouts: false
+#  code_blocks: false  # NEVER code blocks
+#  academic_structure: false
+#  professional_layout: false  # SOCIAL LAYOUT
 
-# Quality thresholds
+# Quality thresholds - SOCIAL OPTIMIZED
 quality_requirements:
-  formality_score: 75
-  objectivity_score: 80
-  analytical_depth: 75
-  evidence_support: 75
+  formality_score: 25  # LOW formality for social
+  objectivity_score: 40
+  analytical_depth: 20  # LOW depth for social
+  evidence_support: 10  # MINIMAL evidence needed
   style_consistency: 95
   pattern_compliance: 100
-  audience_alignment: 90
-  complexity_match: 85
+  audience_alignment: 95
+  complexity_match: 30  # SIMPLE for social
 
-# Violation detection patterns
-violation_detection:
-  casual_greetings: ["hey", "hi", "hello", "greetings", "what's up"]
-  weak_transitions: ["so,", "well,", "now,", "anyway,"]
-  opinion_markers: ['i think', 'i believe']
-  casual_intensifiers: ["really", "super", "totally", "absolutely amazing"]
+# Violation detection patterns - PREVENT DOCUMENTATION
+#violation_detection:
+#  technical_language: ["implementation", "workflow", "architecture", "system", "framework"]
+#  documentation_format: ["step 1", "appendix", "section", "chapter", "overview"]
+#  formal_structures: ["prerequisites", "methodology", "conclusion", "references"]
 
 metadata:
   version: "2.0.0"
   created_by: "professional_category_system"
-  last_updated: "2025-07-18"
-  use_cases: ['social media voice content']
+  last_updated: "2025-09-22"
+  use_cases: ['actual social media posts']
   target_audience: "social_followers"
   complexity_level: "beginner"
   category: "Marketing Communications"
-  enforcement_level: "strict"
+  enforcement_level: "relaxed"  # RELAXED for social creativity
   anti_generic: true
-  professional_grade: true
+  professional_grade: false  # NOT professional grade - SOCIAL grade

@@ -422,27 +422,27 @@ class UnifiedAgentCoordination:
         
         return adaptations
     
-    def _determine_editing_priorities(self, template_config: Dict, style_config: Dict) -> List[str]:
-        """Determine editing priorities based on template and style"""
-        
-        priorities = ['template_compliance', 'style_consistency', 'content_quality']
-        
-        template_type = template_config.get('template_type')
-        if template_type == 'venture_capital_pitch':
-            priorities.extend(['financial_accuracy', 'investor_language', 'metric_validation'])
-        elif template_type == 'business_proposal':
-            priorities.extend(['roi_clarity', 'implementation_feasibility', 'executive_appeal'])
-        elif template_type == 'technical_documentation':
-            priorities.extend(['technical_accuracy', 'code_validation', 'implementation_clarity'])
-        
-        style_tone = style_config.get('tone')
-        if style_tone == 'formal':
-            priorities.append('formality_enforcement')
-        elif style_tone == 'academic':
-            priorities.append('academic_rigor')
-        
-        return priorities
-    
+#    def _determine_editing_priorities(self, template_config: Dict, style_config: Dict) -> List[str]:
+#        """Determine editing priorities based on template and style"""
+#        
+#        priorities = ['template_compliance', 'style_consistency', 'content_quality']
+#        
+#        template_type = template_config.get('template_type')
+#        if template_type == 'venture_capital_pitch':
+#            priorities.extend(['financial_accuracy', 'investor_language', 'metric_validation'])
+#        elif template_type == 'business_proposal':
+#            priorities.extend(['roi_clarity', 'implementation_feasibility', 'executive_appeal'])
+#        elif template_type == 'technical_documentation':
+#            priorities.extend(['technical_accuracy', 'code_validation', 'implementation_clarity'])
+#        
+#        style_tone = style_config.get('tone')
+#        if style_tone == 'formal':
+#            priorities.append('formality_enforcement')
+#        elif style_tone == 'academic':
+#            priorities.append('academic_rigor')
+#        
+#        return priorities
+#    
     def _get_template_compliance_checks(self, template_config: Dict) -> List[str]:
         """Get template compliance checks"""
         
@@ -519,19 +519,19 @@ class UnifiedAgentCoordination:
                 'emphasis': 'comprehension_support'
             }
     
-    def _determine_search_intent(self, template_config: Dict, style_config: Dict) -> str:
-        """Determine primary search intent"""
-        
-        template_type = template_config.get('template_type')
-        
-        if template_type == 'venture_capital_pitch':
-            return 'commercial_funding'
-        elif template_type == 'business_proposal':
-            return 'commercial_solution'
-        elif template_type == 'technical_documentation':
-            return 'informational_implementation'
-        else:
-            return 'informational_educational'
+#    def _determine_search_intent(self, template_config: Dict, style_config: Dict) -> str:
+#        """Determine primary search intent"""
+#        
+#        template_type = template_config.get('template_type')
+#        
+#        if template_type == 'venture_capital_pitch':
+#            return 'commercial_funding'
+#        elif template_type == 'business_proposal':
+#            return 'commercial_solution'
+#        elif template_type == 'technical_documentation':
+#            return 'informational_implementation'
+#        else:
+#            return 'informational_educational'
     
     def _get_seo_structure_requirements(self, template_config: Dict) -> Dict[str, Any]:
         """Get SEO structure requirements from template"""
@@ -579,24 +579,24 @@ class UnifiedAgentCoordination:
         
         return standards
     
-    def _get_compliance_checks(self, template_config: Dict, style_config: Dict) -> List[str]:
-        """Get compliance checks list"""
-        
-        checks = [
-            'template_structure_compliance',
-            'style_pattern_compliance',
-            'content_quality_compliance',
-            'audience_appropriateness',
-            'technical_accuracy'
-        ]
-        
-        template_type = template_config.get('template_type')
-        if template_type == 'venture_capital_pitch':
-            checks.extend(['financial_accuracy', 'investor_standards'])
-        elif template_type == 'business_proposal':
-            checks.extend(['business_accuracy', 'executive_standards'])
-        
-        return checks
+#    def _get_compliance_checks(self, template_config: Dict, style_config: Dict) -> List[str]:
+#        """Get compliance checks list"""
+#        
+#        checks = [
+#            'template_structure_compliance',
+#            'style_pattern_compliance',
+#            'content_quality_compliance',
+#            'audience_appropriateness',
+#            'technical_accuracy'
+#        ]
+#        
+#        template_type = template_config.get('template_type')
+#        if template_type == 'venture_capital_pitch':
+#            checks.extend(['financial_accuracy', 'investor_standards'])
+#        elif template_type == 'business_proposal':
+#            checks.extend(['business_accuracy', 'executive_standards'])
+#        
+#        return checks
     
     def _get_publication_criteria(self, template_config: Dict, style_config: Dict) -> Dict[str, Any]:
         """Get publication readiness criteria"""

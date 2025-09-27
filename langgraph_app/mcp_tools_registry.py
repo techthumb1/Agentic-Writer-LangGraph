@@ -435,7 +435,7 @@ class MCPToolsRegistry:
         
         # Default to business if no specific domain detected
         if not detected_domains:
-            detected_domains = [ContentDomain.BUSINESS]
+            raise ValueError(f"Cannot determine domain for template: {template_config}")
         
         # Get tools for detected domains
         for domain in detected_domains:

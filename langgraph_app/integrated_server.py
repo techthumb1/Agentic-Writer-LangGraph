@@ -10,6 +10,7 @@ Key guarantees:
 """
 
 import os
+from re import template
 from unittest import result
 import uuid
 import json
@@ -354,13 +355,18 @@ def load_templates() -> List[ContentTemplate]:
             params_data = data.get("parameters") or data.get("inputs") or {}
             params = parse_template_parameters(params_data)
             
+            # FIXED: Store template_type in defaults for build_template_config access
+            defaults = data.get("defaults") or {}
+            if data.get("template_type"):
+                defaults["template_type"] = data["template_type"]
+            
             items.append(ContentTemplate(
                 id=str(tpl_id),
                 slug=str(slug),
                 name=str(name),
                 description=data.get("description"),
                 category=data.get("category"),
-                defaults=data.get("defaults") or {},
+                defaults=defaults,
                 system_prompt=data.get("system_prompt"),
                 structure=data.get("structure") or {},
                 research=data.get("research") or {},
@@ -409,17 +415,35 @@ def load_style_profiles() -> List[StyleProfile]:
 # File: langgraph_app/integrated_server.py
 # MINIMAL FIX: Only flatten dynamic_overrides structure
 
-def build_template_config(template: ContentTemplate, profile: StyleProfile, request: GenerateRequest) -> Dict[str, Any]:
-    # FIXED: Extract template_type correctly
-    template_type = template.defaults.get("template_type") if isinstance(template.defaults, dict) else None
-    if not template_type:
-        # Infer from template ID for blog_article_generator
-        if "blog" in template.id.lower() or "article" in template.id.lower():
-            template_type = "blog_article"
-        else:
-            template_type = "technical_documentation"
+# File: langgraph_app/integrated_server.py
+# FIXED: Template configuration processing - use actual template structure
 
-    # Flatten parameters
+def build_template_config(template: ContentTemplate, profile: StyleProfile, request: GenerateRequest) -> Dict[str, Any]:
+    """FIXED: Extract template_type from template structure, not defaults"""
+    
+    # CRITICAL FIX: Use template.template_type directly from YAML metadata
+    template_type = getattr(template, 'template_type', None) or template.metadata.get('template_type')
+    if not template_type:
+        # Fallback to slug-based inference only if absolutely missing
+        template_type = template.slug or 'article'
+    
+    # Extract system prompt and instructions from template
+    system_prompt = template.system_prompt or ""
+    instructions = ""
+    
+    # FIXED: Extract template-specific instructions and structure
+    if template.structure:
+        if isinstance(template.structure, dict):
+            instructions += f"Content Structure: {template.structure.get('format', 'sections')}\n"
+            if 'sections' in template.structure:
+                instructions += f"Required Sections: {template.structure['sections']}\n"
+            if 'format_requirements' in template.structure:
+                instructions += f"Format Requirements: {template.structure['format_requirements']}\n"
+    
+    # FIXED: Include template defaults as part of configuration
+    template_defaults = template.defaults or {}
+    
+    # Flatten parameters correctly
     parameters_spec: Dict[str, Any] = {}
     for k, p in (template.parameters or {}).items():
         parameters_spec[k] = {
@@ -433,46 +457,48 @@ def build_template_config(template: ContentTemplate, profile: StyleProfile, requ
             "validation": p.validation or {},
         }
 
-    distribution_channels: List[str] = []
-    generation_mode = "standard"
-    meta = template.metadata or {}
-    if isinstance(meta, dict):
-        dc = meta.get("distribution_channels")
-        if isinstance(dc, list):
-            distribution_channels = dc
-        generation_mode = meta.get("generation_mode", generation_mode)
-
+    # FIXED: Preserve research requirements
+    research_config = template.research or {}
+    
     cfg = {
         "id": template.id,
         "slug": template.slug,
         "name": template.name,
         "template_type": template_type,
+        "system_prompt": system_prompt,
+        "instructions": instructions,
         "structure": template.structure or {},
-        "research": template.research or {},
+        "research": research_config,
         "parameters": parameters_spec,
-        "defaults": template.defaults or {},
-        "distribution_channels": distribution_channels,
-        "generation_mode": generation_mode,
-        "platform": profile.platform,
+        "defaults": template_defaults,
+        "generation_mode": template.metadata.get("generation_mode", "standard"),
+        "platform": profile.platform or "web",
+        "content_requirements": {
+            "style_guide": profile.system_prompt or "",
+            "tone": profile.tone,
+            "voice": profile.voice,
+            "structure_preference": profile.structure,
+            "audience": profile.audience,
+            "length_limits": profile.length_limit or {},
+            "formatting": profile.formatting or {}
+        }
     }
 
-    # CRITICAL FIX: Flatten nested dynamic_overrides
+    # FIXED: Handle dynamic overrides without flattening structure
     if request.dynamic_parameters:
-        flattened = {}
-        for key, value in request.dynamic_parameters.items():
-            if key == "dynamic_overrides" and isinstance(value, dict):
-                flattened.update(value)
-            else:
-                flattened[key] = value
-        cfg["dynamic_overrides"] = flattened
+        cfg["dynamic_parameters"] = request.dynamic_parameters
+        # Only flatten specific nested structures, not all overrides
+        if "dynamic_overrides" in request.dynamic_parameters:
+            overrides = request.dynamic_parameters["dynamic_overrides"]
+            if isinstance(overrides, dict):
+                cfg["user_inputs"] = overrides
     
     cfg["_fingerprint"] = hashlib.sha256(json.dumps(cfg, sort_keys=True, default=str).encode("utf-8")).hexdigest()
 
-    if not (isinstance(cfg, dict) and cfg):
-        raise SystemExit("ENTERPRISE: constructed template_config is empty/invalid")
     return cfg
 
 def build_style_config(profile: StyleProfile) -> Dict[str, Any]:
+    """FIXED: Preserve complete style configuration"""
     style_cfg = {
         "id": profile.id,
         "name": profile.name,
@@ -486,12 +512,14 @@ def build_style_config(profile: StyleProfile) -> Dict[str, Any]:
         "settings": profile.settings or {},
         "formatting": profile.formatting or {},
         "system_prompt": profile.system_prompt,
+        "content_guidelines": {
+            "formality": profile.settings.get("formality", "professional"),
+            "complexity": profile.settings.get("complexity", "medium"),
+            "technical_level": profile.settings.get("technical_level", "intermediate")
+        },
         "_filename": profile.filename,
     }
-    if not (style_cfg.get("name") or style_cfg.get("system_prompt")):
-        raise SystemExit("ENTERPRISE: style_config missing critical fields")
     return style_cfg
-
 # ====== App & lifespan ======
 app = FastAPI(
     title="WriterzRoom API — Enterprise",

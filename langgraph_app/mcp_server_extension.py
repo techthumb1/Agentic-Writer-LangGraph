@@ -161,7 +161,187 @@ class ConsolidatedMCPOrchestrator:
             return True
         
         return False
+
+    # File: langgraph_app/mcp_server_extension.py
+    # Replace _generate_universal_content and _generate_standard_content functions
     
+    async def _generate_universal_content(
+        self,
+        template_config: Dict[str, Any],
+        style_config: Dict[str, Any],
+        dynamic_parameters: Dict[str, Any],
+        tools_results: Dict[str, Any],
+        universal_result: Dict[str, Any],
+        request_id: str
+    ) -> str:
+        """Template-specific content generation using Universal System + MCP tools"""
+        
+        try:
+            llm = get_model("writer")
+            
+            # Extract template specifications
+            template_type = template_config.get("template_type", "article")
+            system_prompt = template_config.get("system_prompt", "")
+            instructions = template_config.get("instructions", "")
+            structure = template_config.get("structure", {})
+            content_requirements = template_config.get("content_requirements", {})
+            
+            # Get user inputs
+            user_inputs = template_config.get("user_inputs", dynamic_parameters)
+            topic = user_inputs.get("topic", template_config.get("name", "content"))
+            audience = user_inputs.get("target_audience", content_requirements.get("audience", "general"))
+            
+            # Build template-aware prompt
+            template_data = universal_result.get('template', {})
+            universal_instructions = template_data.get('instructions', '')
+            
+            structure_reqs = []
+            if structure:
+                if structure.get("sections"):
+                    structure_reqs.append(f"Sections: {structure['sections']}")
+                if structure.get("format"):
+                    structure_reqs.append(f"Format: {structure['format']}")
+                if structure.get("format_requirements"):
+                    structure_reqs.append(f"Requirements: {structure['format_requirements']}")
+            
+            style_reqs = []
+            if style_config.get("tone"):
+                style_reqs.append(f"Tone: {style_config['tone']}")
+            if style_config.get("voice"):
+                style_reqs.append(f"Voice: {style_config['voice']}")
+            if content_requirements.get("formality"):
+                style_reqs.append(f"Formality: {content_requirements['formality']}")
+            
+            research_context = self._format_research_context(tools_results.get('research_data', {}))
+            quality_context = self._format_quality_context(tools_results.get('quality_enhancements', {}))
+            
+            base_prompt = system_prompt or template_data.get('system_prompt', f"Create {template_type} content.")
+            
+            prompt = f"""{base_prompt}
+    
+    CONTENT TYPE: {template_type}
+    TOPIC: {topic}
+    AUDIENCE: {audience}
+    
+    TEMPLATE INSTRUCTIONS:
+    {instructions or universal_instructions}
+    
+    STRUCTURE: {' | '.join(structure_reqs) if structure_reqs else 'Standard structure'}
+    STYLE: {' | '.join(style_reqs) if style_reqs else 'Professional'}
+    
+    RESEARCH DATA:
+    {research_context}
+    
+    QUALITY ENHANCEMENTS:
+    {quality_context}
+    
+    USER INPUTS:
+    {chr(10).join([f"- {k}: {v}" for k, v in user_inputs.items() if k not in ["topic", "target_audience"] and v])}
+    
+    Generate {template_type} content following template specifications exactly.
+    
+    Content:"""
+            
+            content = await llm.ainvoke(prompt)
+            
+            if hasattr(content, 'content'):
+                content = content.content
+            elif hasattr(content, 'text'):
+                content = content.text
+            
+            tools_list = ", ".join(tools_results.get('tools_executed', [])[:3])
+            footer = f"\n\n---\n*{template_type} | {style_config.get('name')} | {tools_list} | {datetime.now().strftime('%Y-%m-%d')}*"
+            
+            return str(content) + footer
+            
+        except Exception as e:
+            logger.error(f"Universal content generation failed: {e}")
+            raise RuntimeError(f"Content generation failed: {str(e)}")
+    
+    async def _generate_standard_content(
+        self,
+        template_config: Dict[str, Any],
+        style_config: Dict[str, Any],
+        dynamic_parameters: Dict[str, Any],
+        tools_results: Dict[str, Any],
+        request_id: str
+    ) -> str:
+        """Template-specific standard content generation"""
+        
+        try:
+            llm = get_model("writer")
+            
+            # Extract template specs
+            template_type = template_config.get("template_type", "article")
+            system_prompt = template_config.get("system_prompt", "")
+            instructions = template_config.get("instructions", "")
+            structure = template_config.get("structure", {})
+            content_requirements = template_config.get("content_requirements", {})
+            
+            # Get user inputs
+            user_inputs = template_config.get("user_inputs", dynamic_parameters)
+            topic = user_inputs.get("topic", template_config.get("name", "content"))
+            audience = user_inputs.get("target_audience", content_requirements.get("audience", "general"))
+            
+            # Build structure guidance
+            structure_text = ""
+            if structure:
+                if structure.get("sections"):
+                    structure_text += f"Sections: {structure['sections']}\n"
+                if structure.get("format"):
+                    structure_text += f"Format: {structure['format']}\n"
+                if structure.get("format_requirements"):
+                    structure_text += f"Requirements: {structure['format_requirements']}\n"
+            
+            # Style requirements
+            style_text = f"Style: {style_config.get('name', 'Professional')}"
+            if style_config.get("tone"):
+                style_text += f" | Tone: {style_config['tone']}"
+            if style_config.get("voice"):
+                style_text += f" | Voice: {style_config['voice']}"
+            
+            research_context = self._format_research_context(tools_results.get('research_data', {}))
+            
+            base_system = system_prompt or f"You create {template_type} content."
+            
+            prompt = f"""{base_system}
+    
+    ASSIGNMENT: {template_type}
+    TOPIC: {topic}
+    AUDIENCE: {audience}
+    
+    INSTRUCTIONS:
+    {instructions or f"Create professional {template_type} content."}
+    
+    STRUCTURE:
+    {structure_text or "Use appropriate structure for content type."}
+    
+    STYLE:
+    {style_text}
+    
+    RESEARCH:
+    {research_context}
+    
+    INPUTS:
+    {chr(10).join([f"- {k}: {v}" for k, v in user_inputs.items() if k not in ["topic", "target_audience"] and v])}
+    
+    Generate {template_type} following specifications exactly.
+    
+    {template_type.replace('_', ' ').title()}:"""
+            
+            content = await llm.ainvoke(prompt)
+            
+            if hasattr(content, 'content'):
+                content = content.content
+            elif hasattr(content, 'text'):
+                content = content.text
+            
+            return str(content)
+            
+        except Exception as e:
+            logger.error(f"Standard content generation failed: {e}")
+            raise RuntimeError(f"Content generation failed: {str(e)}")
+
     async def execute_enhanced_generation(
         self,
         request_id: str,
@@ -366,122 +546,7 @@ class ConsolidatedMCPOrchestrator:
             "research_data": research_data,
             "quality_enhancements": quality_enhancements
         }
-    
-    async def _generate_universal_content(
-        self,
-        template_config: Dict[str, Any],
-        style_config: Dict[str, Any],
-        dynamic_parameters: Dict[str, Any],
-        tools_results: Dict[str, Any],
-        universal_result: Dict[str, Any],
-        request_id: str
-    ) -> str:
-        """Generate content using Universal template + MCP tools"""
         
-        try:
-            llm = get_model("writer")
-            
-            topic = dynamic_parameters.get("topic", template_config.get('name', 'general content'))
-            audience = dynamic_parameters.get("target_audience", "general audience")
-            
-            # Build enhanced prompt
-            template_data = universal_result.get('template', {})
-            system_prompt = template_data.get('system_prompt', '')
-            instructions = template_data.get('instructions', '')
-            
-            research_context = self._format_research_context(tools_results.get('research_data', {}))
-            quality_context = self._format_quality_context(tools_results.get('quality_enhancements', {}))
-            
-            prompt = f"""
-{system_prompt}
-
-CONTENT SPECIFICATIONS:
-Topic: {topic}
-Audience: {audience}
-Template: Universal AI-Generated
-Style: {style_config.get('name', 'Professional')}
-
-ENHANCED INSTRUCTIONS:
-{instructions}
-
-MCP RESEARCH ENHANCEMENT:
-{research_context}
-
-QUALITY OPTIMIZATION:
-{quality_context}
-
-Generate comprehensive, enterprise-grade content that incorporates the research findings and quality optimizations naturally.
-
-Content:
-"""
-            
-            content = await llm.ainvoke(prompt)
-            
-            if hasattr(content, 'content'):
-                content = content.content
-            elif hasattr(content, 'text'):
-                content = content.text
-            
-            # Add metadata footer
-            tools_list = ", ".join(tools_results.get('tools_executed', [])[:3])
-            footer = f"""
-
----
-*Universal System + MCP Enhanced | Request: {request_id}*
-*Tools: {tools_list} | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
-"""
-            
-            return str(content) + footer
-            
-        except Exception as e:
-            logger.error(f"❌ Universal content generation failed: {e}")
-            raise RuntimeError(f"Content generation failed: {str(e)}")
-    
-    async def _generate_standard_content(
-        self,
-        template_config: Dict[str, Any],
-        style_config: Dict[str, Any],
-        dynamic_parameters: Dict[str, Any],
-        tools_results: Dict[str, Any],
-        request_id: str
-    ) -> str:
-        """Generate content using standard template + MCP tools"""
-        
-        try:
-            llm = get_model("writer")
-            
-            topic = dynamic_parameters.get("topic", template_config.get('name', 'general content'))
-            audience = dynamic_parameters.get("target_audience", "general audience")
-            
-            research_context = self._format_research_context(tools_results.get('research_data', {}))
-            
-            prompt = f"""
-You are an expert content creator generating {template_config.get('name', 'content')} for {audience}.
-
-Topic: {topic}
-Style: {style_config.get('name', 'Professional')}
-
-Research Enhancement:
-{research_context}
-
-Generate comprehensive, well-structured content that incorporates the research findings naturally.
-
-Content:
-"""
-            
-            content = await llm.ainvoke(prompt)
-            
-            if hasattr(content, 'content'):
-                content = content.content
-            elif hasattr(content, 'text'):
-                content = content.text
-            
-            return str(content)
-            
-        except Exception as e:
-            logger.error(f"❌ Standard content generation failed: {e}")
-            raise RuntimeError(f"Content generation failed: {str(e)}")
-    
     def _format_research_context(self, research_data: Dict[str, Any]) -> str:
         """Format research data for prompt context"""
         if not research_data:

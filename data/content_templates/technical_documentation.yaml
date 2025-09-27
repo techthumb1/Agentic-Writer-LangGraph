@@ -143,3 +143,9 @@ output_policy:
 # Optional: planner override keys (validated upstream; no fallbacks here)
 planner_overrides:
   planned_posts: null    # integer; must be within [min_posts, max_posts] when provided
+
+include_code_examples:
+  type: "checkbox"
+  default: true  # Default TRUE for technical docs
+  label: "Include Code Examples"
+  description: "Include technical code snippets and implementation examples"

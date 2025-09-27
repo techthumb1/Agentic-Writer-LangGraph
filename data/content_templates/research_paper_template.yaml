@@ -156,3 +156,9 @@ output_policy:
 # Optional: planner override keys (validated upstream; no fallbacks here)
 planner_overrides:
   planned_posts: null    # integer; must be within [min_posts, max_posts] when provided
+
+include_code_examples:
+  type: "checkbox"
+  default: false
+  label: "Include Code/Data Examples"
+  description: "Include statistical code, data samples, or analysis scripts"
