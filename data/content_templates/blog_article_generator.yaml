@@ -7,8 +7,11 @@ version: "2.1"
 template_type: "blog_article"
 
 description: >
-  SEO-optimized blog article generator. Creates engaging content marketing articles
-  with meta elements, headlines, and clear structure for reader engagement.
+  Advanced SEO-optimized blog article generator powered by WriterzRoom's enterprise content engine.
+  Creates high-converting content marketing articles with intelligent keyword optimization, 
+  audience-specific messaging, and conversion-focused structure. Generates publication-ready
+  content that drives organic traffic, engagement, and business results.
+
 
 # Core inputs for blog articles
 inputs:
@@ -23,8 +26,8 @@ inputs:
   target_keywords: { optional: true }
   headline_style: { optional: true }
   cta_type: { optional: true }
-  include_code_examples: { optional: true, default: false }  # Enable for technical blogs
-  code_input: { optional: true, default: "" }  # User's project code to include
+  #include_code_examples: { optional: true, default: false }  # Enable for technical blogs
+  #code_input: { optional: true, default: "" }  # User's project code to include
 
 # Word count and content requirements
 requirements:
@@ -111,7 +114,7 @@ prompt_schema:
 
   placeholders:
     - seo_title: "SEO-optimized title under 60 characters"
-    - meta_description: "Compelling meta description 150-160 characters"
+    - meta_description: "Compelling meta description 200-500 characters"
     - primary_keywords: "Target keywords for SEO optimization"
     - url_slug: "SEO-friendly URL slug"
     - headline_variants: "5 different headline options for A/B testing"
@@ -145,7 +148,7 @@ post_config:
   paragraph_length: medium
   per_post_requirements:
     min_words: 1200
-    max_words: 2500
+    max_words: 8000
   composition:
     include_cta: true
     include_hashtags: 0   # No hashtags in blog articles
@@ -154,7 +157,7 @@ post_config:
 # SMART: Allow code blocks when user explicitly requests them for technical blogs
 output_policy:
   no_code: false         # Allow code when user requests it
-  max_bullets: 15        # Allow bullet points for readability  
+  max_bullets: 3        # Allow bullet points for readability  
   min_paragraphs: 5      # Ensure substantial content
   paragraph_first: true  # Lead with engaging paragraphs
   require_seo_elements: true      # Must include SEO optimization
