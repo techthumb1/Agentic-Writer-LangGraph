@@ -173,31 +173,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         if not style_config or not isinstance(style_config, dict):
             raise RuntimeError("ENTERPRISE: style_config required - no fallbacks")
 
-#    def build_from_template_schema(self, template_config: Dict, context: Dict) -> str:
-#        """Build prompt from template's prompt_schema"""
-#        
-#        prompt_schema = template_config.get('prompt_schema')
-#        if not prompt_schema:
-#            raise ValueError("ENTERPRISE: Template missing prompt_schema")
-#        
-#        system_preamble = prompt_schema.get('system_preamble')
-#        if not system_preamble:
-#            raise ValueError("ENTERPRISE: Template missing system_preamble")
-#        
-#        content_template = prompt_schema.get('content_template')
-#        if not content_template:
-#            raise ValueError("ENTERPRISE: Template missing content_template")
-#        
-#        # Replace placeholders with actual values
-#        placeholders = prompt_schema.get('placeholders', [])
-#        final_prompt = system_preamble + "\n\n" + content_template
-#        
-#        for placeholder in placeholders:
-#            value = context.get(placeholder, f"[{placeholder}]")
-#            final_prompt = final_prompt.replace(f"{{{{{placeholder}}}}}", str(value))
-#        
-#        return final_prompt
-
     def build_from_template_schema(self, template_config: Dict, context: Dict) -> str:
         prompt_schema = template_config.get('prompt_schema')
         system_preamble = prompt_schema.get('system_preamble')
@@ -225,84 +200,109 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             final_prompt = final_prompt.replace(f"{{{{{key}}}}}", str(value))
 
         return final_prompt
-
-    def get_template_specific_prompt(self, template_config: Dict[str, Any], template_id: str, state: Dict = None) -> str:
-        """Load template-specific prompt from prompts/writer/ directory"""
-        
-        # PRIORITY 1: Load from prompt files
-        prompt_content = self._load_template_prompt_file(template_id, template_config)
-        if prompt_content:
-            print(f"Using template-specific prompt file for {template_id}")
-            return prompt_content
-        
-        # PRIORITY 2: Use prompt_schema if available
-        if template_config and template_config.get('prompt_schema'):
-            print("Using template prompt_schema")
-            context = self.extract_context_values(state) if state else {}
-            return self.build_from_template_schema(template_config, context)
-        
-        # ENTERPRISE: Fail fast if no valid template found
-        raise RuntimeError(f"ENTERPRISE: No template prompt found for {template_id}")
     
+    # File: langgraph_app/agents/writer.py
+    # FIXED: Blog prompt loading with corrected template_id matching
+
     def _load_template_prompt_file(self, template_id: str, template_config: Dict) -> str:
         """Load template-specific prompt from prompts/writer/ directory"""
 
         template_type = template_config.get('template_type', template_id)
+        template_slug = template_config.get('slug', template_id)
 
-        # Map both template_id and template_type to prompt files
+        print(f"🔍 Debug prompt loading:")
+        print(f"  template_id='{template_id}'")
+        print(f"  template_type='{template_type}'")
+        print(f"  template_slug='{template_slug}'")
+
+        # FIXED: Map all possible template identifiers to blog_article_writer.txt
         prompt_file_mapping = {
+            'blog_article_generator': 'blog_article_writer.txt',    # from slug
+            'blog_article': 'blog_article_writer.txt',             # from template_type
             'social_media_campaign': 'social_media_campaign_writer.txt',
             'email_newsletter': 'email_newsletter_writer.txt',
             'business_proposal': 'business_proposal_writer.txt',
+            'api_documentation_template': 'enhanced_technical_doc_writer.txt',
             'api_documentation': 'enhanced_technical_doc_writer.txt',
-            'blog_article_generator': 'blog_article_writer.txt',  # template_id
-            'blog_article': 'blog_article_writer.txt',           # template_type
             'press_release': 'press_release_writer.txt',
             'technical_documentation': 'enhanced_technical_doc_writer.txt',
-            'market_analysis': 'business_writer.txt',
-            'strategic_brief': 'business_writer.txt',
-            'data_driven_report': 'grad_level_writer.txt',
+            'research_paper_template': 'grad_level_writer.txt',
             'research_paper': 'grad_level_writer.txt',
         }
 
-        # Try template_id first, then template_type
-        prompt_filename = prompt_file_mapping.get(template_id) or prompt_file_mapping.get(template_type)
+        # Try all possible identifiers
+        for identifier in [template_slug, template_id, template_type]:
+            prompt_filename = prompt_file_mapping.get(identifier)
+            if prompt_filename:
+                print(f"📄 Mapped '{identifier}' to filename: {prompt_filename}")
+                break
+            
         if not prompt_filename:
+            print(f"❌ No mapping found for any identifier")
             return None
 
+        # Check all possible prompt paths
         for prompt_path in self.prompt_paths:
             file_path = Path(prompt_path) / prompt_filename
+            print(f"🔍 Checking path: {file_path}")
+            print(f"   Exists: {file_path.exists()}")
+
             if file_path.exists():
+                print(f"✅ Found prompt file: {file_path}")
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
-                        return f.read().strip()
+                        content = f.read().strip()
+                    print(f"📖 Loaded {len(content)} characters from prompt file")
+                    return content
                 except Exception as e:
-                    print(f"Error loading prompt file {file_path}: {e}")
+                    print(f"❌ Error loading prompt file {file_path}: {e}")
                     continue
                 
+        print(f"❌ Prompt file '{prompt_filename}' not found in any path")
         return None
-    
+
     def get_template_specific_prompt(self, template_config: Dict[str, Any], template_id: str, state: Dict = None) -> str:
         """Enterprise prompt generation with schema validation"""
-    
-        # PRIORITY 1: Use MCP research if available
-        if state and self.has_mcp_research(state):
-            print("Using MCP research-integrated prompt")
-            return self._build_research_integrated_prompt(template_config, template_id, state)
-    
+
+        print(f"🎯 Getting template prompt for ID: '{template_id}'")
+
+        # PRIORITY 1: Load from prompt files
+        prompt_content = self._load_template_prompt_file(template_id, template_config)
+        if prompt_content:
+            print(f"✅ Using template-specific prompt file for {template_id}")
+            return prompt_content
+
         # PRIORITY 2: Use prompt_schema if available
         if template_config and template_config.get('prompt_schema'):
-            print("Using template prompt_schema")
+            print("📋 Using template prompt_schema")
             context = self.extract_context_values(state) if state else {}
             return self.build_from_template_schema(template_config, context)
-    
-        # PRIORITY 3: Generate from template configuration
-        if template_config:
-            dynamic_prompt = self._generate_prompt_from_config(template_config, template_id)
-            if dynamic_prompt:
-                print("Generated dynamic prompt from template config")
-                return dynamic_prompt
-    
+
+        # ENTERPRISE: Fail fast if no valid template found
+        raise RuntimeError(f"ENTERPRISE: No template prompt found for {template_id}")
+
+
+#    def get_template_specific_prompt(self, template_config: Dict[str, Any], template_id: str, state: Dict = None) -> str:
+#        """Enterprise prompt generation with schema validation"""
+#
+#        # PRIORITY 1: Use MCP research if available
+#        if state and self.has_mcp_research(state):
+#            print("Using MCP research-integrated prompt")
+#            return self._build_research_integrated_prompt(template_config, template_id, state)
+#
+#        # PRIORITY 2: Use prompt_schema if available
+#        if template_config and template_config.get('prompt_schema'):
+#            print("Using template prompt_schema")
+#            context = self.extract_context_values(state) if state else {}
+#            return self.build_from_template_schema(template_config, context)
+#
+#        # PRIORITY 3: Generate from template configuration
+#        if template_config:
+#            dynamic_prompt = self._generate_prompt_from_config(template_config, template_id)
+#            if dynamic_prompt:
+#                print("Generated dynamic prompt from template config")
+#                return dynamic_prompt
+#
         # ENTERPRISE: Fail fast if no valid template found
     #    raise RuntimeError(f"ENTERPRISE: No valid template configuration for {template_id}")
 
@@ -507,9 +507,94 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
 
         return "\n".join(summary_parts)
 
-    # File: langgraph_app/agents/writer.py
-    # FIX: Revert to working OpenAI API pattern from writer.copy.py
+    def extract_all_parameters(self, state: Dict) -> Dict[str, Any]:
+        """Extract parameters from all possible state locations"""
+        
+        extracted_params = {}
+        
+        # Path 1: Direct from state root
+        for key in ['client_name', 'clientName', 'project_type', 'projectType', 'topic', 'api_name', 'newsletter_type', 'company_name', 'audience', 'tone', 'voice', 'target_platform', 'seo_focus', 'min_words', 'target_keywords', 'headline_style', 'cta_type', 'brand_voice', 'content_angle', 'competition_level']:
+            if key in state:
+                extracted_params[key] = state[key]
+        
+        # Path 2: From content_spec
+        content_spec = state.get('content_spec')
+        if content_spec:
+            if hasattr(content_spec, 'topic'):
+                extracted_params['topic'] = content_spec.topic
+            elif isinstance(content_spec, dict):
+                extracted_params.update(content_spec)
+        
+        # Path 3: From dynamic_parameters
+        dynamic_params = state.get("dynamic_parameters", {})
+        if isinstance(dynamic_params, dict):
+            if 'dynamic_overrides' in dynamic_params:
+                overrides = dynamic_params['dynamic_overrides']
+                if isinstance(overrides, dict):
+                    extracted_params.update(overrides)
+        
+        # Path 4: From template_config dynamic_overrides
+        template_config = state.get('template_config', {})
+        if isinstance(template_config, dict) and 'dynamic_overrides' in template_config:
+            template_overrides = template_config['dynamic_overrides']
+            if isinstance(template_overrides, dict):
+                if 'dynamic_overrides' in template_overrides:
+                    nested_overrides = template_overrides['dynamic_overrides']
+                    if isinstance(nested_overrides, dict):
+                        extracted_params.update(nested_overrides)
+                else:
+                    extracted_params.update(template_overrides)
+        
+        logger.info(f"EXTRACTED PARAMETERS: {list(extracted_params.keys())}")
+        return extracted_params
 
+    def _build_user_content_with_realtime(
+        self, 
+        context, 
+        state: Dict[str, Any], 
+        real_time_context: Dict[str, Any]
+    ) -> str:
+        """Build user content with extracted parameters and real-time context"""
+
+        # Extract parameters from all state locations
+        extracted_params = self.extract_all_parameters(state)
+
+        # Build base content parts with context
+        user_content_parts = [
+            f"TOPIC: {context.topic}",
+            f"AUDIENCE: {context.audience}",
+            f"PLATFORM: {context.platform}",
+            f"INTENT: {context.intent}",
+            f"COMPLEXITY: {context.complexity_level}"
+        ]
+
+        # Add extracted parameters as context
+        if extracted_params:
+            user_content_parts.append("")
+            user_content_parts.append("PARAMETERS:")
+            for key, value in extracted_params.items():
+                if value and str(value).strip():
+                    user_content_parts.append(f"{key}: {value}")
+
+        # Add planning context if available
+        planning_output = getattr(state, "planning_output", None) or state.get("planning_output")
+        if planning_output:
+            user_content_parts.append(f"\nPLANNING CONTEXT: {str(planning_output)}")
+
+        # Real-time integration
+        if real_time_context.get('real_time_enabled'):
+            current_events = real_time_context.get('current_events', {})
+            if current_events and current_events.get('events'):
+                events_summary = self._summarize_events(current_events['events'])
+                user_content_parts.extend([
+                    "",
+                    f"REAL-TIME DATA (Current as of {real_time_context['data_freshness']}):",
+                    events_summary,
+                    "CRITICAL: Integrate these recent developments into the content where relevant."
+                ])
+
+        return "\n".join(user_content_parts)
+    
     async def _generate_adaptive_content(self, state: Dict[str, Any]) -> str:
         """Generate adaptive content - FIXED: Use working OpenAI API pattern"""
 
@@ -704,145 +789,126 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         dynamic_overrides = params.get("dynamic_overrides", {}) if params else {}
         return dynamic_overrides.get("code_input", "") if dynamic_overrides else ""
 
-# File: langgraph_app/agents/writer.py
-    # Enterprise template sanitization with dynamic code handling
-
-# File: langgraph_app/agents/writer.py
-# Enterprise template sanitization with dynamic code handling
+    # File: langgraph_app/agents/writer.py
+    # CRITICAL FIX: Blog-aware sanitization that preserves SEO elements and narrative structure
 
     def _sanitize_and_enforce(self, raw: str, template_config: Dict = None, state: Dict = None) -> str:
-        """Enterprise template sanitization with dynamic code inclusion logic"""
+        """Blog-aware sanitization that preserves SEO elements and narrative structure"""
         text = raw or ""
 
         if not template_config:
             text = re.sub(r"\n{3,}", "\n\n", text).strip()
             return text
 
-        # Extract configuration
-        output_policy = template_config.get('output_policy', {})
-        template_behavior = template_config.get('template_behavior', {})
+        # Extract template identification
         template_type = template_config.get('template_type', '')
+        template_id = template_config.get('id', template_config.get('slug', ''))
 
-        # Extract user preferences and code input
-        dynamic_params = state.get("dynamic_parameters", {}) if state else {}
-        dynamic_overrides = dynamic_params.get("dynamic_overrides", {})
-        user_wants_code = dynamic_overrides.get("include_code_examples", False)
-        user_provided_code = dynamic_overrides.get("code_input", "")
+        # BLOG ARTICLE SPECIAL HANDLING - Convert bullets to narrative
+        if template_type == 'blog_article' or 'blog' in template_id.lower():
+            return self._enforce_blog_narrative_style(text)
 
-        # ENTERPRISE: Remove all code blocks until code agent feature is implemented
-        should_remove_code = True
+        # SOCIAL MEDIA - Preserve post structure
+        elif template_type == 'social_media_campaign':
+            return self._preserve_social_structure(text)
 
-        if should_remove_code:
-            # AGGRESSIVE: Remove all code blocks and technical artifacts
+        # DEFAULT - Remove code only
+        else:
+            return self._basic_code_removal(text)
 
-            # Remove all code fence variations
-            text = re.sub(r"```[\s\S]*?```", "", text, flags=re.DOTALL)
-            text = re.sub(r"```\w*[\s\S]*?```", "", text, flags=re.DOTALL)
+    def _enforce_blog_narrative_style(self, text: str) -> str:
+        """Convert bullet-heavy content to narrative blog style"""
 
-            # Remove inline code and backticks
-            text = re.sub(r"`[^`\n]*`", "", text)
-            text = text.replace("`", "")
+        # Remove code blocks first
+        text = re.sub(r"```[\s\S]*?```", "", text, flags=re.DOTALL)
+        text = re.sub(r"`[^`\n]*`", "", text)
 
-            # Remove HTML formatting artifacts
-            text = re.sub(r"</?[^>]+>", "", text)
+        # Split into sections while preserving SEO elements at top
+        sections = text.split('\n\n')
+        processed_sections = []
 
-            # Remove broken code patterns that appear mid-text
-            text = re.sub(r"```\w*\s*\n?", "", text)  # Opening fences
-            text = re.sub(r"\n?```\s*", "", text)     # Closing fences
+        for section in sections:
+            section = section.strip()
+            if not section:
+                continue
 
-            # Remove standalone code lines
-            text = re.sub(r"^\s*//.*$", "", text, flags=re.MULTILINE)  # JS comments
-            text = re.sub(r"^\s*#.*$", "", text, flags=re.MULTILINE)   # YAML comments
-            text = re.sub(r"^\s*function\s+\w+.*$", "", text, flags=re.MULTILINE)  # Function declarations
-            text = re.sub(r"^\s*class\s+\w+.*$", "", text, flags=re.MULTILINE)     # Class declarations
-            text = re.sub(r"^\s*\w+:.*$", "", text, flags=re.MULTILINE)           # YAML key-value pairs
+            # Preserve SEO elements (titles, meta descriptions)
+            if any(keyword in section.upper() for keyword in ['SEO TITLE', 'META DESCRIPTION', 'TITLE:', 'META TITLE']):
+                processed_sections.append(section)
+                continue
 
-            # Remove documentation artifacts
-            text = re.sub(r"^#+\s+", "", text, flags=re.MULTILINE)
-            text = re.sub(r"\n#+\s+", "\n", text)
+            # Convert bullet lists to flowing narrative
+            if self._is_bullet_list(section):
+                narrative = self._convert_bullets_to_narrative(section)
+                processed_sections.append(narrative)
+            else:
+                processed_sections.append(section)
 
-            # Remove technical implementation patterns
-            technical_patterns = [
-                r"\[Technical\s+Implementation\]",
-                r"\[Code\s+Example\]", 
-                r"\[Configuration\]",
-                r"Implementation\s+Details:",
-                r"Code\s+Structure:",
-                r"Setup\s+Instructions:",
-                r"Installation\s+Steps:",
-                r"API\s+Reference:"
-            ]
+        return '\n\n'.join(processed_sections)
 
-            for pattern in technical_patterns:
-                text = re.sub(pattern, "", text, flags=re.IGNORECASE)
+    def _is_bullet_list(self, text: str) -> bool:
+        """Check if text is primarily bullet points"""
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        bullet_lines = [line for line in lines if line.startswith(('- ', '• ', '* '))]
+        return len(bullet_lines) > len(lines) * 0.5
 
-        # Normalize whitespace
+    def _convert_bullets_to_narrative(self, bullet_text: str) -> str:
+        """Convert bullet points to flowing narrative paragraphs"""
+
+        lines = [line.strip() for line in bullet_text.split('\n') if line.strip()]
+
+        # Extract header if present
+        header = ""
+        content_lines = []
+
+        for line in lines:
+            if not line.startswith(('- ', '• ', '* ')) and not content_lines:
+                header = line
+            elif line.startswith(('- ', '• ', '* ')):
+                content_lines.append(line[2:].strip())
+
+        if not content_lines:
+            return bullet_text  # Return original if no bullets found
+
+        # Group bullets into thematic paragraphs
+        if len(content_lines) <= 3:
+            # Short list - single flowing sentence
+            if len(content_lines) == 1:
+                narrative = content_lines[0]
+            else:
+                narrative = f"{', '.join(content_lines[:-1])}, and {content_lines[-1]}."
+        else:
+            # Longer list - multiple sentences
+            first_part = content_lines[:3]
+            remaining = content_lines[3:]
+
+            narrative = f"{', '.join(first_part[:-1])}, and {first_part[-1]}."
+
+            if remaining:
+                if len(remaining) == 1:
+                    narrative += f" Additionally, {remaining[0]}."
+                else:
+                    narrative += f" {', '.join(remaining[:-1])}, and {remaining[-1]} are also important considerations."
+
+        # Combine header and narrative
+        if header:
+            return f"{header}\n\n{narrative}"
+        else:
+            return narrative
+
+    def _preserve_social_structure(self, text: str) -> str:
+        """Preserve social media post structure"""
+        text = re.sub(r"```[\s\S]*?```", "", text, flags=re.DOTALL)
+        text = re.sub(r"`[^`\n]*`", "", text)
         text = re.sub(r"\n{3,}", "\n\n", text).strip()
-        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+        return text
 
-        # Template-specific validation
-        if template_type == 'social_media_campaign':
-            return "\n\n".join(paragraphs)
-
-        # Standard content validation
-        min_paragraphs = output_policy.get('min_paragraphs', 2)
-        if len(paragraphs) < min_paragraphs:
-            logger.warning(f"Content has {len(paragraphs)} paragraphs, minimum {min_paragraphs} expected")
-
-        return "\n\n".join(paragraphs)
-
-    def _build_user_content_with_realtime(
-        self, 
-        context, 
-        state: Dict[str, Any], 
-        real_time_context: Dict[str, Any]
-    ) -> str:
-        """Build user content with template-specific instructions"""
-
-        # Extract template config to customize instructions
-        template_config = state.get("template_config", {})
-        template_type = template_config.get('template_type', '')
-
-        # Build base content parts
-        user_content_parts = [
-            f"TOPIC: {context.topic}",
-            f"AUDIENCE: {context.audience}",
-            f"PLATFORM: {context.platform}",
-            f"INTENT: {context.intent}",
-            f"COMPLEXITY: {context.complexity_level}"
-        ]
-
-        # CRITICAL: Template-specific content instructions
-        if template_type == 'social_media_campaign':
-            user_content_parts.extend([
-                "",
-                "CRITICAL SOCIAL MEDIA REQUIREMENTS:",
-                "- Generate INDIVIDUAL social media posts, NOT documentation",
-                "- Each post must have: Caption, Hashtags, CTA, Platform",
-                "- Format: POST 1: Caption: [text] Hashtags: [tags] CTA: [action] Platform: [platform]",
-                "- NO code blocks, NO technical guides, NO documentation format",
-                "- Ready-to-publish content that users can copy/paste directly",
-                f"- Generate {template_config.get('parameters', {}).get('post_count', {}).get('default', 8)} individual posts"
-            ])
-
-        # Add planning context if available
-        planning_output = getattr(state, "planning_output", None) or state.get("planning_output")
-        if planning_output:
-            user_content_parts.append(f"\nPLANNING CONTEXT: {str(planning_output)}")
-
-        # Real-time integration (your existing logic)
-        if real_time_context.get('real_time_enabled'):
-            current_events = real_time_context.get('current_events', {})
-            if current_events and current_events.get('events'):
-                events_summary = self._summarize_events(current_events['events'])
-                user_content_parts.extend([
-                    "",
-                    f"REAL-TIME DATA (Current as of {real_time_context['data_freshness']}):",
-                    events_summary,
-                    "CRITICAL: Integrate these recent developments into the content where relevant."
-                ])
-
-        return "\n".join(user_content_parts)
+    def _basic_code_removal(self, text: str) -> str:
+        """Basic sanitization - remove code blocks only"""
+        text = re.sub(r"```[\s\S]*?```", "", text, flags=re.DOTALL)
+        text = re.sub(r"`[^`\n]*`", "", text)
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
+        return text
 
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
         """Writer executes with template-specific generation - no format overrides"""
