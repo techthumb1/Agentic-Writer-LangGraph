@@ -16,15 +16,15 @@ system_prompt: >
   Always consider patient safety and privacy concerns.
 
 length_limit:
-  words: 1500
-  min: 1200
-  max: 2000
+  words: 2500
+  min: 1800
+  max: 5000
 
 settings:
   use_analogies: false
   avoid_jargon: false
   include_examples: true
-  conversational_tone: false
+  conversational_tone: true
   encourage_questions: true
   reading_level: "professional"
 
@@ -37,5 +37,5 @@ formatting:
 metadata:
   version: "1.0.0"
   created_by: "content_team"
-  last_updated: "2025-06-20"
+  last_updated: "2025-09-20"
   use_cases: ["healthcare AI analysis", "clinical applications", "policy discussions"]
