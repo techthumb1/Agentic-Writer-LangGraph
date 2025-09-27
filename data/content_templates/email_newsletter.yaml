@@ -30,7 +30,7 @@ requirements:
     priority:
       - dynamic.min_words
       - style.length_limit.target
-      - 800
+      - 1800
   subject_line_variants:
     priority:
       - dynamic.subject_line_variants
@@ -127,7 +127,7 @@ post_config:
   paragraph_length: short   # short | medium | long
   per_post_requirements:
     min_words: 60
-    max_words: 120
+    max_words: 2500
   composition:
     include_cta: true
     include_hashtags: 3      # 0 = none
@@ -135,7 +135,7 @@ post_config:
 
 output_policy:
   no_code: true          # enforce: remove code blocks/inlines
-  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
+  max_bullets: 3         # 0 for social; you can set 6+ on longform templates
   min_paragraphs: 3      # minimum paragraphs after sanitation
   paragraph_first: true  # prefer paragraphs over lists
 
