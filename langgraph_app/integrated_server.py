@@ -1125,10 +1125,6 @@ async def get_real_dashboard_metrics():
         "views": total_views
     }
 
-
-# langgraph_app/integrated_server.py
-# Replace the existing update_content endpoint (around line 850-880)
-
 @app.put("/api/content/{content_id}")
 async def update_content(content_id: str, content_update: dict):
     """Update content in both JSON and MD files to maintain consistency"""

@@ -1,9 +1,9 @@
 // frontend/app/content/[contentID]/edit/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useParams } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +45,8 @@ export default function EditContentPage() {
   const router = useRouter();
   const params = useParams();
   const contentId = params.contentID as string;
-  
+
+  // Content state
   const [content, setContent] = useState<ContentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -59,17 +60,40 @@ export default function EditContentPage() {
   const [editedContent, setEditedContent] = useState('');
   const [editedStatus, setEditedStatus] = useState<'draft' | 'published'>('draft');
 
+  // Export menu portal state
+  const [showExport, setShowExport] = useState(false);
+  const exportBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [exportMenuPos, setExportMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (!showExport) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const menu = document.getElementById('export-menu-portal');
+      if (menu && !menu.contains(target) && !exportBtnRef.current?.contains(target)) {
+        setShowExport(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowExport(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [showExport]);
+
   // Fetch content data
   useEffect(() => {
     const fetchContent = async () => {
       try {
         setIsLoading(true);
         const response = await fetch(`/api/content/${contentId}`);
-        
         if (!response.ok) {
           throw new Error(`Failed to fetch content: ${response.status}`);
         }
-
         const data: ContentData = await response.json();
         setContent(data);
         setEditedTitle(data.title);
@@ -83,9 +107,7 @@ export default function EditContentPage() {
       }
     };
 
-    if (contentId) {
-      fetchContent();
-    }
+    if (contentId) fetchContent();
   }, [contentId]);
 
   // Track changes
@@ -101,27 +123,32 @@ export default function EditContentPage() {
 
   const handleSave = async () => {
     if (!content || !hasChanges) return;
-
+    
     setIsSaving(true);
     try {
       const response = await fetch(`/api/content/${contentId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: editedTitle,
           content: editedContent,
           status: editedStatus,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to save content: ${response.status}`);
-      }
-
+    
+      if (!response.ok) throw new Error(`Failed to save content: ${response.status}`);
+    
       const updatedContent = await response.json();
-      setContent(updatedContent);
+      
+      // Force update with edited values if API doesn't return them
+      setContent({
+        ...updatedContent,
+        title: editedTitle,
+        content: editedContent,
+        status: editedStatus,
+        updatedAt: new Date().toISOString()
+      });
+      
       setHasChanges(false);
       toast.success('Content saved successfully!');
     } catch (err) {
@@ -143,12 +170,14 @@ export default function EditContentPage() {
     }
   };
 
-  const handleExport = (format: 'markdown' | 'txt' | 'html') => {
+  // Note: PDF generation here is a simple stub (no styling). For real PDFs, add jsPDF or html2pdf later.
+  const handleExport = (format: 'markdown' | 'txt' | 'html' | 'pdf') => {
     let exportContent = editedContent;
     const fileName = `${editedTitle || 'content'}.${format}`;
     let mimeType = 'text/plain';
 
-    if (format === 'html') {
+    if (format === 'html' || format === 'pdf') {
+      // Build a simple HTML shell; if 'pdf' we still download HTML unless a PDF lib is integrated.
       exportContent = `<!DOCTYPE html>
 <html>
 <head>
@@ -318,39 +347,66 @@ export default function EditContentPage() {
                 )}
                 {copySuccess ? 'Copied!' : 'Copy'}
               </Button>
-              
-              <div className="relative group">
+
+              {/* Export trigger + portal menu */}
+              <div className="relative">
                 <Button
+                  ref={exportBtnRef}
                   variant="outline"
                   size="sm"
                   className="border-white/20 text-white hover:bg-white/10"
+                  onClick={() => {
+                    const btn = exportBtnRef.current;
+                    if (!btn) return;
+                    const rect = btn.getBoundingClientRect();
+                    const menuWidth = 176; // tailwind w-44
+                    setExportMenuPos({
+                      top: rect.bottom + window.scrollY + 8,         // 8px offset
+                      left: rect.right + window.scrollX - menuWidth, // right-align
+                    });
+                    setShowExport((s) => !s);
+                  }}
                 >
                   <Download className="h-4 w-4 mr-1" />
                   Export
                 </Button>
-                <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-white/20 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              </div>
+
+              {showExport && exportMenuPos && createPortal(
+                <div
+                  id="export-menu-portal"
+                  className="fixed bg-gray-900 border border-white/30 rounded-md shadow-2xl w-44 z-[9999]"
+                  style={{ top: exportMenuPos.top, left: exportMenuPos.left }}
+                >
                   <div className="p-1">
                     <button
-                      onClick={() => handleExport('markdown')}
-                      className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-white/10 rounded"
+                      onClick={() => { handleExport('markdown'); setShowExport(false); }}
+                      className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-white/20 rounded"
                     >
                       Markdown (.md)
                     </button>
                     <button
-                      onClick={() => handleExport('html')}
-                      className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-white/10 rounded"
+                      onClick={() => { handleExport('html'); setShowExport(false); }}
+                      className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-white/20 rounded"
                     >
                       HTML (.html)
                     </button>
                     <button
-                      onClick={() => handleExport('txt')}
-                      className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-white/10 rounded"
+                      onClick={() => { handleExport('txt'); setShowExport(false); }}
+                      className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-white/20 rounded"
                     >
                       Text (.txt)
                     </button>
+                    <button
+                      onClick={() => { handleExport('pdf'); setShowExport(false); }}
+                      className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-white/20 rounded"
+                    >
+                      PDF (.pdf)
+                    </button>
                   </div>
-                </div>
-              </div>
+                </div>,
+                document.body
+              )}
             </div>
           </div>
         </CardContent>
@@ -432,9 +488,7 @@ export default function EditContentPage() {
               
               <div className="text-sm text-gray-400">
                 <p>Created: {new Date(content.createdAt).toLocaleDateString()}</p>
-                {content.views && (
-                  <p>Views: {content.views}</p>
-                )}
+                {content.views && <p>Views: {content.views}</p>}
               </div>
             </CardContent>
           </Card>
@@ -485,6 +539,7 @@ export default function EditContentPage() {
               size="sm"
               variant="outline"
               onClick={() => {
+                if (!content) return;
                 setEditedTitle(content.title);
                 setEditedContent(content.content);
                 setEditedStatus(content.status);
