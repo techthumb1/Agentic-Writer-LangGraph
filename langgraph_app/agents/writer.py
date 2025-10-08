@@ -217,15 +217,20 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
 
         # FIXED: Map all possible template identifiers to blog_article_writer.txt
         prompt_file_mapping = {
-            'blog_article_generator': 'blog_article_writer.txt',    # from slug
-            'blog_article': 'blog_article_writer.txt',             # from template_type
+            'blog_article_generator': 'blog_article_writer.txt',
+            'blog_article': 'blog_article_writer.txt',
             'social_media_campaign': 'social_media_campaign_writer.txt',
             'email_newsletter': 'email_newsletter_writer.txt',
             'business_proposal': 'business_proposal_writer.txt',
-            'api_documentation_template': 'enhanced_technical_doc_writer.txt',
-            'api_documentation': 'enhanced_technical_doc_writer.txt',
+            'api_documentation_template': 'api_documentation_template_writer.txt',  # NEW
+            'api_documentation': 'api_documentation_template_writer.txt',           # NEW
+            'data_driven_template': 'data_driven_template_writer.txt',              # NEW
+            'data_driven_report': 'data_driven_template_writer.txt',                # NEW
+            'market_analysis_template': 'market_analysis_writer.txt',      # NEW
+            'market_analysis': 'market_analysis_template_writer.txt',               # NEW
+            'strategic_brief_template': 'strategic_brief_writer.txt',      # NEW              # NEW
+            'technical_documentation': 'technical_documentation_writer.txt',        # NEW
             'press_release': 'press_release_writer.txt',
-            'technical_documentation': 'enhanced_technical_doc_writer.txt',
             'research_paper_template': 'grad_level_writer.txt',
             'research_paper': 'grad_level_writer.txt',
         }
@@ -507,16 +512,19 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
 
         return "\n".join(summary_parts)
 
+    # File: langgraph_app/agents/writer.py
+    # FIXED: Enhanced extract_all_parameters to capture template-specific inputs
+
     def extract_all_parameters(self, state: Dict) -> Dict[str, Any]:
-        """Extract parameters from all possible state locations"""
-        
+        """Extract parameters from all possible state locations - ENHANCED"""
+
         extracted_params = {}
-        
+
         # Path 1: Direct from state root
         for key in ['client_name', 'clientName', 'project_type', 'projectType', 'topic', 'api_name', 'newsletter_type', 'company_name', 'audience', 'tone', 'voice', 'target_platform', 'seo_focus', 'min_words', 'target_keywords', 'headline_style', 'cta_type', 'brand_voice', 'content_angle', 'competition_level']:
             if key in state:
                 extracted_params[key] = state[key]
-        
+
         # Path 2: From content_spec
         content_spec = state.get('content_spec')
         if content_spec:
@@ -524,15 +532,34 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                 extracted_params['topic'] = content_spec.topic
             elif isinstance(content_spec, dict):
                 extracted_params.update(content_spec)
-        
-        # Path 3: From dynamic_parameters
+
+        # Path 3: From dynamic_parameters - ENHANCED TO CAPTURE ALL TEMPLATE INPUTS
         dynamic_params = state.get("dynamic_parameters", {})
         if isinstance(dynamic_params, dict):
+            # CRITICAL FIX: Extract template-specific parameters directly from dynamic_parameters root
+            template_specific_keys = [
+                'campaign_goal', 'target_platforms', 'brand_voice', 'post_count', 'content_types', 'campaign_duration',
+                'market_sector', 'analysis_timeframe', 'key_metrics', 'geographic_scope', 'analysis_depth', 'data_sources', 'competitor_focus', 'regulatory_factors',
+                'newsletter_type', 'subject_lines', 'opening_section', 'main_content', 'cta_section', 'closing_footer',
+                'api_name', 'api_domain', 'auth_type', 'programming_languages', 'base_url', 'version_number',
+                'include_sdks', 'include_postman', 'complexity_level', 'min_endpoints', 'code_examples_per_endpoint',
+                'include_webhooks', 'rate_limiting', 'preferred_length', 'creativity_level', 'content_quality'
+            ]
+
+            for key in template_specific_keys:
+                if key in dynamic_params:
+                    value = dynamic_params[key]
+                    # Clean up quoted strings from frontend
+                    if isinstance(value, str) and value.startswith('"') and value.endswith('"'):
+                        value = value[1:-1]  # Remove quotes
+                    extracted_params[key] = value
+
+            # Extract nested dynamic_overrides
             if 'dynamic_overrides' in dynamic_params:
                 overrides = dynamic_params['dynamic_overrides']
                 if isinstance(overrides, dict):
                     extracted_params.update(overrides)
-        
+
         # Path 4: From template_config dynamic_overrides
         template_config = state.get('template_config', {})
         if isinstance(template_config, dict) and 'dynamic_overrides' in template_config:
@@ -544,8 +571,33 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                         extracted_params.update(nested_overrides)
                 else:
                     extracted_params.update(template_overrides)
-        
+
+        # Path 5: From template_config user_inputs - NEW
+        if isinstance(template_config, dict) and 'user_inputs' in template_config:
+            user_inputs = template_config['user_inputs']
+            if isinstance(user_inputs, dict):
+                extracted_params.update(user_inputs)
+
+        # Path 6: From template_config dynamic_parameters - NEW
+        if isinstance(template_config, dict) and 'dynamic_parameters' in template_config:
+            template_dynamic = template_config['dynamic_parameters']
+            if isinstance(template_dynamic, dict):
+                # Extract all non-nested parameters
+                for key, value in template_dynamic.items():
+                    if key != 'dynamic_overrides':  # Skip nested object
+                        if isinstance(value, str) and value.startswith('"') and value.endswith('"'):
+                            value = value[1:-1]  # Remove quotes
+                        extracted_params[key] = value
+
+        # Debug output with parameter counts
+        template_params = [k for k in extracted_params.keys() if k in [
+            'campaign_goal', 'target_platforms', 'brand_voice', 'post_count', 'content_types', 'campaign_duration',
+            'market_sector', 'analysis_timeframe', 'key_metrics', 'geographic_scope'
+        ]]
+
         logger.info(f"EXTRACTED PARAMETERS: {list(extracted_params.keys())}")
+        logger.info(f"TEMPLATE-SPECIFIC FOUND: {template_params}")
+
         return extracted_params
 
     def _build_user_content_with_realtime(

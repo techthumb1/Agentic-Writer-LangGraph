@@ -33,7 +33,7 @@
     "**/*.tsx",
     "next-env.d.ts",
     ".next/types/**/*.ts"
-  ],
+, "test-smtp.mjs"  ],
   "exclude": [
     "node_modules",
     ".next",

@@ -118,13 +118,7 @@ export function CollapsibleNavigation() {
 
       {/* Navigation Overlay */}
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-40 bg-black bg-opacity-50 transition-opacity duration-300"
-            onClick={closeMenu}
-          />
-          
+        <>  
           {/* Menu Panel */}
           <div className="fixed inset-y-0 right-0 max-w-sm w-full bg-gray-800 shadow-xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto">
             {/* Header */}
@@ -200,15 +194,8 @@ export function CollapsibleNavigation() {
               {/* Quick Stats for Authenticated Users */}
               {session?.user && (
                 <div className="mt-8 pt-6 border-t border-gray-700">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-purple-600/20 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-purple-400">12</div>
-                      <div className="text-xs text-gray-400">Generated</div>
-                    </div>
-                    <div className="bg-pink-600/20 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-pink-400">5</div>
-                      <div className="text-xs text-gray-400">Templates</div>
-                    </div>
+                  <div className="bg-gray-700/50 rounded-lg p-4">
+                    <p className="text-sm text-gray-400">Welcome back!</p>
                   </div>
                 </div>
               )}

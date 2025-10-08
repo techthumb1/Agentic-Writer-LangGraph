@@ -8,26 +8,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User management
+// User management  
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  bio       String?
-  avatar    String?
+  id                 String    @id @default(cuid())
+  name               String?
+  email              String    @unique
+  bio                String?
+  avatar             String?
+  emailVerified      DateTime?
+  password           String?
+  image              String?
+  verificationToken  String?   @unique
+  tokenExpires       DateTime?
   
   // Preferences
   language  String   @default("en")
   timezone  String   @default("UTC")
   
   // Notification settings
-  emailNotifications     Boolean @default(true)
-  pushNotifications      Boolean @default(false)
+  emailNotifications      Boolean @default(true)
+  pushNotifications       Boolean @default(false)
   marketingCommunications Boolean @default(false)
   
   // Generation preferences
-  defaultMaxTokens       Int     @default(2000)
-  defaultTemperature     Float   @default(0.7)
+  defaultMaxTokens      Int     @default(2000)
+  defaultTemperature    Float   @default(0.7)
   defaultModel          String  @default("gpt-4-turbo")
   defaultContentQuality String  @default("balanced")
   autoSave              Boolean @default(true)
@@ -40,9 +45,9 @@ model User {
   usageStats       UsageStats[]
   feedback         ContentFeedback[]
   generationQueue  GenerationQueue[]
-  apiUsage        ApiUsage[]
-  contentExports  ContentExport[]
-  subscription    Subscription?
+  apiUsage         ApiUsage[]
+  contentExports   ContentExport[]
+  subscription     Subscription?
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -437,4 +442,72 @@ model Subscription {
   updatedAt DateTime @updatedAt
   
   @@map("subscriptions")
+}
+
+// Real-time analytics
+model ContentMetrics {
+  id          String   @id @default(cuid())
+  contentId   String   @unique
+  views       Int      @default(0)
+  uniqueViews Int      @default(0)
+  shares      Int      @default(0)
+  downloads   Int      @default(0)
+  avgReadTime Float    @default(0)
+  lastViewed  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([contentId])
+  @@map("content_metrics")
+}
+
+model ContentView {
+  id         String   @id @default(cuid())
+  contentId  String
+  sessionId  String
+  viewedAt   DateTime @default(now())
+  readTime   Int?
+  completed  Boolean  @default(false)
+  
+  @@index([contentId])
+  @@index([sessionId])
+  @@map("content_views")
+}
+
+model DashboardMetrics {
+  id               String   @id @default(cuid())
+  date             DateTime @unique @db.Date
+  totalContent     Int      @default(0)
+  totalViews       Int      @default(0)
+  uniqueVisitors   Int      @default(0)
+  avgEngagement    Float    @default(0)
+  topTemplate      String?
+  topStyleProfile  String?
+  updatedAt        DateTime @updatedAt
+  
+  @@map("dashboard_metrics")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model GenerationLog {
+  id                      Int      @id @default(autoincrement())
+  templateId              String   @map("template_id") @db.VarChar(255)
+  styleProfileId          String   @map("style_profile_id") @db.VarChar(255)
+  wordCount               Int      @map("word_count")
+  generationTimeSeconds   Float    @map("generation_time_seconds")
+  success                 Boolean
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([templateId])
+  @@index([styleProfileId])
+  @@map("generation_logs")
 }

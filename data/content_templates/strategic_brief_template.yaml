@@ -78,8 +78,8 @@ parameters:
 
 # Content structure requirements for strategic briefs
 requirements:
-  min_words: 800
-  max_words: 1500
+  min_words: 1200
+  max_words: 2500
   min_sections: 4
   executive_focused: true
   decision_oriented: true

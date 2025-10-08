@@ -1,152 +1,152 @@
-name: "Research Paper Generator"
-slug: "research_paper_template"
+# File: data/content_templates/press_release.yaml
+# Fixed version ensuring proper YAML structure for template loader
+# CRITICAL: All required fields present and properly formatted
+
+name: "Press Release Generator"
+slug: "press_release"
+id: "press_release"
 version: "2.0"
 template_type: "press_release"
+category: "business"
 
 description: >
-  Academic research paper generator. Creates publication-quality research papers with methodology and findings,
-  not blog posts about research topics.
+  Enterprise press release generator for media distribution and corporate communications.
+  Creates newsworthy announcements formatted for journalists, wire services, and media outlets.
+  Generates actual press releases with proper structure, quotes, and media contact information -
+  not marketing copy or blog content about announcements. Optimized for media pickup and 
+  distribution through PR channels.
 
-# Inputs (resolved at runtime from request payload or style profile)
-inputs:
-  research_topic: { required: true }
-  academic_field: { required: true }             # "psychology", "computer_science", "medicine", "business"
-  research_type: { default: "empirical" }        # "empirical", "theoretical", "literature_review", "case_study"
-  methodology: { default: "quantitative" }       # "quantitative", "qualitative", "mixed_methods"
-  target_audience: { default: "academic" }       # "academic", "practitioners", "general_scholarly"
-  publication_target: { default: "peer_reviewed" } # "peer_reviewed", "conference", "thesis", "report"
-  citation_style: { default: "apa" }            # "apa", "mla", "chicago", "ieee", "harvard"
-  sample_size: { optional: true }
-  # Optional user overrides
-  theoretical_framework: { optional: true }
-  research_questions: { optional: true }
-  statistical_methods: { optional: true }
-  ethical_considerations: { optional: true }
+# Core parameters for press releases
+parameters:
+  announcement_type:
+    type: "select"
+    required: true
+    options: ["product_launch", "company_news", "partnership", "funding", "executive_hire", "awards", "research_findings", "event_announcement"]
+    label: "Announcement Type"
+    description: "Type of news being announced"
+  
+  company_name:
+    type: "text"
+    required: true
+    label: "Company Name"
+    description: "Organization issuing the press release"
+  
+  headline_focus:
+    type: "text"
+    required: true
+    label: "Key News Point"
+    description: "Main newsworthy element"
+    placeholder: "New product launch, major partnership, etc."
+  
+  target_media:
+    type: "multiselect"
+    required: true
+    options: ["tech_media", "business_press", "trade_publications", "local_news", "national_media", "industry_specific"]
+    label: "Target Media"
+    description: "Media outlets to target"
+  
+  geographic_scope:
+    type: "select"
+    required: true
+    options: ["local", "regional", "national", "international"]
+    default: "national"
+    label: "Geographic Scope"
+  
+  urgency_level:
+    type: "select"
+    required: true
+    options: ["immediate", "scheduled", "embargo"]
+    default: "immediate"
+    label: "Release Timing"
+  
+  include_quotes:
+    type: "checkbox"
+    default: true
+    label: "Include Executive Quotes"
+    description: "Include quotes from company leadership"
 
-# Priority-based requirement resolution
+# Content structure requirements
 requirements:
-  min_words:
-    priority:
-      - dynamic.min_words
-      - style.length_limit.target
-      - 8000
-  min_citations:
-    priority:
-      - dynamic.min_citations
-      - style.requirements.min_citations
-      - 25
-  min_sections:
-    priority:
-      - dynamic.min_sections
-      - 8
+  min_words: 400
+  max_words: 800
+  include_contact_info: true
+  include_boilerplate: true
+  media_ready_format: true
+  ap_style_compliance: true
 
 # Template-specific writer instructions
 writer_instructions:
-  content_type: "research_paper"                  # CRITICAL: Actual academic research paper!
-  format: "academic_manuscript"
-  include_methodology: true
-  generate_realistic_findings: true
-  follow_academic_standards: true
-  enforce_citation_requirements:
-    priority:
-      - dynamic.enforce_citation_requirements
-      - true
+  content_type: "press_release"
+  format: "media_announcement"
+  include_newsworthiness: true
+  follow_ap_style: true
+  include_media_contacts: true
+  generate_realistic_quotes: true
 
-mcp:
-  tool_sequence:
-    priority:
-      - dynamic.tool_sequence
-      - [academic_search, statistical_analyzer, citation_generator, peer_review_checker]
-
+# Content sections
 sections:
   order:
-    priority:
-      - dynamic.section_order
-      - ["title_abstract", "introduction", "literature_review", "methodology", "results", "discussion", "conclusion", "references"]
+    - "headline"
+    - "dateline"
+    - "lead_paragraph"
+    - "body_content"
+    - "quotes"
+    - "company_boilerplate"
+    - "media_contact"
 
+# Prompt schema
 prompt_schema:
   system_preamble: |
-    You are a distinguished academic researcher and scholarly writer. Create rigorous, publication-quality
-    research papers that advance knowledge in the field. Generate actual research manuscripts with
-    methodology, findings, and academic rigor - not explanatory content about research topics.
+    You are a professional PR writer and corporate communications specialist. Create
+    newsworthy press releases formatted for media distribution. Generate actual press
+    releases with proper journalism structure, executive quotes, and media contact
+    information - not marketing content about announcements.
 
   content_template: |
-    # {{research_title}}
-
-    ## Abstract
-    {{abstract_section}}
-
-    ## Introduction
-    {{introduction_section}}
-
-    ## Literature Review
-    {{literature_review}}
-
-    ## Methodology
-    {{methodology_section}}
-
-    ## Results
-    {{results_section}}
-
-    ## Discussion
-    {{discussion_section}}
-
-    ## Conclusion
-    {{conclusion_section}}
-
-    ## Limitations and Future Research
-    {{limitations_section}}
-
-    ## References
-    {{references_section}}
-
-  placeholders:
-    - research_title
-    - abstract_section
-    - introduction_section
-    - literature_review
-    - methodology_section
-    - results_section
-    - discussion_section
-    - conclusion_section
-    - limitations_section
-    - references_section
+    # {{headline}}
+    
+    {{dateline}}
+    
+    {{lead_paragraph}}
+    
+    {{body_content}}
+    
+    {{quotes_section}}
+    
+    ## About {{company_name}}
+    {{company_boilerplate}}
+    
+    ## Media Contact
+    {{media_contact_info}}
+    
+    ###
 
 output:
   format: "markdown"
   require:
-    academic_rigor: true
-    proper_citations: true
-    methodology_section: true
-    peer_reviewable: true
+    newsworthy_angle: true
+    executive_quotes: true
+    media_contacts: true
+    ap_style_format: true
 
 real_time_support:
   enabled: true
-  max_age_hours: 6   # Very recent for breaking announcements
-  verification_sources: 3
-  search_required: true
-  fail_if_unavailable: true
+  max_age_hours: 6
+  verification_sources: 2
+  search_required: false
+  fail_if_unavailable: false
 
-# === WriterzRoom enterprise output controls ===
 post_config:
-  enabled: false        # set to true in social_media_campaign.yaml
-  min_posts: 3          # used only when enabled
-  max_posts: 5          # used only when enabled
-  paragraph_length: short   # short | medium | long
-  per_post_requirements:
-    min_words: 60
-    max_words: 120
-  composition:
-    include_cta: true
-    include_hashtags: 3      # 0 = none
-    include_links: optional  # optional | required | none
+  enabled: false
 
 output_policy:
-  no_code: true          # enforce: remove code blocks/inlines
-  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
-  min_paragraphs: 3      # minimum paragraphs after sanitation
-  paragraph_first: true  # prefer paragraphs over lists
+  no_code: true
+  max_bullets: 3
+  min_paragraphs: 4
+  paragraph_first: true
 
-# Optional: planner override keys (validated upstream; no fallbacks here)
-planner_overrides:
-  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided
+# Enterprise features
+image_agent_enabled: false
+estimated_length: "400-800 words"
+difficulty: "intermediate"
+target_audience: "Media professionals, journalists, corporate communications"

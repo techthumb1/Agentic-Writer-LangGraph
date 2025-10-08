@@ -1,5 +1,5 @@
-// components/DynamicParameters.tsx
-// Updated to handle enhanced template parameter structure
+// frontend/components/DynamicParameters.tsx
+// Fixed: Remove conflicting register() from Select component
 "use client";
 import React from "react";
 import { useFormContext } from "react-hook-form";
@@ -11,7 +11,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Info, Star, Zap, Target, Palette } from "lucide-react";
 
-// Enhanced parameter type to match our new template structure
 type EnhancedParam = {
   name: string;
   label?: string;
@@ -21,8 +20,6 @@ type EnhancedParam = {
   required?: boolean;
   placeholder?: string;
   description?: string;
-  
-  // Enhanced fields from our new template structure
   commonly_used?: boolean;
   affects_approach?: boolean;
   affects_scope?: boolean;
@@ -39,31 +36,20 @@ type Props = {
   parameters: EnhancedParam[];
 };
 
-// Helper function to format parameter options
 function formatParameterOptions(options: Record<string, string> | string[] | undefined): string[] {
   if (!options) return [];
-  
-  if (Array.isArray(options)) {
-    return options;
-  }
-  
-  // Handle Record<string, string> format from our enhanced templates
+  if (Array.isArray(options)) return options;
   return Object.keys(options);
 }
 
-// Helper function to get option display text
 function getOptionDisplayText(option: string, options: Record<string, string> | string[] | undefined): string {
   if (!options) return option;
-  
   if (Array.isArray(options)) {
     return option.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }
-  
-  // Handle Record<string, string> format - use the value as display text
   return options[option] || option.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
-// Helper function to get parameter importance badge
 function getParameterBadge(param: EnhancedParam) {
   if (param.commonly_used) {
     return (
@@ -73,7 +59,6 @@ function getParameterBadge(param: EnhancedParam) {
       </Badge>
     );
   }
-  
   if (param.affects_approach) {
     return (
       <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
@@ -82,7 +67,6 @@ function getParameterBadge(param: EnhancedParam) {
       </Badge>
     );
   }
-  
   if (param.affects_scope) {
     return (
       <Badge variant="outline" className="text-xs bg-green-100 text-green-800">
@@ -91,7 +75,6 @@ function getParameterBadge(param: EnhancedParam) {
       </Badge>
     );
   }
-  
   if (param.affects_tone) {
     return (
       <Badge variant="outline" className="text-xs bg-orange-100 text-orange-800">
@@ -100,24 +83,21 @@ function getParameterBadge(param: EnhancedParam) {
       </Badge>
     );
   }
-  
   return null;
 }
 
 export default function DynamicParameters({ parameters }: Props) {
   const { register, setValue, watch } = useFormContext();
 
-  console.log('🔧 DynamicParameters received:', parameters);
-
-  // Initialize default values for all parameters
   React.useEffect(() => {
     parameters.forEach(param => {
       const fieldValue = watch(`dynamic_parameters.${param.name}`);
       if (fieldValue === undefined && param.default !== undefined) {
-        setValue(`dynamic_parameters.${param.name}`, param.default);
+        setValue(`dynamic_parameters.${param.name}`, param.default, { shouldValidate: false });
       }
     });
-  }, [parameters, setValue, watch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parameters]); // Only re-run when parameters change
 
   if (!parameters || parameters.length === 0) {
     return (
@@ -130,25 +110,12 @@ export default function DynamicParameters({ parameters }: Props) {
     );
   }
 
-  // Group parameters by importance
   const importantParams = parameters.filter(p => p.commonly_used || p.affects_approach);
   const otherParams = parameters.filter(p => !p.commonly_used && !p.affects_approach);
-
-  // File: frontend/components/DynamicParameters.tsx
-  // REPLACE the existing renderParameter function with this fixed version
 
   const renderParameter = (param: EnhancedParam) => {
     const fieldValue = watch(`dynamic_parameters.${param.name}`);
     const badge = getParameterBadge(param);
-
-    console.log(`🔧 Rendering parameter: ${param.name} (${param.type})`, {
-      label: param.label,
-      // Default value initialization is now handled in the main component useEffect
-      tone: param.affects_tone
-    });
-
-    // Default value initialization is handled in the main component useEffect
-    // No need for additional useEffect here since it's already handled at component level
 
     const labelElement = (
       <div className="flex items-center justify-between mb-2">
@@ -171,14 +138,9 @@ export default function DynamicParameters({ parameters }: Props) {
         <div key={param.name} className="space-y-2">
           {labelElement}
           {descriptionElement}
-
           <Textarea
             id={param.name}
-            {...register(`dynamic_parameters.${param.name}`, { 
-              required: param.required
-            })}
-            value={fieldValue || param.default?.toString() || ''}
-            onChange={(e) => setValue(`dynamic_parameters.${param.name}`, e.target.value)}
+            {...register(`dynamic_parameters.${param.name}`, { required: param.required })}
             placeholder={param.placeholder || `Enter ${param.label || param.name}...`}
             className="w-full"
             rows={3}
@@ -189,24 +151,19 @@ export default function DynamicParameters({ parameters }: Props) {
 
     if (param.type === "select") {
       const optionsList = formatParameterOptions(param.options);
-
       return (
         <div key={param.name} className="space-y-2">
           {labelElement}
           {descriptionElement}
-
           <Select
             value={fieldValue?.toString() || param.default?.toString() || ""}
             onValueChange={(value) => {
-              // Handle the special "none" case
               const actualValue = value === "__none__" ? "" : value;
               setValue(`dynamic_parameters.${param.name}`, actualValue);
             }}
           >
             <SelectTrigger>
-              <SelectValue 
-                placeholder={`Select ${param.label || param.name}...`}
-              />
+              <SelectValue placeholder={`Select ${param.label || param.name}...`} />
             </SelectTrigger>
             <SelectContent>
               {!param.required && (
@@ -230,16 +187,13 @@ export default function DynamicParameters({ parameters }: Props) {
         <div key={param.name} className="space-y-2">
           {labelElement}
           {descriptionElement}
-
           <Input
             id={param.name}
             type="number"
             {...register(`dynamic_parameters.${param.name}`, { 
-              required: param.required,
-              valueAsNumber: true
+              required: param.required, 
+              valueAsNumber: true 
             })}
-            value={fieldValue || param.default || ''}
-            onChange={(e) => setValue(`dynamic_parameters.${param.name}`, parseFloat(e.target.value) || 0)}
             placeholder={param.placeholder || `Enter ${param.label || param.name}...`}
             className="w-full"
             min={param.validation?.min}
@@ -271,7 +225,6 @@ export default function DynamicParameters({ parameters }: Props) {
               {badge}
             </div>
           </div>
-
           {param.description && (
             <p className="text-xs text-muted-foreground ml-6">{param.description}</p>
           )}
@@ -284,35 +237,25 @@ export default function DynamicParameters({ parameters }: Props) {
         <div key={param.name} className="space-y-2">
           {labelElement}
           {descriptionElement}
-
           <Input
             id={param.name}
             type="date"
-            {...register(`dynamic_parameters.${param.name}`, { 
-              required: param.required
-            })}
-            value={fieldValue || param.default?.toString() || ''}
-            onChange={(e) => setValue(`dynamic_parameters.${param.name}`, e.target.value)}
+            {...register(`dynamic_parameters.${param.name}`, { required: param.required })}
             className="w-full"
           />
         </div>
       );
     }
 
-    // Default to text input
+    // Default: text input - NO value prop, NO onChange prop
     return (
       <div key={param.name} className="space-y-2">
         {labelElement}
         {descriptionElement}
-
         <Input
           id={param.name}
           type="text"
-          {...register(`dynamic_parameters.${param.name}`, { 
-            required: param.required
-          })}
-          value={fieldValue || param.default?.toString() || ''}
-          onChange={(e) => setValue(`dynamic_parameters.${param.name}`, e.target.value)}
+          {...register(`dynamic_parameters.${param.name}`, { required: param.required })}
           placeholder={param.placeholder || `Enter ${param.label || param.name}...`}
           className="w-full"
         />
@@ -327,15 +270,12 @@ export default function DynamicParameters({ parameters }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Important/Popular Parameters First */}
       {importantParams.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
             <Star className="h-4 w-4 text-blue-500" />
             <h4 className="text-sm font-semibold text-gray-700">Key Parameters</h4>
-            <Badge variant="outline" className="text-xs">
-              {importantParams.length}
-            </Badge>
+            <Badge variant="outline" className="text-xs">{importantParams.length}</Badge>
           </div>
           <div className="grid grid-cols-1 gap-4">
             {importantParams.map(renderParameter)}
@@ -343,15 +283,12 @@ export default function DynamicParameters({ parameters }: Props) {
         </div>
       )}
 
-      {/* Other Parameters */}
       {otherParams.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
             <Info className="h-4 w-4 text-gray-400" />
             <h4 className="text-sm font-semibold text-gray-700">Additional Parameters</h4>
-            <Badge variant="outline" className="text-xs">
-              {otherParams.length}
-            </Badge>
+            <Badge variant="outline" className="text-xs">{otherParams.length}</Badge>
           </div>
           <div className="grid grid-cols-1 gap-4">
             {otherParams.map(renderParameter)}
@@ -359,7 +296,6 @@ export default function DynamicParameters({ parameters }: Props) {
         </div>
       )}
 
-      {/* Parameter Summary */}
       <div className="mt-6 p-3 bg-gray-50 rounded-lg border">
         <div className="text-xs text-gray-600">
           <strong>Parameter Summary:</strong> {parameters.length} total parameters 

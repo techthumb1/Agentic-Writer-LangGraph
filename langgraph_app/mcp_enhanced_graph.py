@@ -112,99 +112,47 @@ class MCPEnhancedContentGraph:
         logger.info("MCP Enhanced Content Graph initialized without code agent")
     # ----------------------------- Nodes with On-Demand Creation -------------
     
-# File: langgraph_app/mcp_enhanced_graph.py
-# Replace _planner_node method
+    # File: langgraph_app/mcp_enhanced_graph.py
+    # Replace _planner_node method
 
     def _planner_node(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Execute planner agent with template_config validation and Studio compatibility"""
-        
-        logger.info(f"PLANNER DEBUG: Input state type: {type(state)}")
-        logger.info(f"PLANNER DEBUG: Has template_config: {hasattr(state, 'template_config')}")
-        
-        if hasattr(state, 'template_config'):
-            logger.info(f"PLANNER DEBUG: template_config type: {type(state.template_config)}")
-            logger.info(f"PLANNER DEBUG: template_config keys: {list(state.template_config.keys()) if isinstance(state.template_config, dict) else 'NOT_DICT'}")
-        
-        # ENTERPRISE VALIDATION with Studio compatibility
+        """Execute planner agent with strict template validation - NO FALLBACKS"""
+
+        # ENTERPRISE: Validate template_config exists
         if not hasattr(state, 'template_config') or not isinstance(state.template_config, dict) or not state.template_config:
-            logger.warning("PLANNER: Empty template_config detected, attempting reconstruction")
-            
-            # Try to reconstruct from content_spec for Studio compatibility
-            if hasattr(state, 'content_spec') and state.content_spec:
-                state.template_config = {
-                    'id': getattr(state.content_spec, 'template_id', 'studio_generated'),
-                    'template_type': getattr(state.content_spec, 'template_type', 'strategic_brief'),
-                    'name': 'Studio Generated Template',
-                    'parameters': {},
-                    'structure': {},
-                    'research': {},
-                    'defaults': {},
-                    'distribution_channels': [],
-                    'generation_mode': 'standard',
-                    'platform': 'professional'
-                }
-                logger.info(f"PLANNER: Reconstructed template_config: {list(state.template_config.keys())}")
-            else:
-                # Minimal fallback for Studio
-                state.template_config = {
-                    'id': 'studio_fallback',
-                    'template_type': 'strategic_brief',
-                    'name': 'Studio Fallback Template',
-                    'parameters': {},
-                    'structure': {},
-                    'research': {},
-                    'defaults': {},
-                    'distribution_channels': [],
-                    'generation_mode': 'standard',
-                    'platform': 'professional'
-                }
-                logger.warning("PLANNER: Created minimal template_config fallback")
-        
-        # ENTERPRISE VALIDATION for style_config with Studio compatibility
+            raise RuntimeError(
+                "ENTERPRISE: template_config required in state. "
+                "Studio must provide valid template selection."
+            )
+
+        # ENTERPRISE: Validate template_id
+        template_id = state.template_config.get('id') or state.template_config.get('slug')
+        if not template_id or template_id in ['default', 'studio_fallback', 'studio_generated']:
+            from langgraph_app.template_loader import get_template_loader
+            available = get_template_loader().list_templates()
+            raise RuntimeError(
+                f"ENTERPRISE: Invalid template_id '{template_id}'. "
+                f"Must be one of: {available}"
+            )
+
+        # ENTERPRISE: Validate style_config exists
         if not hasattr(state, 'style_config') or not isinstance(state.style_config, dict) or not state.style_config:
-            logger.warning("PLANNER: Empty style_config detected, creating fallback")
-            state.style_config = {
-                'id': 'merger_acquisition',
-                'name': 'Merger & Acquisition',
-                'category': 'business_strategy',
-                'platform': 'professional',
-                'tone': 'professional',
-                'voice': 'authoritative',
-                'structure': 'executive_brief',
-                'audience': 'corporate_development',
-                'length_limit': 5000,
-                'settings': {},
-                'formatting': {},
-                'system_prompt': 'Professional business analysis style'
-            }
-            logger.info("PLANNER: Created style_config fallback")
-        
-        logger.info(f"PLANNER DEBUG: Validated template_config with {len(state.template_config)} keys")
-        
+            raise RuntimeError(
+                "ENTERPRISE: style_config required in state. "
+                "Studio must provide valid style profile."
+            )
+
+        # Create planner agent
         if self.planner_agent is None:
-            try:
-                from .agents.enhanced_planner_integrated import EnhancedPlannerAgent
-                self.planner_agent = EnhancedPlannerAgent()
-                logger.info("Created planner agent on-demand")
-            except Exception as e:
-                raise RuntimeError(f"Planner Agent creation failed: {e}")
-        
-        try:
-            result = self.planner_agent.execute(state)
-            self._calculate_overall_confidence(result)
-            
-            # VERIFY: Ensure template_config preserved after execution
-            if not hasattr(result, 'template_config') or not result.template_config:
-                result.template_config = state.template_config
-                logger.warning("PLANNER: Restored template_config after execution")
-            
-            logger.info(f"PLANNER DEBUG: Execution completed, template_config preserved: {len(result.template_config)} keys")
-            return result
-        
-        except Exception as e:
-            logger.error(f"Planner execution failed: {e}")
-            raise RuntimeError(f"Planner execution failed: {e}")    
-   
+            from .agents.enhanced_planner_integrated import EnhancedPlannerAgent
+            self.planner_agent = EnhancedPlannerAgent()
+            logger.info("Created planner agent on-demand")
+
+        # Execute with validated configs
+        result = self.planner_agent.execute(state)
+        self._calculate_overall_confidence(result)
+        return result   
+    
     def _researcher_node(self, state: EnrichedContentState) -> EnrichedContentState:
         """Execute researcher agent with on-demand creation"""
         self._require_state(state)
@@ -495,227 +443,195 @@ class MCPEnhancedContentGraph:
                 pass  # do not mask the original failure
             raise RuntimeError(f"Publisher execution failed: {e}")
 
+    # File: langgraph_app/mcp_enhanced_graph.py
+    # Replace _normalize_initial_state method (lines ~265-337)
+
+    # File: langgraph_app/mcp_enhanced_graph.py
+    # Replace _normalize_initial_state method (lines ~265-337)
+
     def _normalize_initial_state(self, initial_state: Union[Dict, EnrichedContentState]) -> EnrichedContentState:
+        """FIXED: Load template/style configs from IDs when not provided"""
+
         logger.info(f"DEBUG: _normalize_initial_state called with type: {type(initial_state)}")
 
-        # 1) Already an EnrichedContentState - preserve everything
+        # 1) Already EnrichedContentState - preserve everything
         if isinstance(initial_state, EnrichedContentState):
-            logger.info(f"DEBUG: Input is EnrichedContentState, template_config exists: {hasattr(initial_state, 'template_config')}")
             self._validate_state(initial_state)
             return initial_state
 
         # 2) Handle dict input (LangGraph Studio format)
         if not isinstance(initial_state, dict):
-            raise TypeError("Initial state must be EnrichedContentState or dict")   
+            raise TypeError("Initial state must be EnrichedContentState or dict")
 
-        logger.info(f"DEBUG: Converting dict to EnrichedContentState, dict keys: {list(initial_state.keys())}")
+        logger.info(f"DEBUG: Input dict keys: {list(initial_state.keys())}")
 
-        # CRITICAL: LangGraph Studio sends nested format or top-level fields
-        working_data = initial_state
+        # Extract from nested "input" wrapper if present
+        working_data = initial_state.get("input", initial_state)
+        logger.info(f"DEBUG: Working data keys: {list(working_data.keys())}")
 
-        # Check for nested "input" wrapper (LangGraph Studio format)
-        if len(working_data) == 1 and "input" in working_data:
-            working_data = working_data["input"]
-            logger.info("DEBUG: Extracted from LangGraph Studio 'input' wrapper")
+        # CRITICAL FIX: Load configs from IDs if not provided as objects
+        template_config = working_data.get("template_config")
+        style_config = working_data.get("style_config")
 
-        # CRITICAL DEBUG: Log the actual structure we're working with
-        logger.info(f"DEBUG: working_data keys: {list(working_data.keys())}")
-        template_config = working_data.get("template_config", {})
-        logger.info(f"DEBUG: template_config keys: {list(template_config.keys())}")
+        # STUDIO COMPATIBILITY: Load from IDs when configs not provided
+        if not template_config or not isinstance(template_config, dict):
+            template_id = working_data.get("template_id")
+            if not template_id:
+                raise ValueError(
+                    "ENTERPRISE: Must provide either 'template_config' object or 'template_id'. "
+                    f"Received keys: {list(working_data.keys())}"
+                )
 
-        # DETAILED DEBUGGING: Show full template_config structure
-        if template_config:
-            logger.info(f"DEBUG: Full template_config: {json.dumps(template_config, indent=2)}")
+            # Load template from ID
+            template_loader = get_template_loader()
+            template_config = template_loader.load_template(template_id)
+            if not template_config:
+                available = template_loader.list_templates()
+                raise ValueError(
+                    f"ENTERPRISE: Invalid template_id '{template_id}'. "
+                    f"Available: {available}"
+                )
+            logger.info(f"DEBUG: Loaded template_config from ID: {template_id}")
 
-        # Extract content_spec (required)
-        content_spec_data = working_data.get("content_spec", {})
+        if not style_config or not isinstance(style_config, dict):
+            style_profile_id = working_data.get("style_profile_id")
+            if not style_profile_id:
+                raise ValueError(
+                    "ENTERPRISE: Must provide either 'style_config' object or 'style_profile_id'. "
+                    f"Received keys: {list(working_data.keys())}"
+                )
 
-        # FIXED: Handle ContentSpec object vs dict
-        if hasattr(content_spec_data, '__dict__'):
-            content_spec_dict = {
-                'topic': getattr(content_spec_data, 'topic', ''),
-                'template_type': getattr(content_spec_data, 'template_type', ''),
-                'target_audience': getattr(content_spec_data, 'target_audience', ''),
-                'platform': getattr(content_spec_data, 'platform', 'web')
-            }
-            logger.info("DEBUG: Converted ContentSpec object to dict")
-        else:
-            content_spec_dict = content_spec_data or {}
+            # Load style from ID
+            style_loader = get_dynamic_style_profile_loader()
+            style_config = style_loader.load_profile(style_profile_id)
+            if not style_config:
+                available = style_loader.list_profiles()
+                raise ValueError(
+                    f"ENTERPRISE: Invalid style_profile_id '{style_profile_id}'. "
+                    f"Available: {available}"
+                )
+            logger.info(f"DEBUG: Loaded style_config from ID: {style_profile_id}")
 
-        # CRITICAL FIX: Enhanced topic extraction with multiple fallback paths
-        if not content_spec_dict or not content_spec_dict.get('topic'):
-            logger.info("DEBUG: content_spec missing or has no topic, extracting from template_config")
+        # Extract topic from multiple possible locations
+        topic = None
 
-            # Path 1: Check template_config.dynamic_overrides
+        # Path 1: Top-level topic
+        topic = working_data.get("topic")
+
+        # Path 2: content_spec.topic (when state is reused)
+        if not topic:
+            content_spec_data = working_data.get("content_spec", {})
+            if hasattr(content_spec_data, 'topic'):
+                topic = content_spec_data.topic
+            elif isinstance(content_spec_data, dict):
+                topic = content_spec_data.get("topic")
+
+        # Path 3: template_config.dynamic_overrides
+        if not topic:
             dynamic_overrides = template_config.get("dynamic_overrides", {})
-            logger.info(f"DEBUG: dynamic_overrides: {dynamic_overrides}")
+            if isinstance(dynamic_overrides, dict):
+                topic = dynamic_overrides.get("topic")
+                # Handle nested dynamic_overrides
+                if not topic and "dynamic_overrides" in dynamic_overrides:
+                    topic = dynamic_overrides["dynamic_overrides"].get("topic")
 
-            topic = dynamic_overrides.get("topic")
-            logger.info(f"DEBUG: Topic from dynamic_overrides: '{topic}'")
+        # Path 4: dynamic_parameters (common in internal state)
+        if not topic:
+            dynamic_params = working_data.get("dynamic_parameters", {})
+            if isinstance(dynamic_params, dict):
+                topic = dynamic_params.get("topic")
 
-            # Path 2: Check for nested dynamic_overrides
-            if not topic and "dynamic_overrides" in dynamic_overrides:
-                nested_overrides = dynamic_overrides["dynamic_overrides"]
-                logger.info(f"DEBUG: nested dynamic_overrides: {nested_overrides}")
-                topic = nested_overrides.get("topic")
-                logger.info(f"DEBUG: Topic from nested dynamic_overrides: '{topic}'")
+        if not topic or not isinstance(topic, str) or not topic.strip():
+            raise ValueError(
+                "ENTERPRISE: 'topic' required. Searched: working_data['topic'], "
+                f"content_spec.topic, template_config.dynamic_overrides.topic. "
+                f"Available keys: {list(working_data.keys())}"
+            )
 
-            # Path 3: Check template_config top level
-            if not topic:
-                topic = template_config.get("topic")
-                logger.info(f"DEBUG: Topic from template_config root: '{topic}'")
-
-            # Path 4: Check template_config.name
-            if not topic:
-                topic = template_config.get("name")
-                logger.info(f"DEBUG: Topic from template_config.name: '{topic}'")
-
-            # Path 5: Check template_config.prompt_schema
-            if not topic:
-                prompt_schema = template_config.get("prompt_schema", {})
-                if isinstance(prompt_schema, dict):
-                    # Look for topic in prompt schema variables
-                    for key, value in prompt_schema.items():
-                        if "topic" in key.lower() and isinstance(value, str) and value.strip():
-                            topic = value.strip()
-                            logger.info(f"DEBUG: Topic from prompt_schema.{key}: '{topic}'")
-                            break
-                        
-            # ENTERPRISE: Fail fast if no topic found anywhere
-            if not topic or not isinstance(topic, str) or not topic.strip():
-                logger.error("CRITICAL: No topic found in any location")
-                logger.error(f"Searched paths:")
-                logger.error(f"  - content_spec.topic: {content_spec_dict.get('topic', 'MISSING')}")
-                logger.error(f"  - template_config.dynamic_overrides.topic: {dynamic_overrides.get('topic', 'MISSING')}")
-                logger.error(f"  - template_config.topic: {template_config.get('topic', 'MISSING')}")
-                logger.error(f"  - template_config.name: {template_config.get('name', 'MISSING')}")
-                raise ValueError("ENTERPRISE: No topic found in request - cannot proceed with content generation")
-
-            # Build content_spec from extracted data
-            content_spec_dict = {
-                "topic": topic.strip(),
-                "template_type": template_config.get("template_type", "article"),
-                "target_audience": dynamic_overrides.get("target_audience", "general"),
-                "platform": "web"
-            }
-            logger.info(f"DEBUG: Built content_spec_dict: {content_spec_dict}")
-
-        # Validate required content_spec fields after extraction
-        required_fields = ["topic", "template_type", "target_audience"]
-        for field in required_fields:
-            value = content_spec_dict.get(field, "").strip()
-            if not value:
-                logger.error(f"CRITICAL: Required field '{field}' is empty: '{content_spec_dict.get(field)}'")
-                raise ValueError(f"ENTERPRISE: content_spec.{field} is required and cannot be empty")
-
-        logger.info(f"DEBUG: Final content_spec validation passed - topic: '{content_spec_dict['topic']}'")
-
+        # Build ContentSpec
         content_spec = ContentSpec(
-            topic=content_spec_dict["topic"],
-            template_type=content_spec_dict["template_type"],
-            target_audience=content_spec_dict["target_audience"],
-            platform=content_spec_dict.get("platform", "web"),
+            topic=topic.strip(),
+            template_id=template_config.get("id", "unknown"),
+            template_type=template_config.get("template_type", "article"),
+            platform=working_data.get("platform", "web"),
+            target_audience=working_data.get("target_audience", "general")
         )
 
-        # CRITICAL: Handle template_config (enterprise: no fallbacks)
-        tc = working_data.get("template_config", None)
-        if not (isinstance(tc, dict) and bool(tc)):
-            raise ValueError("ENTERPRISE: template_config must be a non-empty dict in request input")
-
-        # Handle style_config
-        sc = working_data.get("style_config", None)
-        if not (isinstance(sc, dict) and bool(sc)):
-            raise ValueError("ENTERPRISE: style_config must be a non-empty dict in request input")
-
-        # CRITICAL FIX: Use dataclass constructor with explicit parameters
-        logger.info(f"DEBUG: Creating EnrichedContentState with:")
-        logger.info(f"  - topic: '{content_spec.topic}'")
-        logger.info(f"  - template_config keys: {list(tc.keys())}")
-        logger.info(f"  - style_config keys: {list(sc.keys())}")
-
+        # Create EnrichedContentState
         state = EnrichedContentState(
             content_spec=content_spec,
-            template_config=copy.deepcopy(tc),
-            style_config=copy.deepcopy(sc),
+            template_config=copy.deepcopy(template_config),
+            style_config=copy.deepcopy(style_config),
             request_id=working_data.get("request_id"),
             current_agent="start"
         )
 
-        # Copy additional content fields
-        content_fields = ["current_phase", "completed_phases", "draft_content", "final_content", "content"]
-        for attr in content_fields:
-            if attr in working_data:
-                setattr(state, attr, copy.deepcopy(working_data[attr]))
+        # Set initial phase
+        state.update_phase(ContentPhase.PLANNING)
 
-        if not getattr(state, "current_phase", None):
-            state.update_phase(ContentPhase.PLANNING)   
-
-        # FINAL VERIFICATION
-        if not (hasattr(state, 'template_config') and isinstance(state.template_config, dict) and state.template_config):
-            raise ValueError(f"CRITICAL: template_config validation failed after normalization")
+        # FINAL VALIDATION
+        if not state.template_config or not state.template_config.get("id"):
+            raise ValueError("CRITICAL: template_config validation failed after normalization")
 
         if not state.content_spec.topic.strip():
-            raise ValueError(f"CRITICAL: content_spec.topic is empty after normalization: '{state.content_spec.topic}'")
+            raise ValueError("CRITICAL: content_spec.topic is empty after normalization")
 
-        logger.info(f"DEBUG: Successfully normalized state:")
-        logger.info(f"  - topic: '{state.content_spec.topic}'")
-        logger.info(f"  - template_config: {len(state.template_config)} keys")
-        logger.info(f"  - style_config: {len(state.style_config)} keys")
+        logger.info(f"DEBUG: Successfully normalized state - topic: '{state.content_spec.topic}'")
+        return state    
 
-        return state
-
-    def _build_minimal_configs(self, topic: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        """Build minimal template and style configs when missing - emergency recovery"""
-        
-        template_config = {
-            "id": "emergency_template",
-            "slug": "emergency-template",
-            "name": f"Emergency Template for {topic}",
-            "template_type": "article",
-            "structure": {
-                "sections": ["Introduction", "Main Content", "Conclusion"],
-                "format": "markdown"
-            },
-            "research": {},
-            "parameters": {},
-            "defaults": {
-                "template_type": "article",
-                "target_audience": "general"
-            },
-            "distribution_channels": ["web"],
-            "generation_mode": "standard",
-            "platform": "web",
-            "dynamic_overrides": {
-                "topic": topic,
-                "target_audience": "general audience"
-            },
-            "_fingerprint": "emergency_recovery"
-        }
-        
-        style_config = {
-            "id": "emergency_style",
-            "name": "Emergency Professional Style",
-            "category": "professional",
-            "platform": "web",
-            "tone": "professional",
-            "voice": "authoritative",
-            "structure": "standard",
-            "audience": "general",
-            "length_limit": {},
-            "settings": {
-                "formality": "professional",
-                "complexity": "medium"
-            },
-            "formatting": {
-                "style": "markdown",
-                "structure": "sections"
-            },
-            "system_prompt": f"You are a professional content writer creating high-quality content about {topic} for a general audience. Write in a clear, authoritative, and engaging style.",
-            "_filename": "emergency_recovery"
-        }
-        
-        logger.warning(f"Emergency recovery: built minimal configs for topic '{topic}'")
-        return template_config, style_config
+    #### Emergency recovery method (not used in current flow. Fallback) ####
+#    def _build_minimal_configs(self, topic: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+#        """Build minimal template and style configs when missing - emergency recovery"""
+#        
+#        template_config = {
+#            "id": "emergency_template",
+#            "slug": "emergency-template",
+#            "name": f"Emergency Template for {topic}",
+#            "template_type": "article",
+#            "structure": {
+#                "sections": ["Introduction", "Main Content", "Conclusion"],
+#                "format": "markdown"
+#            },
+#            "research": {},
+#            "parameters": {},
+#            "defaults": {
+#                "template_type": "article",
+#                "target_audience": "general"
+#            },
+#            "distribution_channels": ["web"],
+#            "generation_mode": "standard",
+#            "platform": "web",
+#            "dynamic_overrides": {
+#                "topic": topic,
+#                "target_audience": "general audience"
+#            },
+#            "_fingerprint": "emergency_recovery"
+#        }
+#        
+#        style_config = {
+#            "id": "emergency_style",
+#            "name": "Emergency Professional Style",
+#            "category": "professional",
+#            "platform": "web",
+#            "tone": "professional",
+#            "voice": "authoritative",
+#            "structure": "standard",
+#            "audience": "general",
+#            "length_limit": {},
+#            "settings": {
+#                "formality": "professional",
+#                "complexity": "medium"
+#            },
+#            "formatting": {
+#                "style": "markdown",
+#                "structure": "sections"
+#            },
+#            "system_prompt": f"You are a professional content writer creating high-quality content about {topic} for a general audience. Write in a clear, authoritative, and engaging style.",
+#            "_filename": "emergency_recovery"
+#        }
+#        
+#        logger.warning(f"Emergency recovery: built minimal configs for topic '{topic}'")
+#        return template_config, style_config
 
     def _determine_specialized_agents(self, state: EnrichedContentState) -> str:
         self._require_state(state)
@@ -724,18 +640,12 @@ class MCPEnhancedContentGraph:
         template_type = str(spec.template_type or "").lower()
         topic = str(spec.topic or "").lower()
         
-        needs_seo = True
         needs_code = any(word in template_type + " " + topic for word in 
                         ['api', 'code', 'technical', 'programming', 'development'])
         
-        if needs_seo and needs_code:
-            return "seo_code"
-        elif needs_seo:
-            return "seo_only"
-        elif needs_code:
-            return "code_only"
-        else:
-            return "publisher"
+        # Force SEO always, ignore code
+        return "seo_only"
+
 
     # ----------------------------- Public API --------------------------------
     async def execute_coordinated_generation(

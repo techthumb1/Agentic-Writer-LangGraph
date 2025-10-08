@@ -14,7 +14,7 @@ parameters:
   campaign_goal:
     type: "select"
     required: true
-    options: ["brand_awareness", "lead_generation", "engagement", "sales", "education"]
+    options: ["brand-awareness", "lead-generation", "engagement", "sales", "education"]
     label: "Campaign Goal"
   
   target_platforms:
@@ -44,8 +44,8 @@ parameters:
   
   campaign_duration:
     type: "select"
-    default: "1_week"
-    options: ["3_days", "1_week", "2_weeks", "1_month"]
+    default: "1-week"
+    options: ["3-days", "1-week", "2-weeks", "1-month"]
     label: "Campaign Duration"
 
 # Content requirements

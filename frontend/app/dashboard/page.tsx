@@ -1,4 +1,6 @@
 // frontend/app/dashboard/page.tsx
+// Enterprise-grade dashboard with strict fail-fast behavior
+// No fallbacks, no degraded modes - if backend fails, show error
 'use client';
 
 import { redirect } from 'next/navigation'
@@ -21,19 +23,19 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 
 interface DashboardStats {
-  totalContent: number
+  total_content: number
   drafts: number
   published: number
   views: number
-  recentContent: RecentContentItem[]
-  recentActivity: ActivityItem[]
+  recent_content: RecentContentItem[]
+  recent_activity: ActivityItem[]
 }
 
 interface RecentContentItem {
   id: string
   title: string
   status: 'published' | 'draft'
-  updatedAt: string
+  updated_at: string
   type: string
 }
 
@@ -44,16 +46,6 @@ interface ActivityItem {
   timestamp: string
 }
 
-interface ContentResponse {
-  content?: RecentContentItem[]
-  totalViews?: number
-}
-
-interface ActivityResponse {
-  activities?: ActivityItem[]
-}
-
-// Custom hook for dashboard data
 function useDashboardData() {
   const [data, setData] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -64,9 +56,6 @@ function useDashboardData() {
       setIsLoading(true)
       setError(null)
 
-      console.log('🔍 Frontend: Starting dashboard data fetch...')
-
-      // Fetch dashboard stats from your backend
       const statsResponse = await fetch('/api/dashboard/stats', {
         method: 'GET',
         headers: {
@@ -74,64 +63,21 @@ function useDashboardData() {
         },
       })
 
-      console.log('🔍 Frontend: Stats response status:', statsResponse.status)
-
       if (!statsResponse.ok) {
-        if (statsResponse.status === 404) {
-          console.log('🔍 Frontend: 404 - falling back to individual endpoints')
-          
-          // If dashboard stats endpoint doesn't exist yet, fall back to individual endpoints
-          const [contentResponse, activityResponse] = await Promise.all([
-            fetch('/api/content').catch(() => null),
-            fetch('/api/dashboard/activity').catch(() => null)
-          ])
-
-          console.log('🔍 Frontend: Content response:', contentResponse?.status)
-          console.log('🔍 Frontend: Activity response:', activityResponse?.status)
-
-          // Parse responses if available
-          const contentData: ContentResponse | null = contentResponse?.ok ? await contentResponse.json() : null
-          const activityData: ActivityResponse | null = activityResponse?.ok ? await activityResponse.json() : null
-
-          console.log('🔍 Frontend: Content data:', contentData)
-          console.log('🔍 Frontend: Activity data:', activityData)
-
-          // Build stats from available data
-          const stats: DashboardStats = {
-            totalContent: contentData?.content?.length || 0,
-            drafts: contentData?.content?.filter((item: RecentContentItem) => item.status === 'draft').length || 0,
-            published: contentData?.content?.filter((item: RecentContentItem) => item.status === 'published').length || 0,
-            views: contentData?.totalViews || 0,
-            recentContent: contentData?.content?.slice(0, 4) || [],
-            recentActivity: activityData?.activities?.slice(0, 4) || []
-          }
-
-          console.log('🔍 Frontend: Built stats from fallback:', stats)
-          setData(stats)
-          return
-        }
-        throw new Error(`Failed to fetch dashboard data: ${statsResponse.status}`)
+        throw new Error(`Dashboard API returned ${statsResponse.status}`)
       }
 
       const statsData = await statsResponse.json()
+      
+      if (!statsData || typeof statsData !== 'object') {
+        throw new Error('Invalid dashboard data structure')
+      }
+
       setData(statsData)
 
     } catch (err) {
-      console.error('🔍 Frontend: Dashboard data fetch error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
-      
-      // Set fallback data to prevent complete UI failure
-      const fallbackData = {
-        totalContent: 0,
-        drafts: 0,
-        published: 0,
-        views: 0,
-        recentContent: [],
-        recentActivity: []
-      }
-      
-      console.log('🔍 Frontend: Using fallback data:', fallbackData)
-      setData(fallbackData)
+      console.error('Dashboard data fetch failed:', err)
+      setError(err instanceof Error ? err.message : 'Dashboard unavailable')
     } finally {
       setIsLoading(false)
     }
@@ -148,7 +94,6 @@ export default function DashboardPage() {
   const { data: session } = useSession()
   const { data: dashboardData, isLoading, error } = useDashboardData()
 
-  // Redirect to auth if not authenticated
   useEffect(() => {
     if (!session?.user) {
       redirect('/auth/signin')
@@ -156,7 +101,7 @@ export default function DashboardPage() {
   }, [session])
 
   if (!session?.user) {
-    return null // Will redirect
+    return null
   }
 
   if (isLoading) {
@@ -172,7 +117,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (error) {
+  if (error || !dashboardData) {
     return (
       <div className="min-h-screen theme-background">
         <div className="container mx-auto p-6">
@@ -182,8 +127,8 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-3 text-destructive">
                   <AlertCircle className="h-5 w-5" />
                   <div>
-                    <h3 className="font-medium">Failed to load dashboard</h3>
-                    <p className="text-sm mt-1">{error}</p>
+                    <h3 className="font-medium">Dashboard Unavailable</h3>
+                    <p className="text-sm mt-1">{error || 'Failed to load dashboard data'}</p>
                   </div>
                 </div>
                 <Button 
@@ -201,7 +146,7 @@ export default function DashboardPage() {
     )
   }
 
-  const stats = dashboardData!
+  const stats = dashboardData
   
   return (
     <div className="min-h-screen theme-background">
@@ -246,7 +191,7 @@ export default function DashboardPage() {
               <FileText className="h-4 w-4 text-purple-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">{stats.totalContent}</div>
+              <div className="text-2xl font-bold text-foreground">{stats.total_content}</div>
               <p className="text-xs text-muted-foreground">
                 All generated content
               </p>
@@ -285,7 +230,7 @@ export default function DashboardPage() {
               <TrendingUp className="h-4 w-4 text-pink-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">{stats.views?.toLocaleString() || '0'}</div>
+              <div className="text-2xl font-bold text-foreground">{stats.views.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 Content engagement
               </p>
@@ -315,7 +260,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {stats.recentContent.length === 0 ? (
+                {stats.recent_content.length === 0 ? (
                   <div className="empty-state">
                     <FileText className="empty-state-icon" />
                     <h3 className="empty-state-title">No content yet</h3>
@@ -328,7 +273,7 @@ export default function DashboardPage() {
                     </Button>
                   </div>
                 ) : (
-                  stats.recentContent.map((item) => (
+                  stats.recent_content.map((item: RecentContentItem) => (
                     <div
                       key={item.id}
                       className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors"
@@ -342,14 +287,12 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span className="capitalize">{item.type}</span>
                             <span>•</span>
-                            <span>{new Date(item.updatedAt).toLocaleDateString()}</span>
+                            <span>{new Date(item.updated_at).toLocaleDateString()}</span>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span
-                          className={`status-badge ${item.status}`}
-                        >
+                        <span className={`status-badge ${item.status}`}>
                           {item.status}
                         </span>
                         <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-muted">
@@ -414,7 +357,7 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {stats.recentActivity.length === 0 ? (
+            {stats.recent_activity.length === 0 ? (
               <div className="empty-state">
                 <Clock className="empty-state-icon" />
                 <h3 className="empty-state-title">No recent activity</h3>
@@ -422,7 +365,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {stats.recentActivity.map((activity) => (
+                {stats.recent_activity.map((activity: ActivityItem) => (
                   <div key={activity.id} className="flex items-center gap-3 text-sm">
                     <div className={`w-2 h-2 rounded-full ${
                       activity.type === 'published' ? 'bg-green-500' :

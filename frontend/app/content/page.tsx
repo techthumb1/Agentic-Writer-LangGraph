@@ -16,21 +16,20 @@ interface ContentItem {
   title: string;
   date: string;
   status: 'draft' | 'published';
-  type: string;
+  template_type: string;
   views?: number;
-  updatedAt?: string;
-  createdAt?: string;
+  updated_at?: string;
+  created_at?: string;
   week?: string;
 }
 
 interface ContentResponse {
   content: ContentItem[];
-  totalViews: number;
+  total_views: number;
   stats: {
     total: number;
     published: number;
     drafts: number;
-    types: number;
   };
 }
 
@@ -38,7 +37,6 @@ export default function MyContentPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  // State management
   const [contentData, setContentData] = useState<ContentResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +44,6 @@ export default function MyContentPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'title' | 'views'>('date');
 
-  // Load content data
   const fetchContent = async () => {
     try {
       setIsLoading(true);
@@ -54,9 +51,7 @@ export default function MyContentPage() {
 
       const response = await fetch('/api/content', {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
       });
 
@@ -72,16 +67,10 @@ export default function MyContentPage() {
       console.error('Content fetch error:', err);
       setError(err instanceof Error ? err.message : 'Failed to load content');
       
-      // Set empty fallback data
       setContentData({
         content: [],
-        totalViews: 0,
-        stats: {
-          total: 0,
-          published: 0,
-          drafts: 0,
-          types: 0
-        }
+        total_views: 0,
+        stats: { total: 0, published: 0, drafts: 0 }
       });
     } finally {
       setIsLoading(false);
@@ -92,17 +81,14 @@ export default function MyContentPage() {
     fetchContent();
   }, []);
 
-  // Handle edit content navigation
   const handleEditContent = (contentId: string) => {
     router.push(`/content/${contentId}/edit`);
   };
 
-  // Handle view content navigation
   const handleViewContent = (contentId: string) => {
     router.push(`/content/${contentId}`);
   };
 
-  // Handle delete content
   const handleDeleteContent = async (contentId: string, title: string) => {
     if (!confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
       return;
@@ -122,7 +108,6 @@ export default function MyContentPage() {
         description: `"${title}" has been deleted successfully.`,
       });
 
-      // Refresh content
       fetchContent();
 
     } catch (err) {
@@ -135,10 +120,9 @@ export default function MyContentPage() {
     }
   };
 
-  // Filter and sort content based on search and status
   const filteredAndSortedContent = contentData?.content?.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.type.toLowerCase().includes(searchTerm.toLowerCase());
+                         item.template_type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
     return matchesSearch && matchesStatus;
   }).sort((a, b) => {
@@ -149,7 +133,7 @@ export default function MyContentPage() {
         return (b.views || 0) - (a.views || 0);
       case 'date':
       default:
-        return new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime();
+        return new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime();
     }
   }) || [];
 
@@ -243,7 +227,6 @@ export default function MyContentPage() {
   return (
     <div className="min-h-screen theme-background">
       <div className="container mx-auto p-6 space-y-8">
-        {/* Header */}
         <PageHeader
           title="My Generated"
           gradientText="Content"
@@ -251,7 +234,6 @@ export default function MyContentPage() {
           size="lg"
         />
 
-        {/* Search and Filter Bar */}
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -300,7 +282,6 @@ export default function MyContentPage() {
           </div>
         </div>
 
-        {/* Content Display */}
         {filteredAndSortedContent.length === 0 ? (
           <div className="empty-state">
             <FileText className="empty-state-icon" />
@@ -338,7 +319,6 @@ export default function MyContentPage() {
           </div>
         ) : (
           <>
-            {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
               <Card className="stats-card">
                 <CardContent className="p-4">
@@ -360,13 +340,12 @@ export default function MyContentPage() {
               </Card>
               <Card className="stats-card">
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-foreground">{contentData!.totalViews.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-foreground">{contentData!.total_views.toLocaleString()}</div>
                   <p className="text-sm text-muted-foreground">Total Views</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Content Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredAndSortedContent.map((item) => (
                 <Card key={item.id} className="theme-card">
@@ -378,7 +357,7 @@ export default function MyContentPage() {
                           {item.title}
                         </CardTitle>
                         <CardDescription className="text-muted-foreground mt-1">
-                          Created {getRelativeTime(item.createdAt || item.date)}
+                          Created {getRelativeTime(item.created_at || item.date)}
                           {item.week && (
                             <span className="block text-xs text-muted-foreground mt-1">
                               Week: {item.week}
@@ -398,9 +377,9 @@ export default function MyContentPage() {
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="border-primary/50 text-primary">
-                          {item.type}
+                          {item.template_type}
                         </Badge>
-                        {item.views && (
+                        {item.views !== undefined && (
                           <span className="text-xs text-muted-foreground">
                             {item.views} views
                           </span>
@@ -410,14 +389,8 @@ export default function MyContentPage() {
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          <span>{formatDate(item.updatedAt || item.date)}</span>
+                          <span>{formatDate(item.updated_at || item.date)}</span>
                         </div>
-                        {item.views !== undefined && (
-                          <div className="flex items-center gap-1">
-                            <Eye className="h-4 w-4" />
-                            <span>{item.views} views</span>
-                          </div>
-                        )}
                       </div>
                       
                       <div className="flex gap-2">
@@ -453,7 +426,6 @@ export default function MyContentPage() {
               ))}
             </div>
 
-            {/* Footer */}
             {filteredAndSortedContent.length > 0 && (
               <div className="text-center text-sm text-muted-foreground py-4">
                 Showing {filteredAndSortedContent.length} of {contentData?.stats.total || 0} content items

@@ -265,11 +265,13 @@ class EnhancedSEOAgent:
         if style_id in INTENT_BY_STYLE:
             return INTENT_BY_STYLE[style_id]
     
-        # Fallback to informational instead of raising error
-        logger.warning(f"SEO intent: unmapped template_type '{template_type}' and style_profile '{style_id}', using fallback")
+        raise ValueError(
+            f"SEO intent: unmapped template_type '{template_type}' (normalized='{tkey}') "
+            f"and style_profile '{style_id}'. Add explicit mapping."
+        )
         return "informational"
 
-    def _determine_search_intent(self, state, *args, **kwargs) -> str:
+    def _determine_search_intent(self, state) -> str:
         """
         Intent precedence:
           1) Explicit user/plan override (planning_output.search_intent or content_spec.search_intent)
@@ -560,18 +562,18 @@ class EnhancedSEOAgent:
     #        "strategic_brief_template": "strategic_brief",
     #    }
 
-        tkey = alias.get(template_type, template_type)
-
-        if tkey in INTENT_BY_TEMPLATE:
-            return INTENT_BY_TEMPLATE[tkey]
-
-        if style_id in INTENT_BY_STYLE:
-            return INTENT_BY_STYLE[style_id]
-
-        raise ValueError(
-            f"SEO intent: unmapped template_type '{template_type}' (normalized='{tkey}') "
-            f"and style_profile '{style_id}'. Add explicit mapping."
-        )
+    #    tkey = alias.get(template_type, template_type)
+#
+    #    if tkey in INTENT_BY_TEMPLATE:
+    #        return INTENT_BY_TEMPLATE[tkey]
+#
+    #    if style_id in INTENT_BY_STYLE:
+    #        return INTENT_BY_STYLE[style_id]
+#
+    #    raise ValueError(
+    #        f"SEO intent: unmapped template_type '{template_type}' (normalized='{tkey}') "
+    #        f"and style_profile '{style_id}'. Add explicit mapping."
+    #    )
 
     def _create_seo_context(self, state: EnrichedContentState, instructions, template_config: dict) -> SEOOptimizationContext:
         """Create SEO optimization context with template configuration"""

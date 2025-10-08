@@ -18,6 +18,7 @@ import yaml
 import copy
 import time
 import hashlib
+import frontmatter
 import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Union, Tuple
@@ -32,6 +33,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, field_validator
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
+from langgraph_app.analytics_endpoints import router as analytics_router
 
 # ====== Enterprise: Required integrations must exist ======
 try:
@@ -89,6 +91,7 @@ async def verify_api_key(api_key: Optional[str] = Depends(get_api_key)) -> bool:
                 headers={"WWW-Authenticate": "Bearer"},
             )
     return True
+
 
 # ====== Metrics ======
 custom_registry = getattr(globals(), "WRITERZROOM_PROM_REGISTRY", None) or CollectorRegistry()
@@ -540,6 +543,8 @@ app.add_middleware(
     expose_headers=["X-Request-ID", "X-Response-Time"],
 )
 
+app.include_router(analytics_router)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting WriterzRoom API — Enterprise Mode")
@@ -701,22 +706,30 @@ async def generate_content(
         # Replace lines 654-694 in the _execute_and_store() function:
 
         # Background task with proper result storage
+        # File: langgraph_app/integrated_server.py
+        # Updated _execute_and_store function with analytics logging
+        
         async def _execute_and_store():
+            start_time = time.perf_counter()
             try:
                 logger.info(f"Background task starting for {request_id}")
-                result = await execute_enhanced_mcp_generation(request_id, template_config, style_config, request_data.dynamic_parameters or {})
-
-                # FIXED: Handle async result properly
+                result = await execute_enhanced_mcp_generation(
+                    request_id, 
+                    template_config, 
+                    style_config, 
+                    request_data.dynamic_parameters or {}
+                )
+        
+                # Handle async result
                 import inspect
                 if inspect.isawaitable(result):
                     result = await result
-
+        
                 logger.info(f"MCP generation completed for {request_id}, result type: {type(result)}")
-
-                # FIXED: Extract content from the actual result structure
+        
+                # Extract content
                 content = ""
                 if isinstance(result, dict):
-                    # Primary extraction - the logs show content is at result['content']
                     content = (
                         result.get('content') or 
                         result.get('final_content') or 
@@ -724,7 +737,6 @@ async def generate_content(
                         ""
                     )
                     
-                    # Check metadata if no direct content
                     if not content and 'metadata' in result:
                         metadata = result['metadata']
                         content = (
@@ -740,44 +752,86 @@ async def generate_content(
                     logger.info(f"Found content in result.content: {len(content)} chars")
                 else:
                     logger.warning(f"Unexpected result type: {type(result)}")
+        
+                # Calculate metrics
+                generation_time = time.perf_counter() - start_time
+                word_count = len(content.split()) if content else 0
+                success = bool(content)
+        
+                # Log to analytics database
+                try:
+                    from langgraph_app.database.models import GenerationLog, SessionLocal
+                    db = SessionLocal()
+                    try:
+                        log = GenerationLog(
+                            template_id=template_config['id'],
+                            style_profile_id=style_config['id'],
+                            word_count=word_count,
+                            generation_time_seconds=generation_time,
+                            success=success
+                        )
+                        db.add(log)
+                        db.commit()
+                        logger.info(f"Analytics logged for {request_id}")
+                    finally:
+                        db.close()
+                except Exception as e:
+                    logger.error(f"Failed to log analytics for {request_id}: {e}")
+                    # Don't fail the generation if analytics logging fails
                 
-                # FIXED: Update task status with extracted content
+                # Update task status
                 app.state.generation_tasks[request_id].update({
                     "status": "completed",
                     "progress": 1.0,
-                    "content": content,  # Use the extracted content
+                    "content": content,
                     "updated_at": datetime.now().isoformat(),
+                    "metadata": {
+                        **app.state.generation_tasks[request_id]["metadata"],
+                        "word_count": word_count,
+                        "generation_time": generation_time
+                    }
                 })
                 
                 logger.info(f"Generation completed for {request_id}, content length: {len(content)}")
                 
             except Exception as e:
                 logger.error(f"Generation failed for {request_id}: {e}")
+                
+                # Log failure to analytics
+                try:
+                    from langgraph_app.database.models import GenerationLog, SessionLocal
+                    db = SessionLocal()
+                    try:
+                        log = GenerationLog(
+                            template_id=template_config['id'],
+                            style_profile_id=style_config['id'],
+                            word_count=0,
+                            generation_time_seconds=time.perf_counter() - start_time,
+                            success=False
+                        )
+                        db.add(log)
+                        db.commit()
+                    finally:
+                        db.close()
+                except:
+                    pass  # Silent fail on analytics during error
+                
                 app.state.generation_tasks[request_id].update({
                     "status": "error",
                     "errors": [str(e)],
                     "updated_at": datetime.now().isoformat(),
                 })
-        
-        background_tasks.add_task(_execute_and_store)
-
-        logger.info(f"Generation queued [{request_id}] template={template.id} profile={profile.id}")
-        
-        return {
-            "success": True,
-            "data": {
-                "request_id": request_id,  # Frontend expects camelCase
-                "status": "pending",
-                "metadata": status_obj["metadata"]
-            }
-        }
-
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Failed to start generation: {e}")
-        raise HTTPException(status_code=500, detail="Failed to start content generation")
+        logger.error(f"Generation initialization failed for {request_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Generation initialization failed: {e}")
 
+    # Schedule background task and return immediate response
+    background_tasks.add_task(_execute_and_store)
+    return {
+        "success": True,
+        "request_id": request_id,
+        "status": "pending"
+    }
 
 @app.get("/api/generate/{request_id}")
 async def get_generation_result(request_id: str):
@@ -839,6 +893,471 @@ async def get_generation_status(request_id: str):
             "progress": task_data.get("progress", 0.0)
         }
     }
+
+
+@app.get("/api/content")
+async def list_content():
+    """List all generated content with real metadata"""
+    from pathlib import Path
+    import re
+    
+    base_dir = Path("generated_content")
+    if not base_dir.exists():
+        return {"content": [], "total_views": 0, "stats": {"total": 0, "published": 0, "drafts": 0}}
+    
+    content_list = []
+    seen_ids = set()
+    total_views = 0
+    published = 0
+    drafts = 0
+    
+    for week_dir in sorted(base_dir.iterdir(), reverse=True):
+        if not week_dir.is_dir() or not week_dir.name.startswith("week_"):
+            continue
+        
+        # Process MD files first (they have the metadata)
+        for file_path in week_dir.glob("*.md"):
+            content_id = file_path.stem
+            if content_id in seen_ids:
+                continue
+            seen_ids.add(content_id)
+            
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Extract YAML frontmatter
+                match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+                if not match:
+                    continue
+                
+                # Parse frontmatter
+                frontmatter = {}
+                for line in match.group(1).strip().split('\n'):
+                    if ':' in line:
+                        key, val = line.split(':', 1)
+                        frontmatter[key.strip()] = val.strip().strip('"').strip("'")
+                
+                title = frontmatter.get('title', 'Untitled')
+                status = frontmatter.get('status', 'draft')
+                template_type = frontmatter.get('type', frontmatter.get('template', 'article'))
+                created_at = frontmatter.get('createdAt', datetime.now().isoformat())
+                
+                views = content_metrics.get(content_id, {}).get("views", 0)
+                total_views += views
+                
+                if status == "published":
+                    published += 1
+                else:
+                    drafts += 1
+                
+                content_list.append({
+                    "id": content_id,
+                    "title": title,
+                    "status": status,
+                    "created_at": created_at,
+                    "updated_at": created_at,
+                    "template_type": template_type,
+                    "views": views
+                })
+            except Exception as e:
+                logger.error(f"Error processing {file_path}: {e}")
+                continue
+    
+    return {
+        "content": content_list,
+        "total_views": total_views,
+        "stats": {"total": len(content_list), "published": published, "drafts": drafts}
+    }
+
+
+# langgraph_app/integrated_server.py
+
+from datetime import datetime
+import frontmatter
+
+@app.get("/api/dashboard/stats")
+async def get_dashboard_stats_direct():
+    """Direct stats endpoint for frontend"""
+    from pathlib import Path
+    
+    base_dir = Path("generated_content")
+    total = 0
+    published = 0
+    drafts = 0
+    views = 0
+    recent_content = []
+    recent_activity = []
+    
+    for week_dir in base_dir.iterdir():
+        if not week_dir.is_dir():
+            continue
+        for md_file in week_dir.glob("*.md"):
+            total += 1
+            content_id = md_file.stem
+            views += content_metrics.get(content_id, {}).get("views", 0)
+
+            # Parse frontmatter for metadata
+            try:
+                post = frontmatter.load(md_file)
+                status = post.get("status", "draft")
+                title = post.get("title", content_id)
+                updated_at = post.get("updated_at") or datetime.fromtimestamp(md_file.stat().st_mtime).isoformat()
+                ctype = post.get("type", "article")
+
+                if status == "published":
+                    published += 1
+                else:
+                    drafts += 1
+
+                recent_content.append({
+                    "id": content_id,
+                    "title": title,
+                    "status": status,
+                    "updated_at": updated_at,
+                    "type": ctype,
+                })
+
+                recent_activity.append({
+                    "id": content_id,
+                    "action": f"{status.capitalize()} content",
+                    "timestamp": updated_at,
+                    "actor": "system",
+                })
+
+            except Exception as e:
+                drafts += 1
+                # fail-fast: re-raise parsing error
+                raise RuntimeError(f"Failed parsing {md_file}: {e}")
+
+    # Sort by updated_at descending, limit to 10
+    recent_content = sorted(recent_content, key=lambda x: x["updated_at"], reverse=True)[:10]
+    recent_activity = sorted(recent_activity, key=lambda x: x["timestamp"], reverse=True)[:10]
+    
+    return {
+        "total_content": total,
+        "published": published,
+        "drafts": drafts,
+        "views": views,
+        "recent_content": recent_content,
+        "recent_activity": recent_activity,
+    }
+
+
+@app.get("/api/dashboard/activity")
+async def get_dashboard_activity():
+    """Recent activity with proper MD parsing"""
+    from pathlib import Path
+    import re
+    
+    base_dir = Path("generated_content")
+    activities = []
+    
+    for week_dir in sorted(base_dir.iterdir(), reverse=True):
+        if not week_dir.is_dir() or not week_dir.name.startswith("week_"):
+            continue
+        
+        for file_path in week_dir.glob("*.md"):
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+                if not match:
+                    continue
+                
+                frontmatter = {}
+                for line in match.group(1).strip().split('\n'):
+                    if ':' in line:
+                        key, val = line.split(':', 1)
+                        frontmatter[key.strip()] = val.strip().strip('"').strip("'")
+                
+                activities.append({
+                    "id": f"activity-{file_path.stem}",
+                    "type": "published" if frontmatter.get('status') == 'published' else "created",
+                    "description": f"{'Published' if frontmatter.get('status') == 'published' else 'Created'} \"{frontmatter.get('title', 'Untitled')}\"",
+                    "timestamp": frontmatter.get('createdAt', datetime.now().isoformat())
+                })
+            except:
+                continue
+    
+    # Sort and return latest 10
+    activities.sort(key=lambda x: x["timestamp"], reverse=True)
+    return {"activities": activities[:10]}
+
+
+@app.get("/api/metrics/dashboard")
+async def get_real_dashboard_metrics():
+    """Real dashboard metrics with snake_case fields"""
+    from pathlib import Path
+    
+    base_dir = Path("generated_content")
+    total_content = 0
+    total_views = 0
+    published = 0
+    drafts = 0
+    
+    for week_dir in base_dir.iterdir():
+        if not week_dir.is_dir():
+            continue
+        
+        for json_file in week_dir.glob("*.json"):
+            total_content += 1
+            content_id = json_file.stem
+            
+            if content_id in content_metrics:
+                total_views += content_metrics[content_id]["views"]
+            
+            try:
+                with open(json_file) as f:
+                    data = json.load(f)
+                    if data.get("status") == "published":
+                        published += 1
+                    else:
+                        drafts += 1
+            except:
+                drafts += 1
+    
+    return {
+        "total_content": total_content,
+        "published": published,
+        "drafts": drafts,
+        "views": total_views
+    }
+
+
+# langgraph_app/integrated_server.py
+# Replace the existing update_content endpoint (around line 850-880)
+
+@app.put("/api/content/{content_id}")
+async def update_content(content_id: str, content_update: dict):
+    """Update content in both JSON and MD files to maintain consistency"""
+    from pathlib import Path
+    import frontmatter
+    
+    base_dir = Path("generated_content")
+    
+    for week_dir in base_dir.iterdir():
+        if not week_dir.is_dir():
+            continue
+        
+        json_file = week_dir / f"{content_id}.json"
+        md_file = week_dir / f"{content_id}.md"
+        
+        # Check if either file exists
+        if json_file.exists() or md_file.exists():
+            logger.info(f"[CONTENT:PUT] Found content at {week_dir}/{content_id}")
+            
+            # Read existing data
+            if json_file.exists():
+                with open(json_file) as f:
+                    data = json.load(f)
+            else:
+                data = {}
+            
+            # Update data
+            data["content"] = content_update.get("content", data.get("content", ""))
+            data["title"] = content_update.get("title", data.get("title", ""))
+            data["status"] = content_update.get("status", data.get("status", "draft"))
+            
+            if "metadata" not in data:
+                data["metadata"] = {}
+            
+            data["metadata"]["updated_at"] = datetime.now().isoformat()
+            
+            # Write JSON file
+            with open(json_file, "w") as f:
+                json.dump(data, f, indent=2)
+            logger.info(f"[CONTENT:PUT] Updated JSON: {json_file}")
+            
+            # CRITICAL: Also update the MD file which is read by GET
+            if md_file.exists() or data.get("content"):
+                # Create frontmatter post
+                post = frontmatter.Post(
+                    content=data.get("content", ""),
+                    title=data.get("title", ""),
+                    status=data.get("status", "draft"),
+                    type=data.get("type", "article"),
+                    updated_at=data["metadata"]["updated_at"],
+                    createdAt=data.get("createdAt", data["metadata"]["updated_at"]),
+                    **{k: v for k, v in data.items() if k not in ["content", "title", "status", "type"]}
+                )
+                
+                # Write MD file
+                with open(md_file, "w", encoding="utf-8") as f:
+                    f.write(frontmatter.dumps(post))
+                logger.info(f"[CONTENT:PUT] Updated MD: {md_file}")
+            
+            return data
+    
+    raise HTTPException(status_code=404, detail="Content not found")
+
+
+@app.get("/api/content/{content_id}")
+async def get_content(content_id: str):
+    """Get content with proper MD/JSON synchronization"""
+    base_dir = Path("generated_content")
+    
+    for week_dir in base_dir.iterdir():
+        if not week_dir.is_dir():
+            continue
+        
+        md_file = week_dir / f"{content_id}.md"
+        json_file = week_dir / f"{content_id}.json"
+        
+        # Try MD file first (primary source)
+        if md_file.exists():
+            try:
+                post = frontmatter.load(md_file)
+                logger.info(f"[CONTENT:GET] Found MD at {md_file}")
+                
+                # Check if JSON needs sync
+                if json_file.exists():
+                    with open(json_file) as f:
+                        json_data = json.load(f)
+                    
+                    # Use the most recently updated version
+                    json_updated = json_data.get("metadata", {}).get("updated_at", "")
+                    md_updated = post.get("updated_at", "")
+                    
+                    if json_updated > md_updated:
+                        logger.info(f"[CONTENT:GET] JSON is newer, using JSON data")
+                        return {
+                            "id": content_id,
+                            "title": json_data.get("title", content_id),
+                            "content": json_data.get("content", ""),
+                            "status": json_data.get("status", "draft"),
+                            "updated_at": json_updated,
+                            "type": json_data.get("type", "article"),
+                            "metadata": json_data.get("metadata", {}),
+                        }
+                
+                return {
+                    "id": content_id,
+                    "title": post.get("title", content_id),
+                    "content": post.content,
+                    "status": post.get("status", "draft"),
+                    "updated_at": post.get("updated_at"),
+                    "type": post.get("type", "article"),
+                    "metadata": post.metadata,
+                }
+            except Exception as e:
+                logger.error(f"[CONTENT:GET] Error parsing MD {md_file}: {e}")
+        
+        # Fallback to JSON
+        if json_file.exists():
+            try:
+                with open(json_file) as f:
+                    data = json.load(f)
+                logger.info(f"[CONTENT:GET] Using JSON at {json_file}")
+                return {
+                    "id": content_id,
+                    "title": data.get("title", content_id),
+                    "content": data.get("content", ""),
+                    "status": data.get("status", "draft"),
+                    "updated_at": data.get("metadata", {}).get("updated_at"),
+                    "type": data.get("type", "article"),
+                    "metadata": data.get("metadata", {}),
+                }
+            except Exception as e:
+                logger.error(f"[CONTENT:GET] Error reading JSON {json_file}: {e}")
+    
+    raise HTTPException(status_code=404, detail="Content not found")
+
+# Add after existing content endpoints (around line 850)
+
+from collections import defaultdict
+from datetime import datetime
+
+# In-memory tracking (replace with Redis/PostgreSQL for production)
+content_metrics = defaultdict(lambda: {
+    "views": 0,
+    "unique_sessions": set(),
+    "last_viewed": None
+})
+
+@app.post("/api/content/{content_id}/track-view")
+async def track_content_view(content_id: str, session_id: str = None):
+    """Track real content view"""
+    metrics = content_metrics[content_id]
+    metrics["views"] += 1
+    metrics["last_viewed"] = datetime.now().isoformat()
+    
+    if session_id:
+        metrics["unique_sessions"].add(session_id)
+    
+    return {
+        "views": metrics["views"],
+        "unique_views": len(metrics["unique_sessions"])
+    }
+
+@app.get("/api/metrics/dashboard")
+async def get_real_dashboard_metrics():
+    """Real dashboard metrics"""
+    from pathlib import Path
+    
+    base_dir = Path("generated_content")
+    total_content = 0
+    total_views = 0
+    published = 0
+    drafts = 0
+    
+    for week_dir in base_dir.iterdir():
+        if not week_dir.is_dir():
+            continue
+        
+        for json_file in week_dir.glob("*.json"):
+            total_content += 1
+            content_id = json_file.stem
+            
+            if content_id in content_metrics:
+                total_views += content_metrics[content_id]["views"]
+            
+            try:
+                with open(json_file) as f:
+                    data = json.load(f)
+                    if data.get("status") == "published":
+                        published += 1
+                    else:
+                        drafts += 1
+            except:
+                drafts += 1
+    
+    return {
+        "totalContent": total_content,
+        "published": published,
+        "drafts": drafts,
+        "views": total_views
+    }
+
+from pathlib import Path
+import frontmatter
+from fastapi import HTTPException
+
+@app.get("/api/content/{content_id}")
+async def get_content(content_id: str):
+    """Retrieve content details by ID for frontend consumption"""
+    base_dir = Path("generated_content")
+    for week_dir in base_dir.iterdir():
+        if not week_dir.is_dir():
+            continue
+        for md_file in week_dir.glob("*.md"):
+            if md_file.stem == content_id:
+                try:
+                    post = frontmatter.load(md_file)
+                    return {
+                        "id": content_id,
+                        "title": post.get("title", content_id),
+                        "status": post.get("status", "draft"),
+                        "updated_at": post.get("updated_at"),
+                        "type": post.get("type", "article"),
+                        "content": post.content,
+                        "metadata": post.metadata,
+                    }
+                except Exception as e:
+                    raise HTTPException(status_code=500, detail=f"Failed parsing {md_file}: {e}")
+    raise HTTPException(status_code=404, detail="Content not found")
+
 
 if __name__ == "__main__":
     logger.info("Starting WriterzRoom API Server — ENTERPRISE MODE")
