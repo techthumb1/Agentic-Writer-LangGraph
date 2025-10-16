@@ -556,6 +556,16 @@ export default function GeneratePage() {
   const queryClient = useQueryClient();
   const { generationSettings } = useSettings();
 
+  useEffect(() => {
+    const handleSettingsUpdate = (e: CustomEvent) => {
+      console.log('Generation settings updated:', e.detail.generationSettings)
+      queryClient.invalidateQueries({ queryKey: ['generation-settings'] })
+    }
+  
+    window.addEventListener('generation-settings-updated', handleSettingsUpdate as EventListener)
+    return () => window.removeEventListener('generation-settings-updated', handleSettingsUpdate as EventListener)
+  }, [queryClient])
+
   // Force fresh data on page load to fix caching issues
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['templates'] });

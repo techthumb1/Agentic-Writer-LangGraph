@@ -1,5 +1,7 @@
+// frontend/app/profile/page.tsx
 "use client"
 
+import { useSettings } from '@/lib/settings-context';
 import { Button } from '@/components/ui/button';
 import { showToast } from '@/lib/toast-utils';
 import { 
@@ -7,7 +9,6 @@ import {
   Mail, 
   Calendar,
   FileText,
-  TrendingUp,
   Clock,
   Star,
   Edit,
@@ -15,164 +16,76 @@ import {
   Camera
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useState, useEffect, useCallback } from 'react';
-
-interface ProfileData {
-  name: string;
-  email: string;
-  company: string;
-  role: string;
-  bio: string;
-  joinDate: string;
-}
-
-interface UserStats {
-  contentGenerated: number;
-  totalTimeSaved: number;
-  averageRating: number;
-  daysActive: number;
-}
-
-interface ContentItem {
-  title: string;
-  type: string;
-  createdAt: string;
-  words: number;
-  rating: number;
-}
+import { useState } from 'react';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
+  const { 
+    userSettings, 
+    userStats, 
+    recentContent,
+    updateUserSettings,
+    isLoading
+  } = useSettings();
+  
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  
-  const [profileData, setProfileData] = useState<ProfileData>({
+  const [isSaving, setIsSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
     name: '',
-    email: '',
-    company: '',
-    role: '',
-    bio: '',
-    joinDate: ''
+    bio: ''
   });
-
-  const [userStats, setUserStats] = useState<UserStats>({
-    contentGenerated: 0,
-    totalTimeSaved: 0,
-    averageRating: 0,
-    daysActive: 0
-  });
-
-  const [recentContent, setRecentContent] = useState<ContentItem[]>([]);
-  
-  const loadUserProfile = useCallback(async () => {
-    try {
-      setIsLoadingProfile(true);
-      
-      const response = await fetch('/api/user/profile', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProfileData({
-          name: data.name || (session?.user?.name as string) || '',
-          email: data.email || (session?.user?.email as string) || '',
-          company: data.company || '',
-          role: data.role || '',
-          bio: data.bio || '',
-          joinDate: data.joinDate || new Date().toISOString().split('T')[0]
-        });
-        
-        if (data.stats) {
-          setUserStats(data.stats);
-        }
-        
-        if (data.recentContent) {
-          setRecentContent(data.recentContent);
-        }
-      } else {
-        setProfileData(prev => ({
-          ...prev,
-          name: (session?.user?.name as string) || '',
-          email: (session?.user?.email as string) || '',
-          joinDate: new Date().toISOString().split('T')[0]
-        }));
-        showToast.info('Profile Setup', 'Complete your profile to get started');
-      }
-    } catch (error) {
-      console.error('Failed to load profile:', error);
-      showToast.error('Error', 'Failed to load profile data');
-      
-      // Set defaults from session on error
-      setProfileData(prev => ({
-        ...prev,
-        name: (session?.user?.name as string) || '',
-        email: (session?.user?.email as string) || '',
-        joinDate: new Date().toISOString().split('T')[0]
-      }));
-    } finally {
-      setIsLoadingProfile(false);
-    }
-  }, [session?.user?.name, session?.user?.email]);
-
-  useEffect(() => {
-    if (session?.user) {
-      loadUserProfile();
-    }
-  }, [session, loadUserProfile]);
 
   const handleSave = async () => {
     try {
-      setIsLoading(true);
-      
-      if (!profileData.name.trim()) {
+      setIsSaving(true);
+
+      if (!editForm.name.trim()) {
         showToast.error('Validation Error', 'Name is required');
         return;
       }
 
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: profileData.name.trim(),
-          company: profileData.company.trim(),
-          role: profileData.role.trim(),
-          bio: profileData.bio.trim(),
-        }),
+      // Update context (auto-saves to localStorage)
+      updateUserSettings({
+        name: editForm.name.trim(),
+        bio: editForm.bio.trim()
       });
 
-      if (response.ok) {
-        showToast.success('Success', 'Profile updated successfully');
-        setIsEditing(false);
-        await loadUserProfile();
-      } else {
-        const errorData = await response.json();
-        showToast.error('Error', errorData.message || 'Failed to update profile');
+      // Persist to backend
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name.trim(),
+          email: userSettings.email,
+          bio: editForm.bio.trim()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save to backend');
       }
+
+      showToast.success('Success', 'Profile updated successfully');
+      setIsEditing(false);
+
     } catch (error) {
       console.error('Failed to save profile:', error);
-      showToast.error('Error', 'Failed to save profile. Please try again.');
+      showToast.error('Error', 'Failed to save profile');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
-  };
-
-  const handleInputChange = (field: keyof ProfileData, value: string) => {
-    setProfileData(prev => ({
-      ...prev,
-      [field]: value
-    }));
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    loadUserProfile();
+  };
+
+  const handleEdit = () => {
+    setEditForm({
+      name: userSettings.name,
+      bio: userSettings.bio
+    });
+    setIsEditing(true);
   };
 
   // Generate initials from name
@@ -200,7 +113,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (isLoadingProfile) {
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="max-w-4xl mx-auto">
@@ -245,7 +158,7 @@ export default function ProfilePage() {
               <div className="text-center mb-6">
                 <div className="relative inline-block">
                   <div className="w-24 h-24 bg-gradient-to-r from-purple-400 to-pink-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
-                    {getInitials(profileData.name)}
+                    {getInitials(userSettings.name)}
                   </div>
                   <button 
                     className="absolute bottom-0 right-0 bg-purple-600 hover:bg-purple-700 rounded-full p-2 transition-colors"
@@ -264,37 +177,17 @@ export default function ProfilePage() {
                       <label className="block text-sm font-medium text-gray-400 mb-1">Name *</label>
                       <input
                         type="text"
-                        value={profileData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        value={editForm.name}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
                         className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">Company</label>
-                      <input
-                        type="text"
-                        value={profileData.company}
-                        onChange={(e) => handleInputChange('company', e.target.value)}
-                        placeholder="Enter your company"
-                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">Role</label>
-                      <input
-                        type="text"
-                        value={profileData.role}
-                        onChange={(e) => handleInputChange('role', e.target.value)}
-                        placeholder="Enter your role"
-                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">Bio</label>
                       <textarea
-                        value={profileData.bio}
-                        onChange={(e) => handleInputChange('bio', e.target.value)}
+                        value={editForm.bio}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
                         placeholder="Tell us about yourself"
                         rows={3}
                         className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -305,32 +198,21 @@ export default function ProfilePage() {
                   <>
                     <div className="flex items-center text-gray-300">
                       <User className="h-4 w-4 mr-2 text-purple-400" />
-                      <span className="font-medium">{profileData.name || 'No name set'}</span>
+                      <span className="font-medium">{userSettings.name || 'No name set'}</span>
                     </div>
                     <div className="flex items-center text-gray-300">
                       <Mail className="h-4 w-4 mr-2 text-purple-400" />
-                      <span className="text-sm">{profileData.email}</span>
+                      <span className="text-sm">{userSettings.email}</span>
                     </div>
-                    {profileData.role && (
-                      <div className="flex items-center text-gray-300">
-                        <TrendingUp className="h-4 w-4 mr-2 text-purple-400" />
-                        <span className="text-sm">{profileData.role}</span>
-                      </div>
-                    )}
-                    {profileData.company && (
-                      <div className="text-gray-300 text-sm">
-                        <strong className="text-purple-400">Company:</strong> {profileData.company}
-                      </div>
-                    )}
-                    {profileData.bio && (
+                    {userSettings.bio && (
                       <div className="text-gray-300 text-sm">
                         <strong className="text-purple-400">Bio:</strong>
-                        <p className="mt-1">{profileData.bio}</p>
+                        <p className="mt-1">{userSettings.bio}</p>
                       </div>
                     )}
                     <div className="flex items-center text-gray-400 text-sm">
                       <Calendar className="h-4 w-4 mr-2" />
-                      <span>Joined {profileData.joinDate ? new Date(profileData.joinDate).toLocaleDateString() : 'Unknown'}</span>
+                      <span>Joined {userSettings.joinDate ? new Date(userSettings.joinDate).toLocaleDateString() : 'Unknown'}</span>
                     </div>
                   </>
                 )}
@@ -341,15 +223,15 @@ export default function ProfilePage() {
                     <div className="flex space-x-2">
                       <Button 
                         onClick={handleSave}
-                        disabled={isLoading}
+                        disabled={isSaving}
                         className="flex-1 bg-green-600 hover:bg-green-700"
                       >
                         <Save className="h-4 w-4 mr-2" />
-                        {isLoading ? 'Saving...' : 'Save'}
+                        {isSaving ? 'Saving...' : 'Save'}
                       </Button>
                       <Button 
                         onClick={handleCancel}
-                        disabled={isLoading}
+                        disabled={isSaving}
                         variant="outline"
                         className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700"
                       >
@@ -358,7 +240,7 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     <Button 
-                      onClick={() => setIsEditing(true)}
+                      onClick={handleEdit}
                       className="w-full bg-purple-600 hover:bg-purple-700"
                     >
                       <Edit className="h-4 w-4 mr-2" />

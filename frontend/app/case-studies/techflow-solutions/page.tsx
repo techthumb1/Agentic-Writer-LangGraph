@@ -58,7 +58,7 @@ export default function TechFlowCaseStudyPage() {
       duration: "Week 1-2",
       activities: [
         "Content audit and strategy assessment",
-        "AgentWrite Pro onboarding and training",
+        "WriterzRoom onboarding and training",
         "Custom template creation for TechFlow's brand voice",
         "Integration with existing content workflow"
       ]
@@ -126,7 +126,7 @@ export default function TechFlowCaseStudyPage() {
             </h1>
             <p className="text-xl text-gray-300 leading-relaxed max-w-3xl mx-auto mb-6">
               How a growing SaaS company tripled their content output while reducing costs by 40% 
-              using AgentWrite Pro&apos;s AI-powered content generation platform.
+              using WriterzRoom&apos;s AI-powered content generation platform.
             </p>
             <div className="flex items-center justify-center space-x-8 text-sm text-gray-400">
               <div className="flex items-center">
@@ -195,9 +195,9 @@ export default function TechFlowCaseStudyPage() {
           <h2 className="text-3xl font-bold mb-8 text-center">The Solution</h2>
           <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-8">
             <div className="text-center mb-8">
-              <h3 className="text-2xl font-semibold mb-4 text-purple-400">AgentWrite Pro Implementation</h3>
+              <h3 className="text-2xl font-semibold mb-4 text-purple-400">WriterzRoom Implementation</h3>
               <p className="text-gray-300 max-w-3xl mx-auto">
-                TechFlow Solutions partnered with AgentWrite Pro to implement an AI-powered content generation 
+                TechFlow Solutions partnered with WriterzRoom to implement an AI-powered content generation 
                 system that would scale with their growth while maintaining quality and brand consistency.
               </p>
             </div>
@@ -258,7 +258,7 @@ export default function TechFlowCaseStudyPage() {
           <div className="bg-gradient-to-br from-purple-600/10 to-pink-600/10 rounded-xl p-8 border border-purple-400/20 text-center">
             <Quote className="h-12 w-12 text-purple-400 mx-auto mb-6" />
             <blockquote className="text-xl text-gray-300 italic mb-6 leading-relaxed">
-              &ldquo;AgentWrite Pro has been transformational for our content strategy. We&apos;re not just producing 
+              &ldquo;WriterzRoom has been transformational for our content strategy. We&apos;re not just producing 
               more content—we&apos;re producing better content, faster, and at a fraction of the cost. It&apos;s 
               allowed us to compete with much larger companies in terms of content marketing reach.&rdquo;
             </blockquote>
@@ -276,7 +276,7 @@ export default function TechFlowCaseStudyPage() {
           </h2>
           <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
             Join TechFlow Solutions and thousands of other companies transforming their content creation 
-            with AgentWrite Pro.
+            with WriterzRoom.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth/signin" passHref>

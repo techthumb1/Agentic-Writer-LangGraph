@@ -44,7 +44,6 @@ class AdaptiveLevel(Enum):
 
 @dataclass
 class WritingContext:
-    """Rich context for adaptive writing decisions"""
     topic: str
     audience: str
     platform: str
@@ -57,7 +56,6 @@ class WritingContext:
 
 @dataclass 
 class WritingStrategy:
-    """Dynamic strategy that adapts based on context and outcomes"""
     mode: WritingMode
     structure_pattern: str
     tone_adaptation: Dict[str, float]
@@ -65,7 +63,6 @@ class WritingStrategy:
     confidence_threshold: float = 0.7
 
 def safe_config_access(config):
-    """Safely access config that might be string, dict, or SimpleNamespace"""
     if isinstance(config, str):
         try:
             return json.loads(config)
@@ -73,7 +70,7 @@ def safe_config_access(config):
             return {}
     elif isinstance(config, dict):
         return config
-    elif hasattr(config, '__dict__'):  # SimpleNamespace
+    elif hasattr(config, '__dict__'):
         return vars(config)
     else:
         return {}
@@ -82,7 +79,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
     """Template-aware writer that respects template-specific formatting without interference"""
 
     def __init__(self):
-        """Initialize TemplateAwareWriterAgent with required clients and paths"""
         api_key = os.getenv('OPENAI_API_KEY')
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY environment variable required")
@@ -90,7 +86,7 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         self.client = OpenAI(api_key=api_key)
         self.researcher_agent = None  # Will be set by MCP graph
         self.web_search_tool = None   # Will be set by MCP graph
-        self.max_real_time_age_hours = 72  # Default staleness threshold
+        self.max_real_time_age_hours = 72
 
         self.template_paths = [
             "data/content_templates",
@@ -108,7 +104,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         self.memory_path.mkdir(parents=True, exist_ok=True)
 
     def load_style_profile(self, name: str) -> Dict:
-        """Load style profile using dynamic loader"""
         if not name or len(name) > 50 or '/' in name or '\\' in name:
             raise ValueError(f"ENTERPRISE: Invalid style profile name: {name}")
 
@@ -131,7 +126,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             raise RuntimeError(f"ENTERPRISE: Failed to load style profile {name}: {e}")
     
     def load_template_config(self, template_id: str) -> Dict[str, Any]:
-        """Load template config using dynamic loader"""
         if not template_id:
             return {}
 
@@ -153,21 +147,16 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             return {}
 
     def _validate_style_requirements(self, content: str, style_config: Dict) -> str:
-        # Check forbidden patterns
         forbidden = style_config.get('forbidden_patterns', [])
         for pattern in forbidden:
             if pattern in content.lower():
                 content = content.replace(pattern, "[professional alternative needed]")
-        
-        # Ensure required opening patterns
         required_openings = style_config.get('required_opening_patterns', [])
         if required_openings and not any(pattern in content for pattern in required_openings):
             content = f"{required_openings[0]}:\n\n{content}"
-        
         return content
 
     def validate_enterprise_config(self, template_config, style_config):
-        """Validate actual config objects passed as parameters"""
         if not template_config or not isinstance(template_config, dict):
             raise RuntimeError("ENTERPRISE: template_config required - no fallbacks")
         if not style_config or not isinstance(style_config, dict):
@@ -177,11 +166,7 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         prompt_schema = template_config.get('prompt_schema')
         system_preamble = prompt_schema.get('system_preamble')
         content_template = prompt_schema.get('content_template')
-
-        # Extract dynamic parameters for placeholders
         dynamic_params = template_config.get('dynamic_parameters', {})
-
-        # Build context from multiple sources
         full_context = {
             'newsletter_type': dynamic_params.get('newsletter_type', 'weekly_roundup'),
             'subject_lines': 'Generate 3 subject line variants',
@@ -192,21 +177,12 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             'performance_notes': 'Include optimization notes'
         }
         full_context.update(context)
-
         final_prompt = system_preamble + "\n\n" + content_template
-
-        # Replace all placeholders
         for key, value in full_context.items():
             final_prompt = final_prompt.replace(f"{{{{{key}}}}}", str(value))
-
         return final_prompt
-    
-    # File: langgraph_app/agents/writer.py
-    # FIXED: Blog prompt loading with corrected template_id matching
 
     def _load_template_prompt_file(self, template_id: str, template_config: Dict) -> str:
-        """Load template-specific prompt from prompts/writer/ directory"""
-
         template_type = template_config.get('template_type', template_id)
         template_slug = template_config.get('slug', template_id)
 
@@ -215,38 +191,37 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         print(f"  template_type='{template_type}'")
         print(f"  template_slug='{template_slug}'")
 
-        # FIXED: Map all possible template identifiers to blog_article_writer.txt
         prompt_file_mapping = {
             'blog_article_generator': 'blog_article_writer.txt',
             'blog_article': 'blog_article_writer.txt',
             'social_media_campaign': 'social_media_campaign_writer.txt',
             'email_newsletter': 'email_newsletter_writer.txt',
             'business_proposal': 'business_proposal_writer.txt',
-            'api_documentation_template': 'api_documentation_template_writer.txt',  # NEW
-            'api_documentation': 'api_documentation_template_writer.txt',           # NEW
-            'data_driven_template': 'data_driven_template_writer.txt',              # NEW
-            'data_driven_report': 'data_driven_template_writer.txt',                # NEW
-            'market_analysis_template': 'market_analysis_writer.txt',      # NEW
-            'market_analysis': 'market_analysis_template_writer.txt',               # NEW
-            'strategic_brief_template': 'strategic_brief_writer.txt',      # NEW              # NEW
-            'technical_documentation': 'technical_documentation_writer.txt',        # NEW
+            'api_documentation_template': 'api_documentation_template_writer.txt',
+            'api_documentation': 'api_documentation_template_writer.txt',
+            'data_driven_template': 'data_driven_template_writer.txt',
+            'data_driven_report': 'data_driven_template_writer.txt',
+            'market_analysis_template': 'market_analysis_writer.txt',
+            'market_analysis': 'market_analysis_template_writer.txt',
+            'strategic_brief_template': 'strategic_brief_writer.txt',
+            'technical_documentation': 'technical_documentation_writer.txt',
             'press_release': 'press_release_writer.txt',
             'research_paper_template': 'grad_level_writer.txt',
             'research_paper': 'grad_level_writer.txt',
         }
 
-        # Try all possible identifiers
+        prompt_filename = None
         for identifier in [template_slug, template_id, template_type]:
-            prompt_filename = prompt_file_mapping.get(identifier)
-            if prompt_filename:
-                print(f"📄 Mapped '{identifier}' to filename: {prompt_filename}")
+            pf = prompt_file_mapping.get(identifier)
+            if pf:
+                print(f"📄 Mapped '{identifier}' to filename: {pf}")
+                prompt_filename = pf
                 break
             
         if not prompt_filename:
             print(f"❌ No mapping found for any identifier")
             return None
 
-        # Check all possible prompt paths
         for prompt_path in self.prompt_paths:
             file_path = Path(prompt_path) / prompt_filename
             print(f"🔍 Checking path: {file_path}")
@@ -267,49 +242,16 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         return None
 
     def get_template_specific_prompt(self, template_config: Dict[str, Any], template_id: str, state: Dict = None) -> str:
-        """Enterprise prompt generation with schema validation"""
-
         print(f"🎯 Getting template prompt for ID: '{template_id}'")
-
-        # PRIORITY 1: Load from prompt files
         prompt_content = self._load_template_prompt_file(template_id, template_config)
         if prompt_content:
             print(f"✅ Using template-specific prompt file for {template_id}")
             return prompt_content
-
-        # PRIORITY 2: Use prompt_schema if available
         if template_config and template_config.get('prompt_schema'):
             print("📋 Using template prompt_schema")
             context = self.extract_context_values(state) if state else {}
             return self.build_from_template_schema(template_config, context)
-
-        # ENTERPRISE: Fail fast if no valid template found
         raise RuntimeError(f"ENTERPRISE: No template prompt found for {template_id}")
-
-
-#    def get_template_specific_prompt(self, template_config: Dict[str, Any], template_id: str, state: Dict = None) -> str:
-#        """Enterprise prompt generation with schema validation"""
-#
-#        # PRIORITY 1: Use MCP research if available
-#        if state and self.has_mcp_research(state):
-#            print("Using MCP research-integrated prompt")
-#            return self._build_research_integrated_prompt(template_config, template_id, state)
-#
-#        # PRIORITY 2: Use prompt_schema if available
-#        if template_config and template_config.get('prompt_schema'):
-#            print("Using template prompt_schema")
-#            context = self.extract_context_values(state) if state else {}
-#            return self.build_from_template_schema(template_config, context)
-#
-#        # PRIORITY 3: Generate from template configuration
-#        if template_config:
-#            dynamic_prompt = self._generate_prompt_from_config(template_config, template_id)
-#            if dynamic_prompt:
-#                print("Generated dynamic prompt from template config")
-#                return dynamic_prompt
-#
-        # ENTERPRISE: Fail fast if no valid template found
-    #    raise RuntimeError(f"ENTERPRISE: No valid template configuration for {template_id}")
 
     def extract_context_values(self, state: Dict) -> Dict:
         context = {
@@ -320,12 +262,10 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         return context
     
     def analyze_context(self, state: Dict) -> WritingContext:
-        """Extract and enrich context from state - simplified version"""
         params = state.get("dynamic_parameters", {})
         raw_template_config = state.get('template_config', {})
         template_config = safe_config_access(raw_template_config)
 
-        # Extract topic from content_spec (set by planner)
         content_spec = state.get('content_spec')
         topic = None
 
@@ -334,7 +274,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         elif content_spec and isinstance(content_spec, dict) and 'topic' in content_spec:
             topic = content_spec['topic']
 
-        # Try dynamic_overrides from template_config if no topic
         if not topic and isinstance(template_config, dict) and 'dynamic_overrides' in template_config:
             outer_overrides = template_config['dynamic_overrides']
             if isinstance(outer_overrides, dict) and 'dynamic_overrides' in outer_overrides:
@@ -342,7 +281,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             elif isinstance(outer_overrides, dict):
                 topic = outer_overrides.get("topic")
 
-        # Final fallback
         if not topic:
             dynamic_overrides = params.get("dynamic_overrides", {})
             topic = dynamic_overrides.get("topic") if dynamic_overrides else None
@@ -350,7 +288,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         if not topic:
             raise ValueError("ENTERPRISE: Missing topic")
 
-        # Extract audience
         audience = "general audience"
         if content_spec and hasattr(content_spec, 'audience'):
             audience = content_spec.audience
@@ -367,7 +304,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         )
 
     def has_mcp_research(self, state: Dict) -> bool:
-        """Check if MCP research data is available"""
         research_indicators = [
             state.get('research_findings'),
             state.get('mcp_results'),
@@ -389,7 +325,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         return False
 
     def extract_mcp_research_data(self, state: Dict) -> Dict[str, Any]:
-        """Extract and consolidate MCP research data from state"""
         research_data = {
             'academic_sources': [],
             'technical_findings': [],
@@ -400,14 +335,11 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             'raw_findings': {}
         }
 
-        # Extract from various state locations
         if state.get('research_findings'):
             research_data['raw_findings'].update(state['research_findings'])
 
         if state.get('mcp_results'):
             mcp_results = state['mcp_results']
-
-            # Extract by tool type
             for tool_name, result in mcp_results.items():
                 if 'academic' in tool_name:
                     research_data['academic_sources'].extend(self._extract_sources(result))
@@ -420,7 +352,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                 elif 'validation' in tool_name or 'fact' in tool_name:
                     research_data['validation_results'].append(result)
 
-        # Extract from tools_executed if available
         if state.get('tools_executed'):
             research_data['tools_used'] = state['tools_executed']
 
@@ -428,9 +359,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         return research_data
 
     def calculate_required_tokens(self, template_config: Dict, dynamic_overrides: Dict) -> int:
-        """Extract exact token requirements from template config"""
-
-        # ENTERPRISE: Extract from template config requirements
         requirements = template_config.get('requirements', {})
         if not requirements:
             raise ValueError("ENTERPRISE: Template missing requirements section")
@@ -439,10 +367,8 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         if not min_words:
             raise ValueError("ENTERPRISE: Template missing min_words requirement")
 
-        # Priority extraction from requirements
         if isinstance(min_words, dict) and 'priority' in min_words:
             for source in min_words['priority']:
-                # Type validation before operations
                 if not isinstance(source, (str, int, float)):
                     raise TypeError(f"ENTERPRISE: Invalid source type {type(source)} in min_words priority")
 
@@ -457,7 +383,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         raise ValueError("ENTERPRISE: No valid min_words found in template requirements")
 
     def _sanitize_prompt(self, prompt: str) -> str:
-        """Enhanced prompt sanitization with diagnostics"""
         if not prompt:
             print("WARN: Empty prompt provided to sanitization")
             return "Generate comprehensive content."
@@ -469,10 +394,7 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         prompt = prompt.replace('\x00', '')
         prompt = prompt.replace('\r\n', '\n')
         prompt = prompt.replace('\r', '\n')
-        
-        # Remove excessive whitespace
         prompt = ' '.join(prompt.split())
-        
         final_length = len(prompt)
         
         if final_length != original_length:
@@ -485,7 +407,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         return prompt.strip()
     
     async def _fetch_recent_events(self, topic: str, timeframe: str, min_sources: int, parameters: Dict) -> Dict[str, Any]:
-        """Fetch recent events for real-time integration"""
         try:
             if self.web_search_tool:
                 results = await self.web_search_tool.search(f"{topic} recent developments {timeframe}")
@@ -494,38 +415,27 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                     'sources': [r.get('source', 'Unknown') for r in results.get('results', [])]
                 }
             else:
-                # Return empty but valid structure
                 return {'events': [], 'sources': []}
         except Exception as e:
             print(f"Real-time fetch failed: {e}")
             return {'events': [], 'sources': []}
 
     def _summarize_events(self, events: List[Dict]) -> str:
-        """Summarize events for real-time integration"""
         if not events:
             return "No recent events found."
-
         summary_parts = []
         for event in events[:3]:
             title = event.get('title', 'Recent development')
             summary_parts.append(f"- {title}")
-
         return "\n".join(summary_parts)
 
-    # File: langgraph_app/agents/writer.py
-    # FIXED: Enhanced extract_all_parameters to capture template-specific inputs
-
     def extract_all_parameters(self, state: Dict) -> Dict[str, Any]:
-        """Extract parameters from all possible state locations - ENHANCED"""
-
         extracted_params = {}
 
-        # Path 1: Direct from state root
         for key in ['client_name', 'clientName', 'project_type', 'projectType', 'topic', 'api_name', 'newsletter_type', 'company_name', 'audience', 'tone', 'voice', 'target_platform', 'seo_focus', 'min_words', 'target_keywords', 'headline_style', 'cta_type', 'brand_voice', 'content_angle', 'competition_level']:
             if key in state:
                 extracted_params[key] = state[key]
 
-        # Path 2: From content_spec
         content_spec = state.get('content_spec')
         if content_spec:
             if hasattr(content_spec, 'topic'):
@@ -533,10 +443,8 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             elif isinstance(content_spec, dict):
                 extracted_params.update(content_spec)
 
-        # Path 3: From dynamic_parameters - ENHANCED TO CAPTURE ALL TEMPLATE INPUTS
         dynamic_params = state.get("dynamic_parameters", {})
         if isinstance(dynamic_params, dict):
-            # CRITICAL FIX: Extract template-specific parameters directly from dynamic_parameters root
             template_specific_keys = [
                 'campaign_goal', 'target_platforms', 'brand_voice', 'post_count', 'content_types', 'campaign_duration',
                 'market_sector', 'analysis_timeframe', 'key_metrics', 'geographic_scope', 'analysis_depth', 'data_sources', 'competitor_focus', 'regulatory_factors',
@@ -549,18 +457,15 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             for key in template_specific_keys:
                 if key in dynamic_params:
                     value = dynamic_params[key]
-                    # Clean up quoted strings from frontend
                     if isinstance(value, str) and value.startswith('"') and value.endswith('"'):
-                        value = value[1:-1]  # Remove quotes
+                        value = value[1:-1]
                     extracted_params[key] = value
 
-            # Extract nested dynamic_overrides
             if 'dynamic_overrides' in dynamic_params:
                 overrides = dynamic_params['dynamic_overrides']
                 if isinstance(overrides, dict):
                     extracted_params.update(overrides)
 
-        # Path 4: From template_config dynamic_overrides
         template_config = state.get('template_config', {})
         if isinstance(template_config, dict) and 'dynamic_overrides' in template_config:
             template_overrides = template_config['dynamic_overrides']
@@ -572,24 +477,20 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                 else:
                     extracted_params.update(template_overrides)
 
-        # Path 5: From template_config user_inputs - NEW
         if isinstance(template_config, dict) and 'user_inputs' in template_config:
             user_inputs = template_config['user_inputs']
             if isinstance(user_inputs, dict):
                 extracted_params.update(user_inputs)
 
-        # Path 6: From template_config dynamic_parameters - NEW
         if isinstance(template_config, dict) and 'dynamic_parameters' in template_config:
             template_dynamic = template_config['dynamic_parameters']
             if isinstance(template_dynamic, dict):
-                # Extract all non-nested parameters
                 for key, value in template_dynamic.items():
-                    if key != 'dynamic_overrides':  # Skip nested object
+                    if key != 'dynamic_overrides':
                         if isinstance(value, str) and value.startswith('"') and value.endswith('"'):
-                            value = value[1:-1]  # Remove quotes
+                            value = value[1:-1]
                         extracted_params[key] = value
 
-        # Debug output with parameter counts
         template_params = [k for k in extracted_params.keys() if k in [
             'campaign_goal', 'target_platforms', 'brand_voice', 'post_count', 'content_types', 'campaign_duration',
             'market_sector', 'analysis_timeframe', 'key_metrics', 'geographic_scope'
@@ -606,12 +507,8 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         state: Dict[str, Any], 
         real_time_context: Dict[str, Any]
     ) -> str:
-        """Build user content with extracted parameters and real-time context"""
-
-        # Extract parameters from all state locations
         extracted_params = self.extract_all_parameters(state)
 
-        # Build base content parts with context
         user_content_parts = [
             f"TOPIC: {context.topic}",
             f"AUDIENCE: {context.audience}",
@@ -620,7 +517,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             f"COMPLEXITY: {context.complexity_level}"
         ]
 
-        # Add extracted parameters as context
         if extracted_params:
             user_content_parts.append("")
             user_content_parts.append("PARAMETERS:")
@@ -628,12 +524,10 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                 if value and str(value).strip():
                     user_content_parts.append(f"{key}: {value}")
 
-        # Add planning context if available
         planning_output = getattr(state, "planning_output", None) or state.get("planning_output")
         if planning_output:
             user_content_parts.append(f"\nPLANNING CONTEXT: {str(planning_output)}")
 
-        # Real-time integration
         if real_time_context.get('real_time_enabled'):
             current_events = real_time_context.get('current_events', {})
             if current_events and current_events.get('events'):
@@ -648,8 +542,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         return "\n".join(user_content_parts)
     
     async def _generate_adaptive_content(self, state: Dict[str, Any]) -> str:
-        """Generate adaptive content - FIXED: Use working OpenAI API pattern"""
-
         template_config = state.get("template_config", {})
         style_config = state.get("style_config", {})
 
@@ -659,7 +551,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             template_id = state.get("template", "")
             context = self.analyze_context(state)
 
-            # Extract parameters for real-time search
             params = state.get("dynamic_parameters", {})
             dynamic_overrides = params.get("dynamic_overrides", {})
             if isinstance(template_config, dict) and 'dynamic_overrides' in template_config:
@@ -667,39 +558,31 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                 if isinstance(outer_overrides, dict) and 'dynamic_overrides' in outer_overrides:
                     dynamic_overrides = outer_overrides['dynamic_overrides']
 
-            # REAL-TIME DATA INTEGRATION - ALWAYS REQUIRED IF TEMPLATE SPECIFIES
             real_time_context = await self._handle_real_time_requirements(
                 template_config, context, dynamic_overrides
             )
 
-            # Get system-level prompt from template
             template_specific_prompt = self.get_template_specific_prompt(template_config, template_id, state)
             if not template_specific_prompt or len(template_specific_prompt.strip()) < 10:
                 raise RuntimeError("ENTERPRISE: Template prompt invalid or empty")
 
-            # Build user content with mandatory real-time integration
             user_content = self._build_user_content_with_realtime(
                 context, state, real_time_context
             )
 
-            # Check if template requires code generation
             requires_code = template_config.get("code_agent", False)
             if not requires_code:
-                # Skip code-related processing for non-code templates
                 user_content = user_content.replace("code examples", "practical examples")
                 template_specific_prompt = template_specific_prompt.replace("code blocks", "content blocks")
 
             if len(user_content.strip()) < 10:
                 raise RuntimeError("ENTERPRISE: User prompt invalid or empty")
 
-            # Get dynamic generation settings
             generation_settings = self._get_user_generation_settings(state)
 
-            # Continue with existing generation logic...
-            model_obj = get_model("writer")
+            model_obj = get_model("writer", generation_settings)
             model_name = model_obj.model_name
 
-            # Combine sanitized prompts (SAME AS WORKING VERSION)
             system_content = self._sanitize_prompt(template_specific_prompt)
             user_content = self._sanitize_prompt(user_content)
             combined_input = f"{system_content}\n\n{user_content}"
@@ -707,7 +590,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             if len(system_content + user_content) < 20:
                 raise RuntimeError("ENTERPRISE: Combined prompt too short")
 
-            # CRITICAL FIX: Use working OpenAI API pattern from writer.copy.py
             response = await asyncio.to_thread(
                 self.client.responses.create,
                 model=model_name,
@@ -727,7 +609,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             raise RuntimeError(f"ENTERPRISE: Content generation pipeline failed: {e}")
 
     def _extract_content_from_openai_response(self, response) -> str:
-        """Extract content from responses.create() API - same as working version"""
         try:
             print("DEBUG: Starting content extraction...")
             print(f"DEBUG: Response type: {type(response)}")
@@ -736,10 +617,8 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             if hasattr(response, 'output_text'):
                 content = response.output_text
             elif hasattr(response, 'choices') and response.choices:
-                # Fallback for chat.completions format
                 content = response.choices[0].message.content
             else:
-                # Try string conversion as fallback
                 content = str(response)
 
             print(f"DEBUG: Content type: {type(content)}")
@@ -762,48 +641,89 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         except Exception as e:
             print(f"ERROR: Content extraction failed: {e}")
             raise RuntimeError(f"ENTERPRISE: Content extraction failed: {e}")        
-    
+
     def _get_user_generation_settings(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract user's saved generation settings"""
+        gen: Dict[str, Any] = {}
+        
+        dyn = state.get('dynamic_parameters', {}) or {}
+        if isinstance(dyn, dict):
+            gs = dyn.get('generation_settings')
+            if isinstance(gs, dict):
+                gen.update(gs)
+            if 'max_tokens' in dyn and 'max_tokens' not in gen:
+                gen['max_tokens'] = dyn['max_tokens']
+            if 'temperature' in dyn and 'temperature' not in gen:
+                gen['temperature'] = dyn['temperature']
+            dov = dyn.get('dynamic_overrides', {})
+            if isinstance(dov, dict):
+                if 'max_tokens' in dov and 'max_tokens' not in gen:
+                    gen['max_tokens'] = dov['max_tokens']
+                if 'temperature' in dov and 'temperature' not in gen:
+                    gen['temperature'] = dov['temperature']
 
-        defaults = {'max_tokens': 4000}
+        tc = state.get('template_config', {}) or {}
+        if isinstance(tc, dict):
+            tdp = tc.get('dynamic_parameters', {})
+            if isinstance(tdp, dict):
+                tdp_gs = tdp.get('generation_settings', {})
+                if isinstance(tdp_gs, dict):
+                    if 'max_tokens' in tdp_gs and 'max_tokens' not in gen:
+                        gen['max_tokens'] = tdp_gs['max_tokens']
+                    if 'temperature' in tdp_gs and 'temperature' not in gen:
+                        gen['temperature'] = tdp_gs['temperature']
+                tdp_dov = tdp.get('dynamic_overrides', {})
+                if isinstance(tdp_dov, dict):
+                    if 'max_tokens' in tdp_dov and 'max_tokens' not in gen:
+                        gen['max_tokens'] = tdp_dov['max_tokens']
+                    if 'temperature' in tdp_dov and 'temperature' not in gen:
+                        gen['temperature'] = tdp_dov['temperature']
 
-        settings_sources = [
-            state.get('user_settings', {}),
+            tov = tc.get('dynamic_overrides', {})
+            if isinstance(tov, dict) and 'dynamic_overrides' in tov and isinstance(tov['dynamic_overrides'], dict):
+                tov = tov['dynamic_overrides']
+            if isinstance(tov, dict):
+                if 'max_tokens' in tov and 'max_tokens' not in gen:
+                    gen['max_tokens'] = tov['max_tokens']
+                if 'temperature' in tov and 'temperature' not in gen:
+                    gen['temperature'] = tov['temperature']
+
+        fallback_sources = [
             state.get('generation_settings', {}),
-            getattr(state.get('content_spec'), 'generation_settings', {}),
-            state.get('dynamic_parameters', {}).get('generation_settings', {})
+            state.get('user_settings', {}),
+            getattr(state.get('content_spec', {}), 'generation_settings', {}),
+            dyn.get('generation_settings', {})
         ]
+        for s in fallback_sources:
+            if isinstance(s, dict):
+                if 'max_tokens' in s and 'max_tokens' not in gen:
+                    gen['max_tokens'] = s['max_tokens']
+                if 'temperature' in s and 'temperature' not in gen:
+                    gen['temperature'] = s['temperature']
 
-        for settings in settings_sources:
-            if isinstance(settings, dict) and 'max_tokens' in settings:
-                defaults['max_tokens'] = max(100, min(int(settings['max_tokens']), 8000))
-                break
-            
-        return defaults
+        if 'max_tokens' not in gen or 'temperature' not in gen:
+            raise ValueError("ENTERPRISE: generation_settings with max_tokens and temperature required")
 
+        gen['max_tokens'] = int(gen['max_tokens'])
+        gen['temperature'] = float(gen['temperature'])
+        logger.info(f"✅ Using settings: max_tokens={gen['max_tokens']}, temperature={gen['temperature']}")
+        return gen
+    
     async def _handle_real_time_requirements(
         self, 
         template_config: Dict[str, Any], 
         context, 
         dynamic_overrides: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Handle real-time data requirements - ENTERPRISE: NO FALLBACKS"""
-
         real_time_support = template_config.get('real_time_support', {})
 
         if real_time_support.get('enabled'):
             logger.info(f"Real-time data REQUIRED for template: {template_config.get('name')}")
-
-            # ENTERPRISE: Validate search capability exists
             if not (self.researcher_agent or self.web_search_tool):
                 raise RuntimeError("ENTERPRISE: Real-time data required but no search capability configured")
 
-            # Extract search parameters
             search_timeframe = real_time_support.get('max_age_hours', 24)
             required_sources = real_time_support.get('verification_sources', 1)
 
-            # Fetch recent data - will raise exception if fails
             recent_data = await self._fetch_recent_events(
                 topic=context.topic,
                 timeframe=f"{search_timeframe}h",
@@ -824,58 +744,38 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             return real_time_context
 
         else:
-            # Template doesn't require real-time data
             return {
                 'real_time_enabled': False,
                 'knowledge_cutoff_warning': True,
                 'cutoff_date': '2025-01-31'
             }
 
-
-# File: langgraph_app/agents/writer.py
-# FIXED: Strengthened sanitization method to properly remove code blocks
-
     def user_provided_code(self, state: Dict) -> str:
-        """Extract user-provided code from dynamic overrides"""
         params = state.get("dynamic_parameters", {})
         dynamic_overrides = params.get("dynamic_overrides", {}) if params else {}
         return dynamic_overrides.get("code_input", "") if dynamic_overrides else ""
 
-    # File: langgraph_app/agents/writer.py
-    # CRITICAL FIX: Blog-aware sanitization that preserves SEO elements and narrative structure
-
     def _sanitize_and_enforce(self, raw: str, template_config: Dict = None, state: Dict = None) -> str:
-        """Blog-aware sanitization that preserves SEO elements and narrative structure"""
         text = raw or ""
 
         if not template_config:
             text = re.sub(r"\n{3,}", "\n\n", text).strip()
             return text
 
-        # Extract template identification
         template_type = template_config.get('template_type', '')
         template_id = template_config.get('id', template_config.get('slug', ''))
 
-        # BLOG ARTICLE SPECIAL HANDLING - Convert bullets to narrative
         if template_type == 'blog_article' or 'blog' in template_id.lower():
             return self._enforce_blog_narrative_style(text)
-
-        # SOCIAL MEDIA - Preserve post structure
         elif template_type == 'social_media_campaign':
             return self._preserve_social_structure(text)
-
-        # DEFAULT - Remove code only
         else:
             return self._basic_code_removal(text)
 
     def _enforce_blog_narrative_style(self, text: str) -> str:
-        """Convert bullet-heavy content to narrative blog style"""
-
-        # Remove code blocks first
         text = re.sub(r"```[\s\S]*?```", "", text, flags=re.DOTALL)
         text = re.sub(r"`[^`\n]*`", "", text)
 
-        # Split into sections while preserving SEO elements at top
         sections = text.split('\n\n')
         processed_sections = []
 
@@ -884,12 +784,10 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             if not section:
                 continue
 
-            # Preserve SEO elements (titles, meta descriptions)
             if any(keyword in section.upper() for keyword in ['SEO TITLE', 'META DESCRIPTION', 'TITLE:', 'META TITLE']):
                 processed_sections.append(section)
                 continue
 
-            # Convert bullet lists to flowing narrative
             if self._is_bullet_list(section):
                 narrative = self._convert_bullets_to_narrative(section)
                 processed_sections.append(narrative)
@@ -899,17 +797,13 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         return '\n\n'.join(processed_sections)
 
     def _is_bullet_list(self, text: str) -> bool:
-        """Check if text is primarily bullet points"""
         lines = [line.strip() for line in text.split('\n') if line.strip()]
         bullet_lines = [line for line in lines if line.startswith(('- ', '• ', '* '))]
         return len(bullet_lines) > len(lines) * 0.5
 
     def _convert_bullets_to_narrative(self, bullet_text: str) -> str:
-        """Convert bullet points to flowing narrative paragraphs"""
-
         lines = [line.strip() for line in bullet_text.split('\n') if line.strip()]
 
-        # Extract header if present
         header = ""
         content_lines = []
 
@@ -920,56 +814,44 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                 content_lines.append(line[2:].strip())
 
         if not content_lines:
-            return bullet_text  # Return original if no bullets found
+            return bullet_text
 
-        # Group bullets into thematic paragraphs
         if len(content_lines) <= 3:
-            # Short list - single flowing sentence
             if len(content_lines) == 1:
                 narrative = content_lines[0]
             else:
                 narrative = f"{', '.join(content_lines[:-1])}, and {content_lines[-1]}."
         else:
-            # Longer list - multiple sentences
             first_part = content_lines[:3]
             remaining = content_lines[3:]
-
             narrative = f"{', '.join(first_part[:-1])}, and {first_part[-1]}."
-
             if remaining:
                 if len(remaining) == 1:
                     narrative += f" Additionally, {remaining[0]}."
                 else:
                     narrative += f" {', '.join(remaining[:-1])}, and {remaining[-1]} are also important considerations."
 
-        # Combine header and narrative
         if header:
             return f"{header}\n\n{narrative}"
         else:
             return narrative
 
     def _preserve_social_structure(self, text: str) -> str:
-        """Preserve social media post structure"""
         text = re.sub(r"```[\s\S]*?```", "", text, flags=re.DOTALL)
         text = re.sub(r"`[^`\n]*`", "", text)
         text = re.sub(r"\n{3,}", "\n\n", text).strip()
         return text
 
     def _basic_code_removal(self, text: str) -> str:
-        """Basic sanitization - remove code blocks only"""
         text = re.sub(r"```[\s\S]*?```", "", text, flags=re.DOTALL)
         text = re.sub(r"`[^`\n]*`", "", text)
         text = re.sub(r"\n{3,}", "\n\n", text).strip()
         return text
 
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Writer executes with template-specific generation - no format overrides"""
-
-        # Extract configs from state
         template_config = getattr(state, 'template_config', None)
         style_config = getattr(state, 'style_config', None)
 
-        # STUDIO FIX: Reconstruct configs if missing
         if not template_config or not isinstance(template_config, dict) or not template_config:
             template_config = {
                 'id': 'studio_writer_fallback',
@@ -1004,10 +886,8 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             state.style_config = style_config
             logger.warning("WRITER: Created style_config fallback")
 
-        # Validate extracted configs
         self.validate_enterprise_config(template_config, style_config)
 
-        # Extract template ID with fallback
         template_id = (
             getattr(state, 'template_id', '') or 
             template_config.get('slug', '') or 
@@ -1015,7 +895,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             'unknown'
         )
 
-        # Build state dict for generation
         state_dict = {
             "template": template_id,
             "template_config": template_config,
@@ -1035,7 +914,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             if not isinstance(generated_content, str):
                 generated_content = str(generated_content)
 
-            # MINIMAL sanitization - only remove code blocks, preserve template format
             final_content = self._sanitize_and_enforce(
                 generated_content.strip(), 
                 template_config=template_config,
@@ -1048,7 +926,6 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             if len(final_content) < 50:
                 raise RuntimeError(f"ENTERPRISE: Generated content too short ({len(final_content)} chars)")
 
-            # Set content fields
             state.content = final_content
             state.final_content = final_content
             state.draft_content = final_content
@@ -1074,12 +951,9 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         return sources
 
     def _generate_prompt_from_config(self, template_config, template_id):
-        # Use template's actual prompt_schema if available
         prompt_schema = template_config.get('prompt_schema', {})
         if prompt_schema.get('system_preamble'):
             return prompt_schema['system_preamble']
-
-        # Simple fallback
         return f"Generate {template_config.get('template_type', 'content')} as specified."
         
     def _load_memory(self, filename: str) -> List[Dict]:
@@ -1095,12 +969,11 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             json.dump(data, f, indent=2, default=str)
 
     def _summarize_events(self, events: List[Dict]) -> str:
-        """Summarize events for real-time integration"""
         if not events:
             return "No recent events found."
         
         summary_parts = []
-        for event in events[:3]:  # Top 3 events
+        for event in events[:3]:
             title = event.get('title', 'Untitled Event')
             date = event.get('date', 'Recent')
             source = event.get('source', 'Unknown')
@@ -1109,24 +982,22 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         return "\n".join(summary_parts)
 
     def _build_research_integrated_prompt(self, template_config: Dict, template_id: str, state: Dict) -> str:
-        """Build prompt with MCP research integration"""
         research_data = self.extract_mcp_research_data(state)
-        
         base_prompt = self._generate_prompt_from_config(template_config, template_id)
-        
-        # Add research context
         if research_data['raw_findings']:
             research_context = "\n".join([f"Research: {k}: {v}" for k, v in research_data['raw_findings'].items()])
             return f"{base_prompt}\n\nResearch Context:\n{research_context}"
-        
         return base_prompt
+
+    # Optional shim so legacy wrapper works
+    def generate_adaptive_content(self, state: Dict[str, Any]) -> str:
+        return asyncio.run(self._generate_adaptive_content(state))
 
 # Export the universal template-aware agent
 template_aware_writer_agent = TemplateAwareWriterAgent()
 
 # Legacy compatibility wrapper
 def _legacy_writer_fn(state: dict) -> dict:
-    """Legacy wrapper for backward compatibility"""
     return template_aware_writer_agent.generate_adaptive_content(state)
 
 # Exports

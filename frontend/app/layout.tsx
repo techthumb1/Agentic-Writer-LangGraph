@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { auth } from "@/auth";
+import { auth } from "@/app/api/auth/[...nextauth]/route"
 import Link from "next/link";
 import { CollapsibleNavigation } from "@/components/CollapsibleNavigation"
 import "./globals.css";
@@ -77,18 +77,12 @@ export default async function RootLayout({
                           </span>
                           
                           {/* Sign Out Button */}
-                          <form action={async () => {
-                            "use server";
-                            const { signOut } = await import("@/auth");
-                            await signOut({ redirectTo: "/" });
-                          }}>
-                            <button
-                              type="submit"
-                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-800"
-                            >
-                              Sign Out
-                            </button>
-                          </form>
+                          <Link
+                            href="/api/auth/signout"
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+                          >
+                            Sign Out
+                          </Link>
                         </>
                       ) : (
                         <Link

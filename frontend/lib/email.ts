@@ -4,13 +4,13 @@
 
 import { randomBytes } from 'crypto';
 import nodemailer, { Transporter } from 'nodemailer';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma.node';
 
 // --- SMTP config normalization ------------------------------------------------
-const SMTP_HOST = process.env.SMTP_HOST!;
+const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
-const SMTP_USER = process.env.SMTP_USER!;
-const SMTP_PASSWORD = process.env.SMTP_PASSWORD!;
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASSWORD = process.env.SMTP_PASSWORD;
 const SMTP_FROM = process.env.SMTP_FROM || 'noreply@writerzroom.com';
 const NEXT_BASE_URL =
   process.env.NEXTAUTH_URL || process.env.APP_URL || 'http://localhost:3000';
@@ -21,24 +21,16 @@ const SMTP_SECURE =
     ? process.env.SMTP_SECURE === 'true'
     : SMTP_PORT === 465;
 
-function assertEnv() {
-  const missing = [
-    ['SMTP_HOST', SMTP_HOST],
-    ['SMTP_PORT', String(SMTP_PORT)],
-    ['SMTP_USER', SMTP_USER],
-    ['SMTP_PASSWORD', SMTP_PASSWORD],
-  ].filter(([, v]) => !v);
-  if (missing.length) {
-    throw new Error(
-      `Missing required SMTP env vars: ${missing.map(([k]) => k).join(', ')}`
-    );
-  }
-}
-assertEnv();
-
 // --- Create a singleton transporter (prevents multiple instances in dev) -----
 let _transporter: Transporter | null = null;
 function getTransporter(): Transporter {
+  // Validate env vars at runtime, not module load
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASSWORD) {
+    throw new Error(
+      'Missing required SMTP env vars: SMTP_HOST, SMTP_USER, SMTP_PASSWORD'
+    );
+  }
+
   if (_transporter) return _transporter;
   _transporter = nodemailer.createTransport({
     host: SMTP_HOST,

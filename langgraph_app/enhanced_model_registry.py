@@ -31,7 +31,7 @@ def get_model_name(agent_name: str) -> str:
     default_models = {
         "writer": "gpt-5",
         "editor": "gpt-5",
-        "seo": "gpt-4o-mini",
+        "seo": "gpt-5",
         "image": "gpt-image-1",
         "code": "gpt-5",
         "researcher": "gpt-5",
@@ -40,12 +40,20 @@ def get_model_name(agent_name: str) -> str:
     env_key = f"{agent_name.upper()}_MODEL"
     return os.getenv(env_key, default_models.get(agent_name, "gpt-5"))
 
-def get_model(agent_name: str):
+def get_model(agent_name: str, settings: Dict[str, Any] = None):
     """
     Returns an actual LLM instance for a given agent.
-    Enterprise-grade: Returns configured LLM object, not string.
+    Enterprise-grade: Returns configured LLM object with user settings.
     """
+    settings = settings or {}
     model_name = get_model_name(agent_name)
+    
+    # Extract settings - NO FALLBACKS
+    temperature = settings.get("temperature")
+    max_tokens = settings.get("max_tokens")
+    
+    if temperature is None or max_tokens is None:
+        raise ValueError(f"temperature and max_tokens required in settings, got: {settings}")
     
     # Get API key
     openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -58,8 +66,8 @@ def get_model(agent_name: str):
         return ChatOpenAI(
             model=model_name,
             api_key=openai_api_key,
-            temperature=0.7,
-            max_tokens=4000
+            temperature=temperature,
+            max_tokens=max_tokens
         )
     elif model_name.startswith("claude-"):
         anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -70,19 +78,17 @@ def get_model(agent_name: str):
         return ChatAnthropic(
             model=model_name,
             api_key=anthropic_api_key,
-            temperature=0.7,
-            max_tokens=4000
+            temperature=temperature,
+            max_tokens=max_tokens
         )
     else:
-        # Default to OpenAI for unknown models
         from langchain_openai import ChatOpenAI
         return ChatOpenAI(
             model="gpt-4o",
             api_key=openai_api_key,
-            temperature=0.7,
-            max_tokens=4000
+            temperature=temperature,
+            max_tokens=max_tokens
         )
-
 class ModelProvider(Enum):
     """Enum for supported model providers"""
     OPENAI = "openai"

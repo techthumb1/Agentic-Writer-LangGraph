@@ -137,8 +137,7 @@ class EnhancedPlannerAgent:
         
         # STUDIO FIX: Handle missing topic
         if not topic:
-            topic = "strategic_business_analysis"
-            logger.warning("PLANNER: Empty topic in dynamic_params, using fallback")
+            raise ValueError(f"ENTERPRISE: Topic required in dynamic_parameters for template {template_type}")
         
         # Build strategy from template description analysis
         strategy_parts = []
@@ -171,15 +170,28 @@ class EnhancedPlannerAgent:
         return strategy.replace(' ', '_').lower()
 
     def _extract_dynamic_parameters_for_validation(self, state: EnrichedContentState) -> Dict[str, Any]:
-        """Extract dynamic parameters for validation - simpler version"""
+        """Extract dynamic parameters including nested overrides"""
         template_config = state.template_config
-        
-        # Handle nested dynamic_overrides structure
-        dynamic_overrides = template_config.get('dynamic_overrides', {})
-        if isinstance(dynamic_overrides, dict) and 'dynamic_overrides' in dynamic_overrides:
-            dynamic_overrides = dynamic_overrides['dynamic_overrides']
-        
-        return dynamic_overrides
+
+        # Priority 1: Check template_config.dynamic_parameters.dynamic_overrides
+        if isinstance(template_config, dict):
+            dp = template_config.get('dynamic_parameters', {})
+            if isinstance(dp, dict):
+                dov = dp.get('dynamic_overrides', {})
+                if isinstance(dov, dict) and dov.get('topic'):
+                    return dov
+
+            # Priority 2: Check template_config.dynamic_overrides.dynamic_overrides
+            do = template_config.get('dynamic_overrides', {})
+            if isinstance(do, dict):
+                if 'dynamic_overrides' in do:
+                    nested = do['dynamic_overrides']
+                    if isinstance(nested, dict) and nested.get('topic'):
+                        return nested
+                elif do.get('topic'):
+                    return do
+
+        return {}
             
     def _extract_structure_approach(self, template_config: Dict) -> str:
         """Extract structure from template sections configuration"""

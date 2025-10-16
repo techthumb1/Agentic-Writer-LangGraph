@@ -1,7 +1,6 @@
 // File: frontend/app/settings/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +38,7 @@ import {
   X,
   ArrowRight
 } from 'lucide-react'
+import { useState } from 'react'
 
 
 export default function SettingsPage() {
@@ -64,48 +64,17 @@ const handleThemeChange = (newTheme: string) => {
   )
 }
 
-useEffect(() => {
-  const loadSettings = async () => {
-    try {
-      setIsLoading(true)
-
-      // Simulate API call (you can replace with actual API later)
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      // Demo data (replace with actual API response)
-      // Only update if fields are empty to avoid overwriting user changes
-      if (!userSettings.name && !userSettings.email) {
-        updateUserSettings({
-          name: 'John Doe',
-          email: 'john.doe@example.com',
-          bio: 'Content creator using WriterzRoom'
-        })
-      }
-
-    } catch (err) {
-      console.error('Failed to load settings:', err)
-      showToast.error('Error', 'Failed to load settings')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  loadSettings()
-}, [userSettings.name, userSettings.email, updateUserSettings])
-
 const saveUserSettings = async () => {
   try {
     setIsLoading(true)
     
-    // Simulate API call (replace with actual API endpoint)
-    await new Promise(resolve => setTimeout(resolve, 800))
+    // Save to localStorage
+    localStorage.setItem('writerzroom_user_settings', JSON.stringify(userSettings))
     
-    // TODO: Replace with actual API call
-    // const response = await fetch('/api/user/settings', {
-    //   method: 'PUT',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(userSettings)
-    // })
+    // Dispatch event for other components
+    window.dispatchEvent(new CustomEvent('settings-updated', { 
+      detail: { userSettings } 
+    }))
     
     showToast.success('Success', 'User settings saved successfully')
   } catch (err) {
@@ -117,35 +86,26 @@ const saveUserSettings = async () => {
 }
 
   const saveGenerationSettings = async () => {
-  try {
-    setIsLoading(true)
-
-    // Simulate API call (replace with actual API endpoint)
-    await new Promise(resolve => setTimeout(resolve, 800))
-    
-    // TODO: Replace with actual API call
-    // const response = await fetch('/api/user/generation-settings', {
-    //   method: 'PUT',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(generationSettings)
-    // })
-    
-    showToast.success('Success', 'Generation settings saved successfully')
-    
-    // Also update global settings context if you have one
-    if (typeof window !== 'undefined') {
+    try {
+      setIsLoading(true)
+      
+      // Save to localStorage
+      localStorage.setItem('writerzroom_generation_settings', JSON.stringify(generationSettings))
+      
+      // Dispatch event for Generate page
       window.dispatchEvent(new CustomEvent('settings-updated', { 
         detail: { generationSettings } 
       }))
+      
+      showToast.success('Success', 'Generation settings saved successfully')
+      
+    } catch (err) {
+      console.error('Failed to save generation settings:', err)
+      showToast.error('Error', 'Failed to save generation settings')
+    } finally {
+      setIsLoading(false)
     }
-    
-  } catch (err) {
-    console.error('Failed to save generation settings:', err)
-    showToast.error('Error', 'Failed to save generation settings')
-  } finally {
-    setIsLoading(false)
   }
-}
 
   const exportSettings = async () => {
     try {
@@ -185,29 +145,45 @@ const saveUserSettings = async () => {
     }
   }
 
-  const exportUserData = async () => {
+    const exportUserData = async () => {
     try {
+      setIsLoading(true)
+
+      // Fetch generated content from API
+      const contentResponse = await fetch('/api/content/list')
+      let generatedContent: unknown[] = []
+
+      if (contentResponse.ok) {
+        const contentData = await contentResponse.json()
+        generatedContent = contentData.content || []
+      } else {
+        console.warn('⚠️ Could not fetch generated content for export')
+      }
+
       const userData = {
         profile: userSettings,
         settings: generationSettings,
-        content: [],
-        exportDate: new Date().toISOString()
+        content: generatedContent,
+        exportDate: new Date().toISOString(),
+        version: '2.0.0'
       }
-      
+
       const blob = new Blob([JSON.stringify(userData, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'writerzroom-data-export.json'
+      a.download = `writerzroom-data-export-${new Date().toISOString().split('T')[0]}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      
-      showToast.success('Success', 'User settings saved successfully')
+
+      showToast.success('Success', `Exported ${generatedContent.length} content items`)
     } catch (err) {
       console.error('Failed to export user data:', err)
-      showToast.error('Error', 'Failed to load settings')
+      showToast.error('Error', 'Failed to export user data')
+    } finally {
+      setIsLoading(false)
     }
   }
 

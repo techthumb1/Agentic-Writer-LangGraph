@@ -556,12 +556,22 @@ export async function POST(request: NextRequest) {
     );
     
     console.log(`🎯 [GENERATION] Template: '${templateId}', Style: '${styleProfileId}', Topic: '${generatedTopic}'`);
-    
-    // ✅ ENHANCED: Enterprise payload transformation with proper template/style separation
-    // File: frontend/app/api/generate/route.ts
-// Lines 265-285 - REPLACE the dynamic_parameters construction
+  
+const generationSettings = body.generation_settings || {};
+const maxTokens = generationSettings.max_tokens;
+const temperature = generationSettings.temperature;
+const qualityMode = generationSettings.quality_mode;  
 
-// ✅ FIXED: Enterprise payload transformation with proper dynamic_overrides structure
+if (!maxTokens || !temperature || !qualityMode) {
+  return NextResponse.json(
+    { 
+      success: false, 
+      error: 'Generation settings required: max_tokens, temperature, quality_mode',
+      request_id: request_id
+    },
+    { status: 400 }
+  );
+}
   const enterprisePayload: GenerationRequest = {
     request_id: request_id,
     template: templateId,
@@ -592,6 +602,9 @@ export async function POST(request: NextRequest) {
         code_examples_per_endpoint: body.dynamic_parameters?.code_examples_per_endpoint || "",
         include_webhooks: body.dynamic_parameters?.include_webhooks || "",
         rate_limiting: body.dynamic_parameters?.rate_limiting || "",
+        max_tokens: generationSettings.max_tokens,
+        temperature: generationSettings.temperature,
+        quality_mode: generationSettings.quality_mode,
         
         // Standard generation parameters
         preferred_length: body.dynamic_parameters?.preferred_length || "short",

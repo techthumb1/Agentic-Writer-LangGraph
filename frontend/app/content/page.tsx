@@ -171,7 +171,7 @@ export default function MyContentPage() {
       <div className="min-h-screen theme-background">
         <div className="container mx-auto p-6 space-y-8">
           <PageHeader
-            title="My Generated"
+            title="Generated"
             gradientText="Content"
             subtitle="Access, review, and publish your saved AI-generated drafts."
             size="lg"
@@ -192,7 +192,7 @@ export default function MyContentPage() {
       <div className="min-h-screen theme-background">
         <div className="container mx-auto p-6 space-y-8">
           <PageHeader
-            title="My Generated"
+            title="Generated"
             gradientText="Content"
             subtitle="Access, review, and publish your saved AI-generated drafts."
             size="lg"
@@ -228,7 +228,7 @@ export default function MyContentPage() {
     <div className="min-h-screen theme-background">
       <div className="container mx-auto p-6 space-y-8">
         <PageHeader
-          title="My Generated"
+          title="Generated"
           gradientText="Content"
           subtitle="Access, review, and publish your saved AI-generated drafts."
           size="lg"

@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
@@ -173,7 +173,7 @@ async function main() {
             update: {
               name,
               description,
-              profileData: profileData as Prisma.InputJsonValue,
+              profileData: JSON.parse(JSON.stringify(profileData)),
               category,
               icon,
               tags,
@@ -183,7 +183,7 @@ async function main() {
               id,
               name,
               description,
-              profileData: profileData as Prisma.InputJsonValue,
+              profileData: JSON.parse(JSON.stringify(profileData)),
               category,
               icon,
               tags,
@@ -249,12 +249,17 @@ async function main() {
         await prisma.systemConfig.upsert({
           where: { key: config.key },
           update: {
-            ...config,
-            value: config.value as Prisma.InputJsonValue,
+            value: JSON.parse(JSON.stringify(config.value)),
+            description: config.description,
+            category: config.category,
+            isPublic: config.isPublic,
           },
           create: {
-            ...config,
-            value: config.value as Prisma.InputJsonValue,
+            key: config.key,
+            value: JSON.parse(JSON.stringify(config.value)),
+            description: config.description,
+            category: config.category,
+            isPublic: config.isPublic,
           },
         });
       }

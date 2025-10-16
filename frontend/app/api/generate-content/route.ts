@@ -1,9 +1,7 @@
 // File: frontend/app/api/generate-content/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma.node';
 import { contentGenerationEngine } from '@/lib/content-generation-engine';
-
-const prisma = new PrismaClient();
 
 interface Section {
   title: string;

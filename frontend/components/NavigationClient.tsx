@@ -1,5 +1,8 @@
 'use client'
 
+
+{/* Add imports at top */}
+import { Monitor, Sparkles } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { usePathname } from "next/navigation";
@@ -43,6 +46,7 @@ const NavigationClient = () => {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isProductsOpen, setIsProductsOpen] = useState(false);
   const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -200,6 +204,72 @@ const NavigationClient = () => {
               </div>
             )}
           </div>
+
+
+          {/* Dark mode toggle with dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
+              className="p-2 rounded-lg bg-accent text-accent-foreground hover:bg-accent/80 transition-all duration-200"
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? (
+                <Sun className="h-5 w-5" />
+              ) : theme === 'dark' ? (
+                <Moon className="h-5 w-5" />
+              ) : theme === 'writerzroom' ? (
+                <Sparkles className="h-5 w-5" />
+              ) : (
+                <Monitor className="h-5 w-5" />
+              )}
+            </button>
+            
+            {isThemeMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+                <button
+                  onClick={() => {
+                    setTheme('light');
+                    setIsThemeMenuOpen(false);
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <Sun className="mr-3 h-4 w-4" />
+                  Light
+                </button>
+                <button
+                  onClick={() => {
+                    setTheme('dark');
+                    setIsThemeMenuOpen(false);
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <Moon className="mr-3 h-4 w-4" />
+                  Dark
+                </button>
+                <button
+                  onClick={() => {
+                    setTheme('writerzroom');
+                    setIsThemeMenuOpen(false);
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <Sparkles className="mr-3 h-4 w-4" />
+                  WriterzRoom
+                </button>
+                <button
+                  onClick={() => {
+                    setTheme('system');
+                    setIsThemeMenuOpen(false);
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <Monitor className="mr-3 h-4 w-4" />
+                  System
+                </button>
+              </div>
+            )}
+          </div>
+
 
           {/* Right side buttons */}
           <div className="flex items-center space-x-4">
@@ -363,6 +433,7 @@ const NavigationClient = () => {
           onClick={() => {
             setIsProductsOpen(false);
             setIsSolutionsOpen(false);
+            setIsThemeMenuOpen(false);
           }}
         />
       )}

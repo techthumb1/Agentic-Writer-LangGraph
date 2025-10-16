@@ -34,6 +34,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, field_validator
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
 from langgraph_app.analytics_endpoints import router as analytics_router
+from fastapi import APIRouter
+from datetime import datetime
+from langgraph_app.health_routes import router as health_router
 
 # ====== Enterprise: Required integrations must exist ======
 try:
@@ -59,6 +62,9 @@ try:
     from .enhanced_model_registry import get_model, EnhancedModelRegistry  # noqa
 except Exception as e:
     raise SystemExit(f"ENTERPRISE: Model registry not available: {e}")
+
+# ====== FastAPI setup ======
+router = APIRouter()
 
 # ====== Logging ======
 logging.basicConfig(
@@ -544,7 +550,7 @@ app.add_middleware(
 )
 
 app.include_router(analytics_router)
-
+app.include_router(health_router)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting WriterzRoom API — Enterprise Mode")
@@ -554,7 +560,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"Templates loaded: {len(app.state.templates)}; Style profiles loaded: {len(app.state.style_profiles)}")
     # Model registry check (strict)
     try:
-        _ = get_model("writer")
+        # Validate model registry with dummy settings
+        _ = get_model("writer", {"temperature": 0.7, "max_tokens": 4000})
         logger.info("Model registry initialized")
     except Exception as e:
         raise SystemExit(f"ENTERPRISE: model registry init failed: {e}")
@@ -894,6 +901,25 @@ async def get_generation_status(request_id: str):
         }
     }
 
+@router.get("/health")
+async def health():
+    """Liveness probe."""
+    return {
+        "status": "healthy",
+        "service": "writerzroom-backend",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
+@router.get("/ready")
+async def ready():
+    """Readiness probe."""
+    # Add checks for LangGraph state, AI models if needed
+    return {
+        "status": "ready",
+        "service": "writerzroom-backend",
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 @app.get("/api/content")
 async def list_content():

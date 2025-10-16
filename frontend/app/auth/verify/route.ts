@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma.node';
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');

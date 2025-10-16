@@ -492,7 +492,7 @@ class EnhancedPublisherAgent:
     
     def _generate_publication_metadata(self, state: EnrichedContentState, content: str) -> Dict[str, Any]:
         """Generate comprehensive publication metadata"""
-        
+        word_count = len(content.split())
         content_spec = getattr(state, 'content_spec', {})
         planning_output = getattr(state, 'planning_output', None)
         
@@ -516,17 +516,19 @@ class EnhancedPublisherAgent:
         
         return {
             "title": f"{topic}: Strategic Analysis for {audience}",
-            "description": f"Comprehensive {template_type} providing strategic insights and actionable recommendations",
+            "description": f"Comprehensive {template_type} providing strategic insights",
             "author": "Enterprise Content Team",
             "publication_date": datetime.now().isoformat(),
             "template_type": template_type,
             "audience": audience,
             "keywords": keywords[:10],
-            "word_count": len(content.split()),
-            "estimated_read_time": f"{len(content.split()) // 200 + 1} min",
+            "word_count": word_count,
+            "words": word_count,  # ADD: Frontend compatibility
+            "estimated_read_time": f"{word_count // 200 + 1} min",
             "content_version": "1.0",
             "seo_optimized": bool(getattr(state, 'seo_context', None)),
-            "quality_assured": True
+            "quality_assured": True,
+            "rating": 0  # ADD: Frontend compatibility - default 0 until user rates
         }
     
     def _prepare_enterprise_publication(self, content: str, state: EnrichedContentState, metadata: Dict[str, Any]) -> str:
@@ -546,18 +548,18 @@ class EnhancedPublisherAgent:
     def _format_metadata_header(self, metadata: Dict[str, Any]) -> str:
         """Format comprehensive metadata header"""
         return f"""---
-title: "{metadata['title']}"
-description: "{metadata['description']}"
-author: "{metadata['author']}"
-date: "{metadata['publication_date']}"
-template_type: "{metadata['template_type']}"
-audience: "{metadata['audience']}"
-keywords: [{', '.join([f'"{k}"' for k in metadata['keywords']])}]
-word_count: {metadata['word_count']}
-reading_time: "{metadata['estimated_read_time']}"
-version: "{metadata['content_version']}"
-quality_assured: {metadata['quality_assured']}
----"""
+            title: "{metadata['title']}"
+            description: "{metadata['description']}"
+            author: "{metadata['author']}"
+            date: "{metadata['publication_date']}"
+            template_type: "{metadata['template_type']}"
+            audience: "{metadata['audience']}"
+            keywords: [{', '.join([f'"{k}"' for k in metadata['keywords']])}]
+            word_count: {metadata['word_count']}
+            reading_time: "{metadata['estimated_read_time']}"
+            version: "{metadata['content_version']}"
+            quality_assured: {metadata['quality_assured']}
+            ---"""
     
     def _add_publication_enhancements(self, content: str, state: EnrichedContentState) -> str:
         """Add enterprise publication enhancements to content"""

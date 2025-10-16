@@ -1,6 +1,6 @@
 // frontend/app/api/dashboard/stats/route.ts
 import { NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { auth } from '@/app/api/auth/[...nextauth]/route'
 import fs from 'fs/promises'
 import path from 'path'
 

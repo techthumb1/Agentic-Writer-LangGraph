@@ -85,7 +85,8 @@ function useDashboardData() {
 
   useEffect(() => {
     fetchDashboardData()
-  }, [fetchDashboardData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return { data, isLoading, error, refresh: fetchDashboardData }
 }

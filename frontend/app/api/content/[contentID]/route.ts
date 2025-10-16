@@ -1,6 +1,6 @@
 // frontend/app/api/content/[contentID]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { auth } from '@/app/api/auth/[...nextauth]/route'
 import fs from 'fs/promises'
 import path from 'path'
 
