@@ -1,0 +1,520 @@
+.
+├── CATEGORY_SYSTEM_README.md
+├── data
+│   ├── content_templates
+│   │   ├── api_documentation_template.yaml
+│   │   ├── blog_article_generator.yaml
+│   │   ├── business_proposal.yaml
+│   │   ├── data_driven_template.yaml
+│   │   ├── email_newsletter.yaml
+│   │   ├── market_analysis_template.yaml
+│   │   ├── press_release.yaml
+│   │   ├── research_paper_template.yaml
+│   │   ├── social_media_campaign.yaml
+│   │   ├── strategic_brief_template.yaml
+│   │   └── technical_documentation.yaml
+│   └── style_profiles
+│       ├── academic_book_chapter.yaml
+│       ├── academic_textbook.yaml
+│       ├── advanced_masterclass.yaml
+│       ├── ai_in_healthcare.yaml
+│       ├── ai_news_brief.yaml
+│       ├── api_documentation.yaml
+│       ├── beginner_tutorial.yaml
+│       ├── board_presentation.yaml
+│       ├── brand_storytelling.yaml
+│       ├── business_case_analysis.yaml
+│       ├── certification_prep.yaml
+│       ├── code_review_standards.yaml
+│       ├── competitive_analysis.yaml
+│       ├── conference_abstract.yaml
+│       ├── content_marketing.yaml
+│       ├── conversion_optimization.yaml
+│       ├── corporate_training.yaml
+│       ├── customer_success.yaml
+│       ├── deployment_guide.yaml
+│       ├── email_campaign.yaml
+│       ├── executive_summary.yaml
+│       ├── experimental_lab_log.yaml
+│       ├── founder_storytelling.yaml
+│       ├── future_of_llms.yaml
+│       ├── general_blog.yaml
+│       ├── grant_application.yaml
+│       ├── implementation_guide.yaml
+│       ├── influencer_collaboration.yaml
+│       ├── integration_manual.yaml
+│       ├── investor_presentation.yaml
+│       ├── knowledge_base.yaml
+│       ├── learning_pathway.yaml
+│       ├── literature_review.yaml
+│       ├── market_flash.yaml
+│       ├── market_research_report.yaml
+│       ├── merger_acquisition.yaml
+│       ├── methodology_paper.yaml
+│       ├── online_course.yaml
+│       ├── peer_review_article.yaml
+│       ├── performance_analysis.yaml
+│       ├── phd_academic.yaml
+│       ├── phd_dissertation.yaml
+│       ├── phd_lit_review.yaml
+│       ├── policy_watch.yaml
+│       ├── popular_sci.yaml
+│       ├── product_launch.yaml
+│       ├── research_proposal.yaml
+│       ├── roi_analysis.yaml
+│       ├── sales_enablement.yaml
+│       ├── scholarly_commentary.yaml
+│       ├── security_protocol.yaml
+│       ├── skill_assessment.yaml
+│       ├── social_media_voice.yaml
+│       ├── startup_trends_brief.yaml
+│       ├── startup_usecases.yaml
+│       ├── strategic_planning.yaml
+│       ├── system_architecture.yaml
+│       ├── technical_dive.yaml
+│       ├── technical_specification.yaml
+│       ├── technical_tutor.yaml
+│       ├── thesis_defense.yaml
+│       ├── thought_leadership.yaml
+│       ├── troubleshooting_manual.yaml
+│       ├── venture_capital_pitch.yaml
+│       └── workshop_facilitator.yaml
+├── deployment
+│   └── render.yaml
+├── frontend
+│   ├── app
+│   │   ├── about
+│   │   │   └── page.tsx
+│   │   ├── analytics
+│   │   │   └── page.tsx
+│   │   ├── api
+│   │   │   ├── analytics
+│   │   │   │   ├── insights
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── performance
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── templates
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── usage
+│   │   │   │       └── route.ts
+│   │   │   ├── analyze
+│   │   │   │   └── content
+│   │   │   │       └── route.ts
+│   │   │   ├── auth
+│   │   │   │   ├── [...nextauth]
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── register
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── content
+│   │   │   │   ├── [contentID]
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── export
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── list
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── route copy.ts
+│   │   │   │   ├── route.ts
+│   │   │   │   └── save
+│   │   │   │       └── route.ts
+│   │   │   ├── dashboard
+│   │   │   │   └── stats
+│   │   │   │       └── route.ts
+│   │   │   ├── generate
+│   │   │   │   ├── route.ts
+│   │   │   │   └── status
+│   │   │   │       └── [requestId]
+│   │   │   │           └── route.ts
+│   │   │   ├── generate-content
+│   │   │   │   └── route.ts
+│   │   │   ├── health
+│   │   │   │   ├── db
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── healthz
+│   │   │   │   └── route.ts
+│   │   │   ├── intelligence
+│   │   │   │   └── competitive
+│   │   │   │       └── route.ts
+│   │   │   ├── internal
+│   │   │   │   ├── middleware-proxy
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── session-check
+│   │   │   │       └── route.ts
+│   │   │   ├── optimize
+│   │   │   │   └── content
+│   │   │   │       └── route.ts
+│   │   │   ├── publish
+│   │   │   │   └── route.ts
+│   │   │   ├── share
+│   │   │   │   └── content
+│   │   │   │       └── route.ts
+│   │   │   ├── status
+│   │   │   │   └── [requestId]
+│   │   │   │       └── rotue.tsx
+│   │   │   ├── style-profiles
+│   │   │   │   └── route.ts
+│   │   │   ├── templates
+│   │   │   │   ├── [id]
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   └── user
+│   │   │       ├── export
+│   │   │       │   └── route.ts
+│   │   │       ├── notifications
+│   │   │       │   └── route.ts
+│   │   │       ├── preferences
+│   │   │       │   └── route.ts
+│   │   │       ├── privacy
+│   │   │       │   └── route.ts
+│   │   │       └── profile
+│   │   │           └── route.ts
+│   │   ├── api-access
+│   │   │   └── page.tsx
+│   │   ├── auth
+│   │   │   ├── error
+│   │   │   │   └── page.tsx
+│   │   │   ├── page.tsx
+│   │   │   ├── reset-password
+│   │   │   │   └── page.tsx
+│   │   │   ├── signin
+│   │   │   │   └── page.tsx
+│   │   │   ├── signout
+│   │   │   │   └── route.ts
+│   │   │   ├── signup
+│   │   │   │   └── page.tsx
+│   │   │   └── verify
+│   │   │       └── route.ts
+│   │   ├── careers
+│   │   │   └── page.tsx
+│   │   ├── case-studies
+│   │   │   └── techflow-solutions
+│   │   │       └── page.tsx
+│   │   ├── community
+│   │   │   └── page.tsx
+│   │   ├── contact
+│   │   │   └── page.tsx
+│   │   ├── content
+│   │   │   ├── [contentID]
+│   │   │   │   ├── edit
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── route.ts
+│   │   │   │   └── track-view
+│   │   │   │       └── route.ts
+│   │   │   └── page.tsx
+│   │   ├── customers
+│   │   │   └── page.tsx
+│   │   ├── dashboard
+│   │   │   └── page.tsx
+│   │   ├── docs
+│   │   │   └── page.tsx
+│   │   ├── favicon.ico
+│   │   ├── generate
+│   │   │   ├── [template_id]
+│   │   │   │   └── page.tsx
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   ├── globals.css
+│   │   ├── help
+│   │   │   └── page.tsx
+│   │   ├── integrations
+│   │   │   └── page.tsx
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   ├── press
+│   │   │   └── page.tsx
+│   │   ├── pricing
+│   │   │   └── page.tsx
+│   │   ├── privacy
+│   │   │   └── page.tsx
+│   │   ├── profile
+│   │   │   └── page.tsx
+│   │   ├── providers.tsx
+│   │   ├── settings
+│   │   │   └── page.tsx
+│   │   ├── solutions
+│   │   │   └── page.tsx
+│   │   ├── status
+│   │   │   └── page.tsx
+│   │   ├── templates
+│   │   │   └── page.tsx
+│   │   ├── terms
+│   │   │   └── page.tsx
+│   │   ├── testing
+│   │   │   └── page.tsx
+│   │   └── theme-provider.tsx
+│   ├── auth.config.ts
+│   ├── auth.ts
+│   ├── billing_service.py
+│   ├── components
+│   │   ├── CollapsibleNavigation.tsx
+│   │   ├── content-editor.tsx
+│   │   ├── DynamicParameters.tsx
+│   │   ├── error-boundary.tsx
+│   │   ├── examples
+│   │   │   └── TooltipExamples.tsx
+│   │   ├── GeneratedContentDisplay.tsx
+│   │   ├── GeneratingDialog.tsx
+│   │   ├── GenerationPreview.tsx
+│   │   ├── mcp
+│   │   │   ├── mcp_dashboard.tsx
+│   │   │   └── MCPToolToaster.tsx
+│   │   ├── NavigationClient.tsx
+│   │   ├── PageHeader.tsx
+│   │   ├── ProfessionalCategories.tsx
+│   │   ├── PublishingManager.tsx
+│   │   ├── ResponsiveNavigation.tsx
+│   │   ├── SimpleThemeSwitcher.tsx
+│   │   ├── StyleProfilesSelector.tsx
+│   │   ├── TemplateSelector.tsx
+│   │   ├── TemplateStyleDrillDown.tsx
+│   │   ├── ThemeBackground.tsx
+│   │   ├── ThemeSelector.tsx
+│   │   ├── ToastProvider.tsx
+│   │   ├── ui
+│   │   │   ├── badge.tsx
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── checkbox.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── form.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── label.tsx
+│   │   │   ├── progress.tsx
+│   │   │   ├── select.tsx
+│   │   │   ├── separator.tsx
+│   │   │   ├── simple-tooltip.tsx
+│   │   │   ├── switch.tsx
+│   │   │   ├── tabs.tsx
+│   │   │   ├── textarea.tsx
+│   │   │   ├── toast.tsx
+│   │   │   ├── toaster.tsx
+│   │   │   └── tooltip.tsx
+│   │   └── WriterzRoomLogo.tsx
+│   ├── components.json
+│   ├── create_routes.sh
+│   ├── database
+│   ├── debug.sh
+│   ├── docker-compose.yaml
+│   ├── Dockerfile
+│   ├── eslint.config.mjs
+│   ├── get_user_id.ts
+│   ├── hooks
+│   │   ├── use-performance.ts
+│   │   ├── use-performance.ts.backup
+│   │   ├── use-toast.ts
+│   │   ├── useEnhancedGeneration.ts
+│   │   ├── useGenerationStatus.ts
+│   │   ├── useIntegratedContentGeneration.ts
+│   │   ├── useMCP.ts
+│   │   ├── usePublishing.ts
+│   │   ├── useRealContentGeneration.ts
+│   │   ├── useStyleProfiles.ts
+│   │   ├── useTemplates.ts
+│   │   ├── useTemplateStyleDrillDown.ts
+│   │   └── useUnifiedTheme.ts
+│   ├── jest.config.js
+│   ├── jest.setup.js
+│   ├── lib
+│   │   ├── analytics.tsx
+│   │   ├── api-client.tsx
+│   │   ├── api.ts
+│   │   ├── app-config.ts
+│   │   ├── constants.ts
+│   │   ├── content-generation-engine.ts
+│   │   ├── email.ts
+│   │   ├── file-loader.ts
+│   │   ├── prisma.node.ts
+│   │   ├── react-query-provider.tsx
+│   │   ├── settings-context.tsx
+│   │   ├── string.ts
+│   │   ├── template-style-mapping.ts
+│   │   ├── toast-utils.ts
+│   │   ├── universal-content-api.ts
+│   │   ├── utils.ts
+│   │   ├── validation.ts
+│   │   └── withCors.ts
+│   ├── middleware.ts
+│   ├── next-env.d.ts
+│   ├── next.config.ts
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── playwright.config.ts
+│   ├── pnpm-lock.yaml
+│   ├── postcss.config.mjs
+│   ├── prisma
+│   │   ├── migrations
+│   │   │   ├── 20250615172554_reconcile_changes
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20250624012333_enhanced_schema
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20251002201147_add_real_metrics
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20251004160705_add_verification_token
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20251004163121_fix_user_model
+│   │   │   │   └── migration.sql
+│   │   │   └── migration_lock.toml
+│   │   ├── schema.prisma
+│   │   ├── seed.ts
+│   │   └── test-client.ts
+│   ├── public
+│   │   ├── file.svg
+│   │   ├── globe.svg
+│   │   ├── next.svg
+│   │   ├── vercel.svg
+│   │   └── window.svg
+│   ├── README.md
+│   ├── schemas
+│   │   └── generateContentSchema.ts
+│   ├── styles
+│   │   └── globals.css
+│   ├── tailwinds.config.ts
+│   ├── test-simple-oauth.js
+│   ├── tests
+│   │   ├── e2e
+│   │   │   └── homepage.spec.ts
+│   │   └── unit
+│   ├── tsconfig.json
+│   ├── tsconfig.tsbuildinfo
+│   ├── types
+│   │   ├── api.ts
+│   │   ├── components.ts
+│   │   ├── content.ts
+│   │   ├── index.ts
+│   │   ├── models.ts
+│   │   ├── professional-categories.ts
+│   │   ├── template.ts
+│   │   └── theme.ts
+│   ├── utils
+│   │   ├── formUtils.ts
+│   │   ├── safeListDirs.ts
+│   │   ├── typeAdapters.ts
+│   │   └── uniqueKeys.ts
+│   └── zz_launch_enterprise.py
+├── langgraph_app
+│   ├── __init__.py
+│   ├── agent_coordination.py
+│   ├── agents
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── enhanced_call_writer_integrated copy.py
+│   │   ├── enhanced_call_writer_integrated.py
+│   │   ├── enhanced_code_agent_integrated copy.py
+│   │   ├── enhanced_code_agent_integrated.py
+│   │   ├── enhanced_editor_integrated copy.py
+│   │   ├── enhanced_editor_integrated.py
+│   │   ├── enhanced_formatter_integrated copy.py
+│   │   ├── enhanced_formatter_integrated.py
+│   │   ├── enhanced_image_agent_integrated copy.py
+│   │   ├── enhanced_image_agent_integrated.py
+│   │   ├── enhanced_planner_integrated copy.py
+│   │   ├── enhanced_planner_integrated.py
+│   │   ├── enhanced_publisher_integrated copy.py
+│   │   ├── enhanced_publisher_integrated.py
+│   │   ├── enhanced_researcher_integrated copy.py
+│   │   ├── enhanced_researcher_integrated.py
+│   │   ├── enhanced_seo_agent_integrated copy.py
+│   │   ├── enhanced_seo_agent_integrated.py
+│   │   ├── mcp_enhanced_agents.py
+│   │   ├── planner copy.py
+│   │   ├── planner.py
+│   │   ├── realtime_search.py
+│   │   ├── writer copy.py
+│   │   └── writer.py
+│   ├── alembic.ini
+│   ├── analytics_endpoints.py
+│   ├── api
+│   │   ├── __init__.py
+│   │   ├── dependencies.py
+│   │   ├── routes
+│   │   │   ├── __init__.py
+│   │   │   ├── configuration.py
+│   │   │   ├── content.py
+│   │   │   ├── dashboard.py
+│   │   │   ├── generation.py
+│   │   │   └── status.py
+│   │   └── server.py
+│   ├── cache_system.py
+│   ├── config
+│   │   ├── auth.py
+│   │   └── settings.py
+│   ├── core
+│   │   ├── config_manager.py
+│   │   ├── exceptions.py
+│   │   ├── generation_engine.py
+│   │   ├── graph.py
+│   │   ├── model_factory.py
+│   │   ├── model_registry.py
+│   │   ├── schemas.py
+│   │   ├── state.py
+│   │   └── types.py
+│   ├── database
+│   │   ├── alembic
+│   │   │   ├── env.py
+│   │   │   ├── README
+│   │   │   ├── script.py.mako
+│   │   │   └── versions
+│   │   │       └── 1746f6087666_create_generation_logs.py
+│   │   ├── migrations
+│   │   └── models.py
+│   ├── Dockerfile
+│   ├── enhanced_model_registry.py
+│   ├── graph
+│   │   ├── builder.py
+│   │   ├── nodes.py
+│   │   └── workflow.py
+│   ├── health_routes.py
+│   ├── integrated_server.py
+│   ├── job_queue.py
+│   ├── models
+│   │   ├── __init__.py
+│   │   ├── api_models.py
+│   │   └── registry.py
+│   ├── monitoring
+│   │   ├── __init__.py
+│   │   └── metrics.py
+│   ├── project_structure.txt
+│   ├── style_profile_loader.py
+│   ├── template_loader.py
+│   ├── template_style_validator.py
+│   ├── unified_agent_coordination.py
+│   ├── universal_system
+│   │   ├── __init__.py
+│   │   ├── universal_dynamic_generator.py
+│   │   ├── universal_integration.py
+│   │   └── universal_template_system.py
+│   ├── utils
+│   │   ├── __init__.py
+│   │   ├── content_extraction.py
+│   │   └── yaml_utils.py
+│   └── utils.py
+├── langgraph.json
+├── LICENSE
+├── main.py
+├── package-lock.json
+├── package.json
+├── pnpm-lock.yaml
+├── PROFESSIONAL_CATEGORIES_GUIDE.md
+├── project_structure_20251005.txt
+├── project_tree_filtered.txt
+├── project_tree.txt
+├── prompts
+├── README.md
+├── requirements.lock.txt
+├── requirements.txt
+├── scripts
+│   ├── auto_merge_state_returns.py
+│   ├── cleanup-console.ts
+│   ├── generate_professional_categories.py
+│   ├── rotate-api-key.py
+│   ├── safe_patch_final_state_returns.py
+│   └── start_mcp_server.py
+├── src
+├── test_unified.py
+└── tests
+    ├── test_agent_collaboration.py
+    └── test_agents.py
+
+130 directories, 388 files

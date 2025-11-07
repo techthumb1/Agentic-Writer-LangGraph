@@ -1,435 +1,475 @@
-# File: langgraph_app/agents/enhanced_formatter_integrated.py
-from langgraph_app.core.enriched_content_state import (
-    EnrichedContentState, 
-    AgentType, 
-    ContentPhase,
-    FormattingRequirements
-)
+# langgraph_app/agents/formatter.py
+
 import re
+import logging
+from typing import Dict, Any, List, Tuple
+from datetime import datetime
+from pathlib import Path
+
+from langgraph_app.core.state import EnrichedContentState
+from langgraph_app.core.types import FormattedContent, AgentType
+
+logger = logging.getLogger(__name__)
 
 class EnhancedFormatterAgent:
-    """FIXED: Universal Configuration-Driven Formatter Agent - NO HARDCODED TEMPLATES"""
+    """Enterprise Formatter Agent for multi-platform content preparation."""
     
     def __init__(self):
         self.agent_type = AgentType.FORMATTER
-        
+    
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Format content universally"""
-        template_config = state.template_config or {}
-        instructions = state.get_agent_instructions(self.agent_type)
-    
-        state.log_agent_execution(self.agent_type, {
-            "status": "started",
-            "platform": state.content_spec.platform,
-            "length": len(state.draft_content.split())
-        })
-    
-        requirements = self._create_formatting_requirements_universal(state, instructions, template_config)
-        state.formatting_requirements = requirements
-    
-        formatted = self._apply_universal_formatting(state, instructions, template_config)
-        state.draft_content = formatted
-    
-        state.update_phase(ContentPhase.OPTIMIZATION)
-    
+        """Format content for multiple output platforms."""
+        # Get content source
+        if state.edited_content:
+            content = state.edited_content.body
+            title = state.edited_content.title
+        elif state.draft_content:
+            content = state.draft_content.body if hasattr(state.draft_content, 'body') else str(state.draft_content)
+            title = state.draft_content.title if hasattr(state.draft_content, 'title') else state.content_spec.topic
+        else:
+            content = state.content
+            title = state.content_spec.topic if state.content_spec else "Untitled"
+        
+        logger.info("Starting enterprise formatting process...")
+        
+        # Step 1: Clean AI tells and normalize typography
+        content = self._remove_ai_tells(content)
+        
+        # Step 2: Generate platform-specific formats
+        formats = self._generate_formats(content, title, state)
+        
+        # Step 3: Create formatted content object
+        state.formatted_content = FormattedContent(
+            markdown=formats["markdown"],
+            html=formats.get("html"),
+            metadata={
+                "formats_available": list(formats.keys()),
+                "formatted_at": datetime.now().isoformat(),
+                "word_count": len(content.split()),
+                "platform_ready": ["medium", "substack", "email", "web"]
+            }
+        )
+        
+        # Update legacy content field
+        state.content = formats["markdown"]
+        
         state.log_agent_execution(self.agent_type, {
             "status": "completed",
-            "formatting_applied": len(requirements.formatting_elements),
-            "confidence_score": requirements.formatting_confidence
+            "formats_generated": list(formats.keys()),
+            "ai_tells_removed": True
         })
-    
+        
+        logger.info(f"Formatter completed - {len(formats)} formats generated")
         return state
+    
+    def _remove_ai_tells(self, content: str) -> str:
+        """Remove telltale AI writing patterns."""
+        # Replace em dashes with regular hyphens
+        content = content.replace("—", "-")
+        content = content.replace("–", "-")
+        
+        # Remove common AI hedging phrases
+        ai_phrases = [
+            r"\bIt'?s important to note that\b",
+            r"\bIt'?s worth noting that\b",
+            r"\bIt should be noted that\b",
+            r"\bIn today'?s fast-paced world\b",
+            r"\bIn conclusion,?\b",
+            r"\bLast but not least,?\b",
+            r"\bAt the end of the day,?\b",
+            r"\bdelve into\b",
+            r"\bleverage\b(?! )(?=d|s|ing)",  # Keep "leverage" as noun
+        ]
+        
+        for pattern in ai_phrases:
+            content = re.sub(pattern, "", content, flags=re.IGNORECASE)
+        
+        # Normalize multiple spaces
+        content = re.sub(r' {2,}', ' ', content)
+        
+        # Remove space before punctuation
+        content = re.sub(r' ([.,;:!?])', r'\1', content)
+        
+        return content.strip()
+    
+    def _generate_formats(self, content: str, title: str, state: EnrichedContentState) -> Dict[str, str]:
+        """Generate content in multiple formats."""
+        formats = {}
+        
+        # Base markdown (cleaned)
+        formats["markdown"] = self._format_markdown(content, title, state)
+        
+        # HTML for web
+        formats["html"] = self._format_html(content, title, state)
+        
+        # Medium-ready format
+        formats["medium"] = self._format_medium(content, title, state)
+        
+        # Substack-ready format
+        formats["substack"] = self._format_substack(content, title, state)
+        
+        # Email-ready format
+        formats["email"] = self._format_email(content, title, state)
+        
+        # Generate binary formats and save file paths
+        try:
+            formats["pdf_path"] = self._generate_pdf(content, title, state)
+            formats["docx_path"] = self._generate_docx(content, title, state)
+            formats["excel_path"] = self._generate_excel(content, title, state)
+        except Exception as e:
+            logger.warning(f"Binary format generation failed: {e}")
+        
+        return formats
+    
+    def _format_markdown(self, content: str, title: str, state: EnrichedContentState) -> str:
+        """Format as clean markdown."""
+        output = f"# {title}\n\n"
+        
+        # Add metadata header if SEO analysis exists
+        if state.seo_analysis:
+            output = f"""---
+title: {state.seo_analysis.meta_title}
+description: {state.seo_analysis.meta_description}
+keywords: {', '.join(list(state.seo_analysis.keyword_density.keys())[:5])}
+author: WriterzRoom
+date: {datetime.now().strftime('%Y-%m-%d')}
+---
 
-    def _generate_intelligent_config(self, state: EnrichedContentState) -> dict:
-        """Generate intelligent config based on content analysis"""
-        content = state.draft_content
-        spec = state.get("content_spec", {})
+"""
+            output += f"# {title}\n\n"
         
-        # Analyze content patterns
-        content_analysis = {
-            'has_financial_data': bool(re.search(r'\$[\d,]+[MBK]?|\d+%|\d+x', content)),
-            'has_technical_terms': bool(re.search(r'[A-Z][a-z]+[A-Z][a-zA-Z]*|[a-z_]+_[a-z_]+', content)),
-            'has_business_language': bool(re.search(r'\b(ROI|revenue|growth|strategy|implementation)\b', content, re.I)),
-            'has_executive_tone': bool(re.search(r'\b(strategic|leverage|optimize|synergy|scalable)\b', content, re.I)),
-            'content_length': len(content.split()),
-            'platform': spec.platform,
-            'audience': spec.audience
-        }
+        output += content
         
-        formatting_rules = {}
-        structure_rules = {}
-        emphasis_rules = {}
+        # Add footer
+        output += f"\n\n---\n*Generated with WriterzRoom • {datetime.now().strftime('%B %d, %Y')}*"
         
-        if content_analysis['has_financial_data']:
-            emphasis_rules['financial_emphasis'] = {
-                'patterns': [r'(\$[\d,]+[MBK]?)', r'(\d+%)', r'(\d+x)'],
-                'replacement': r'**\1**'
-            }
-        
-        if content_analysis['has_technical_terms']:
-            formatting_rules['code_formatting'] = {
-                'enable': True,
-                'patterns': [r'\b([A-Z][a-z]+[A-Z][a-zA-Z]*)\b', r'\b([a-z_]+_[a-z_]+)\b']
-            }
-        
-        if content_analysis['has_business_language']:
-            emphasis_rules['business_emphasis'] = {
-                'strategic_words': ['ROI', 'strategic', 'implementation', 'optimization']
-            }
-        
-        platform_optimizations = self._get_platform_optimizations_universal(spec.platform)
-        
-        return {
-            'type': 'intelligent_generated',
-            'formatting_rules': formatting_rules,
-            'structure_rules': structure_rules,
-            'emphasis_rules': emphasis_rules,
-            'platform_optimizations': platform_optimizations,
-            'content_analysis': content_analysis
-        }
+        return output
     
-    def _create_formatting_requirements_universal(self, state: EnrichedContentState, instructions, template_config: dict) -> FormattingRequirements:
-        """Create UNIVERSAL formatting requirements from ANY template configuration"""
+    def _format_html(self, content: str, title: str, state: EnrichedContentState) -> str:
+        """Format as clean HTML with proper structure."""
+        # Convert markdown to HTML (basic)
+        html_content = self._markdown_to_html(content)
         
-        spec = state.get("content_spec", {})
-        platform = spec.platform
+        meta_description = ""
+        if state.seo_analysis:
+            meta_description = f'<meta name="description" content="{state.seo_analysis.meta_description}">'
         
-        platform_specs = self._get_platform_specifications_universal(platform, template_config)
-        visual_hierarchy = self._determine_visual_hierarchy_universal(state.draft_content, template_config)
-        formatting_elements = self._identify_formatting_elements_universal(state, template_config)
-        accessibility_requirements = self._define_accessibility_requirements_universal(platform, template_config)
-        
-        return FormattingRequirements(
-            platform_specifications=platform_specs,
-            visual_hierarchy=visual_hierarchy,
-            formatting_elements=formatting_elements,
-            accessibility_requirements=accessibility_requirements,
-            seo_considerations=self._identify_seo_considerations_universal(state, template_config),
-            publication_metadata=self._generate_publication_metadata_universal(state, template_config),
-            formatting_confidence=0.92
-        )
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    {meta_description}
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: #333;
+        }}
+        h1 {{ font-size: 2.5rem; margin-bottom: 1rem; }}
+        h2 {{ font-size: 2rem; margin-top: 2rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }}
+        h3 {{ font-size: 1.5rem; margin-top: 1.5rem; }}
+        p {{ margin-bottom: 1rem; }}
+        ul, ol {{ margin-bottom: 1rem; padding-left: 2rem; }}
+        code {{ background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; }}
+        pre {{ background: #f4f4f4; padding: 1rem; border-radius: 5px; overflow-x: auto; }}
+        blockquote {{ border-left: 4px solid #ddd; margin: 1rem 0; padding-left: 1rem; color: #666; }}
+        footer {{ margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #eee; color: #999; font-size: 0.9rem; }}
+    </style>
+</head>
+<body>
+    <article>
+        <h1>{title}</h1>
+        {html_content}
+    </article>
+    <footer>
+        Generated with WriterzRoom • {datetime.now().strftime('%B %d, %Y')}
+    </footer>
+</body>
+</html>"""
+        return html
     
-    def _apply_universal_formatting(self, state: EnrichedContentState, instructions, template_config: dict) -> str:
-        """Apply UNIVERSAL formatting that works with ANY template configuration"""
+    def _format_medium(self, content: str, title: str, state: EnrichedContentState) -> str:
+        """Format for Medium publication."""
+        # Medium uses markdown, but with specific formatting preferences
+        output = f"# {title}\n\n"
         
-        content = state.draft_content
-        platform = state.content_spec.platform
+        # Add subtitle if available
+        if state.seo_analysis and state.seo_analysis.meta_description:
+            output += f"*{state.seo_analysis.meta_description}*\n\n---\n\n"
         
-        # Apply formatting rules from config
-        if 'formatting_rules' in template_config:
-            content = self._apply_formatting_rules_from_config(content, template_config['formatting_rules'])
+        # Medium prefers clear section breaks
+        content = re.sub(r'\n\n+', '\n\n---\n\n', content, count=2)  # First 2 breaks only
         
-        # Apply structure rules from config
-        if 'structure_rules' in template_config:
-            content = self._apply_structure_rules_from_config(content, template_config['structure_rules'])
+        output += content
         
-        # Apply emphasis rules from config
-        if 'emphasis_rules' in template_config:
-            content = self._apply_emphasis_rules_from_config(content, template_config['emphasis_rules'])
-        
-        # Apply platform optimizations
-        if 'platform_optimizations' in template_config:
-            content = self._apply_platform_optimizations_from_config(content, template_config['platform_optimizations'])
-        
-        # Apply universal improvements
-        content = self._apply_visual_hierarchy_universal(content, state.formatting_requirements.visual_hierarchy)
-        content = self._add_accessibility_features_universal(content, state.formatting_requirements.accessibility_requirements)
-        
-        return content
+        return output
     
-    def _apply_formatting_rules_from_config(self, content: str, formatting_rules: dict) -> str:
-        """Apply formatting rules dynamically from config"""
-        if 'code_formatting' in formatting_rules and formatting_rules['code_formatting'].get('enable'):
-            patterns = formatting_rules['code_formatting'].get('patterns', [])
-            for pattern in patterns:
-                content = re.sub(pattern, r'`\1`', content)
+    def _format_substack(self, content: str, title: str, state: EnrichedContentState) -> str:
+        """Format for Substack newsletter."""
+        output = f"# {title}\n\n"
         
-        if 'header_style' in formatting_rules:
-            content = self._apply_header_style_universal(content, formatting_rules['header_style'])
+        # Add engaging opener
+        if state.seo_analysis and state.seo_analysis.meta_description:
+            output += f"*{state.seo_analysis.meta_description}*\n\n"
         
-        return content
+        output += content
+        
+        # Add CTA footer
+        output += "\n\n---\n\n"
+        output += "💡 *Found this helpful? Share it with your network!*\n\n"
+        output += "[Share on Twitter](https://twitter.com/intent/tweet) • "
+        output += "[Share on LinkedIn](https://www.linkedin.com/sharing/share-offsite/)\n"
+        
+        return output
     
-    def _apply_structure_rules_from_config(self, content: str, structure_rules: dict) -> str:
-        """Apply structure rules dynamically from config"""
-        if 'add_executive_summary' in structure_rules and structure_rules['add_executive_summary']:
-            if "Executive Summary" not in content and not content.startswith("## Executive Summary"):
-                content = "## Executive Summary\n\n[Key insights and recommendations]\n\n" + content
+    def _format_email(self, content: str, title: str, state: EnrichedContentState) -> str:
+        """Format for email newsletter (HTML)."""
+        # Convert to HTML with email-safe styling
+        html_content = self._markdown_to_html_simple(content)
         
-        if 'section_organization' in structure_rules:
-            content = self._organize_sections_universal(content, structure_rules['section_organization'])
-        
-        return content
+        email_html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+    <h1 style="color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;">{title}</h1>
     
-    def _apply_emphasis_rules_from_config(self, content: str, emphasis_rules: dict) -> str:
-        """Apply emphasis rules dynamically from config"""
-        if 'financial_emphasis' in emphasis_rules:
-            patterns = emphasis_rules['financial_emphasis'].get('patterns', [])
-            replacement = emphasis_rules['financial_emphasis'].get('replacement', r'**\1**')
-            for pattern in patterns:
-                content = re.sub(pattern, replacement, content)
-        
-        if 'business_emphasis' in emphasis_rules:
-            strategic_words = emphasis_rules['business_emphasis'].get('strategic_words', [])
-            for word in strategic_words:
-                content = content.replace(word, f"**{word}**")
-        
-        return content
+    {html_content}
     
-    def _apply_platform_optimizations_from_config(self, content: str, platform_optimizations: dict) -> str:
-        """Apply platform optimizations dynamically from config"""
-        platform = platform_optimizations.get('platform', 'web')
-        
-        if platform == "linkedin":
-            content = self._optimize_for_linkedin_universal(content, platform_optimizations)
-        elif platform == "medium":
-            content = self._optimize_for_medium_universal(content, platform_optimizations)
-        elif platform == "substack":
-            content = self._optimize_for_substack_universal(content, platform_optimizations)
-        elif platform == "deck_presentation":
-            content = self._optimize_for_presentation_universal(content, platform_optimizations)
-        else:
-            content = self._optimize_for_web_universal(content, platform_optimizations)
-        
-        return content
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #999;">
+        <p>Generated with WriterzRoom • {datetime.now().strftime('%B %d, %Y')}</p>
+    </div>
+</div>
+"""
+        return email_html
     
-    def _get_platform_specifications_universal(self, platform: str, template_config: dict) -> dict:
-        """Get platform specifications with universal config support"""
-        base_specs = {
-            "linkedin": {"max_length": 3000, "supports_markdown": False, "professional_tone": True},
-            "medium": {"max_length": 10000, "supports_markdown": True, "story_format": True},
-            "substack": {"max_length": 15000, "supports_markdown": True, "newsletter_format": True},
-            "deck_presentation": {"max_length": 100, "bullet_points": True, "visual_heavy": True},
-            "web": {"max_length": 5000, "supports_markdown": True}
-        }
+    def _markdown_to_html(self, markdown: str) -> str:
+        """Convert markdown to HTML (basic implementation)."""
+        html = markdown
         
-        spec = base_specs.get(platform, base_specs["web"])
+        # Headers
+        html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+        html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
+        html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
         
-        # Apply config overrides
-        if 'platform_specifications' in template_config:
-            spec.update(template_config['platform_specifications'])
+        # Bold and italic
+        html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
+        html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
         
-        return spec
+        # Lists (basic)
+        html = re.sub(r'^\- (.+)$', r'<li>\1</li>', html, flags=re.MULTILINE)
+        html = re.sub(r'(<li>.*</li>)', r'<ul>\1</ul>', html, flags=re.DOTALL)
+        
+        # Paragraphs
+        paragraphs = html.split('\n\n')
+        html = '\n'.join([f'<p>{p}</p>' if not p.startswith('<') else p for p in paragraphs if p.strip()])
+        
+        return html
     
-    def _determine_visual_hierarchy_universal(self, content: str, template_config: dict) -> list:
-        """Determine visual hierarchy universally from config or content analysis"""
-        if 'visual_hierarchy' in template_config:
-            return template_config['visual_hierarchy']
+    def _markdown_to_html_simple(self, markdown: str) -> str:
+        """Convert markdown to simple HTML for email."""
+        html = markdown
         
-        # Analyze content for hierarchy
-        headers = re.findall(r'^#+\s+(.+)', content, re.MULTILINE)
-        hierarchy = []
+        # Headers with inline styles
+        html = re.sub(r'^### (.+)$', r'<h3 style="color: #2c3e50; font-size: 18px; margin-top: 20px;">\1</h3>', html, flags=re.MULTILINE)
+        html = re.sub(r'^## (.+)$', r'<h2 style="color: #2c3e50; font-size: 22px; margin-top: 25px; border-bottom: 2px solid #eee; padding-bottom: 10px;">\1</h2>', html, flags=re.MULTILINE)
         
-        for i, header in enumerate(headers):
-            level = min(3, i + 1)
-            hierarchy.append({
-                "level": level,
-                "style": "section" if level <= 2 else "subsection",
-                "content": header
-            })
+        # Bold
+        html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
         
-        return hierarchy
+        # Lists
+        html = re.sub(r'^\- (.+)$', r'<li style="margin-bottom: 8px;">\1</li>', html, flags=re.MULTILINE)
+        html = re.sub(r'(<li.*?>.*?</li>(?:\n<li.*?>.*?</li>)*)', r'<ul style="margin: 15px 0; padding-left: 20px;">\1</ul>', html, flags=re.DOTALL)
+        
+        # Paragraphs
+        paragraphs = html.split('\n\n')
+        html = '\n'.join([f'<p style="margin-bottom: 15px; line-height: 1.6;">{p}</p>' if not p.startswith('<') else p for p in paragraphs if p.strip()])
+        
+        return html
     
-    def _identify_formatting_elements_universal(self, state: EnrichedContentState, template_config: dict) -> list:
-        """Identify formatting elements universally from config"""
-        elements = []
-        platform = state.content_spec.platform
-        
-        # Platform-specific elements
-        if platform == "linkedin":
-            elements.extend(["professional_header", "engagement_hooks", "hashtags"])
-        elif platform == "medium":
-            elements.extend(["story_header", "subheadings", "pull_quotes"])
-        elif platform == "deck_presentation":
-            elements.extend(["slide_titles", "bullet_points", "visual_callouts"])
-        
-        # Add config-specified elements
-        if 'formatting_elements' in template_config:
-            elements.extend(template_config['formatting_elements'])
-        
-        return list(set(elements))
-    
-    def _define_accessibility_requirements_universal(self, platform: str, template_config: dict) -> list:
-        """Define accessibility requirements universally"""
-        base_requirements = ["header_structure", "reading_flow", "contrast_compliance"]
-        
-        if platform in ["medium", "substack"]:
-            base_requirements.append("alt_text")
-        
-        # Add config-specified requirements
-        if 'accessibility_requirements' in template_config:
-            base_requirements.extend(template_config['accessibility_requirements'])
-        
-        return list(set(base_requirements))
-    
-    def _get_platform_optimizations_universal(self, platform: str) -> dict:
-        """Get platform optimizations universally"""
-        return {
-            'platform': platform,
-            'engagement_optimization': True,
-            'seo_optimization': True,
-            'accessibility_compliance': True
-        }
-    
-    def _optimize_for_linkedin_universal(self, content: str, optimizations: dict) -> str:
-        """Universal LinkedIn optimization"""
-        content = content.replace("**", "").replace("*", "").replace("#", "")
-        
-        if optimizations.get('add_professional_header', True):
-            content = "💼 Professional Insight\n\n" + content
-        
-        if optimizations.get('add_engagement_cta', True):
-            content += "\n\n---\n📞 What are your thoughts? Share your experience in the comments."
-        
-        return content
-    
-    def _optimize_for_medium_universal(self, content: str, optimizations: dict) -> str:
-        """Universal Medium optimization"""
-        if not content.startswith("# ") and optimizations.get('ensure_title', True):
-            content = f"# Strategic Analysis\n\n## Overview\n\n{content}"
-        
-        if optimizations.get('add_engagement_footer', True):
-            content += "\n\n---\n\n*👏 If this analysis provided value, please applaud and share.*"
-        
-        return content
-    
-    def _optimize_for_substack_universal(self, content: str, optimizations: dict) -> str:
-        """Universal Substack optimization"""
-        if optimizations.get('add_newsletter_greeting', True):
-            content = "Hello subscribers,\n\nIn today's analysis:\n\n" + content
-        
-        if optimizations.get('add_subscription_cta', True):
-            content += "\n\n---\n\n**Thank you for reading!** Subscribe for more insights."
-        
-        return content
-    
-    def _optimize_for_presentation_universal(self, content: str, optimizations: dict) -> str:
-        """Universal presentation optimization"""
-        slides = []
-        max_words = optimizations.get('max_words_per_slide', 50)
-        
-        paragraphs = content.split('\n\n')
-        current_slide = ""
-        word_count = 0
-        
-        for paragraph in paragraphs:
-            paragraph_words = len(paragraph.split())
-            if word_count + paragraph_words > max_words and current_slide:
-                slides.append(current_slide.strip())
-                current_slide = paragraph
-                word_count = paragraph_words
-            else:
-                current_slide += paragraph + "\n\n"
-                word_count += paragraph_words
-        
-        if current_slide:
-            slides.append(current_slide.strip())
-        
-        formatted_slides = []
-        for i, slide_content in enumerate(slides):
-            bullets = [f"• {line.strip()}" for line in slide_content.split('\n') if line.strip()]
-            formatted_slide = f"--- SLIDE {i+1} ---\n\n" + "\n".join(bullets[:5])
-            formatted_slides.append(formatted_slide)
-        
-        return "\n\n".join(formatted_slides)
-    
-    def _optimize_for_web_universal(self, content: str, optimizations: dict) -> str:
-        """Universal web optimization"""
-        if optimizations.get('add_toc', False):
-            headers = re.findall(r'^#+\s+(.+)', content, re.MULTILINE)
-            if headers:
-                toc = "\n## Table of Contents\n\n"
-                for i, header in enumerate(headers):
-                    toc += f"{i+1}. [{header}](#{header.lower().replace(' ', '-')})\n"
-                content = toc + "\n" + content
-        
-        return content
-    
-    def _apply_visual_hierarchy_universal(self, content: str, visual_hierarchy: list) -> str:
-        """Apply visual hierarchy universally"""
-        for item in visual_hierarchy:
-            level = item.get('level', 2)
-            style = item.get('style', 'section')
-            header_content = item.get('content', '')
+    def _generate_pdf(self, content: str, title: str, state: EnrichedContentState) -> str:
+        """Generate PDF file and return path."""
+        try:
+            from weasyprint import HTML
             
-            if style == "title":
-                prefix = "# 🎯 "
-            elif style == "section":
-                prefix = "## 📊 "
-            else:
-                prefix = "### ➤ "
+            html_content = self._format_html(content, title, state)
             
-            pattern = f"#{level * '#'} {re.escape(header_content)}"
-            replacement = f"{prefix}{header_content}"
-            content = re.sub(pattern, replacement, content)
-        
-        return content
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            safe_title = re.sub(r'[^\w\s-]', '', title).replace(' ', '_')[:50]
+            filename = f"{safe_title}_{timestamp}.pdf"
+            
+            output_dir = Path("/tmp/writerzroom_output")
+            output_dir.mkdir(exist_ok=True)
+            filepath = output_dir / filename
+            
+            HTML(string=html_content).write_pdf(filepath)
+            
+            logger.info(f"PDF generated: {filepath}")
+            return str(filepath)
+            
+        except ImportError:
+            logger.warning("WeasyPrint not installed - skipping PDF generation")
+            return ""
+        except Exception as e:
+            logger.error(f"PDF generation failed: {e}")
+            return ""
     
-    def _add_accessibility_features_universal(self, content: str, accessibility_requirements: list) -> str:
-        """Add accessibility features universally"""
-        for requirement in accessibility_requirements:
-            if requirement == "alt_text":
-                content = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', r'![\1 - Descriptive alt text](\2)', content)
-            elif requirement == "header_structure":
-                content = self._fix_header_hierarchy_universal(content)
-        
-        return content
+    def _generate_docx(self, content: str, title: str, state: EnrichedContentState) -> str:
+        """Generate DOCX file and return path."""
+        try:
+            from docx import Document
+            from docx.shared import Pt, Inches, RGBColor
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            
+            doc = Document()
+            
+            sections = doc.sections
+            for section in sections:
+                section.top_margin = Inches(1)
+                section.bottom_margin = Inches(1)
+                section.left_margin = Inches(1)
+                section.right_margin = Inches(1)
+            
+            title_para = doc.add_heading(title, 0)
+            title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            if state.seo_analysis:
+                meta_para = doc.add_paragraph(state.seo_analysis.meta_description)
+                meta_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                meta_font = meta_para.runs[0].font
+                meta_font.italic = True
+                meta_font.size = Pt(11)
+                meta_font.color.rgb = RGBColor(128, 128, 128)
+                doc.add_paragraph()
+            
+            lines = content.split('\n')
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                if line.startswith('### '):
+                    doc.add_heading(line[4:], 3)
+                elif line.startswith('## '):
+                    doc.add_heading(line[3:], 2)
+                elif line.startswith('# '):
+                    doc.add_heading(line[2:], 1)
+                elif line.startswith('- ') or line.startswith('* '):
+                    doc.add_paragraph(line[2:], style='List Bullet')
+                elif re.match(r'^\d+\.', line):
+                    doc.add_paragraph(line.split('.', 1)[1].strip(), style='List Number')
+                else:
+                    para = doc.add_paragraph(line)
+                    if '**' in line:
+                        para.clear()
+                        parts = re.split(r'(\*\*.*?\*\*)', line)
+                        for part in parts:
+                            if part.startswith('**') and part.endswith('**'):
+                                run = para.add_run(part[2:-2])
+                                run.bold = True
+                            else:
+                                para.add_run(part)
+            
+            doc.add_paragraph()
+            footer = doc.add_paragraph(f"Generated with WriterzRoom • {datetime.now().strftime('%B %d, %Y')}")
+            footer_font = footer.runs[0].font
+            footer_font.size = Pt(9)
+            footer_font.color.rgb = RGBColor(150, 150, 150)
+            footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            safe_title = re.sub(r'[^\w\s-]', '', title).replace(' ', '_')[:50]
+            filename = f"{safe_title}_{timestamp}.docx"
+            
+            output_dir = Path("/tmp/writerzroom_output")
+            output_dir.mkdir(exist_ok=True)
+            filepath = output_dir / filename
+            
+            doc.save(filepath)
+            
+            logger.info(f"DOCX generated: {filepath}")
+            return str(filepath)
+            
+        except ImportError:
+            logger.warning("python-docx not installed - skipping DOCX generation")
+            return ""
+        except Exception as e:
+            logger.error(f"DOCX generation failed: {e}")
+            return ""
     
-    def _fix_header_hierarchy_universal(self, content: str) -> str:
-        """Fix header hierarchy universally"""
-        headers = re.findall(r'^(#+)\s+(.+)', content, re.MULTILINE)
-        
-        for match in headers:
-            level = len(match[0])
-            if level > 3:
-                new_header = "### " + match[1]
-                old_header = match[0] + " " + match[1]
-                content = content.replace(old_header, new_header)
-        
-        return content
-    
-    def _apply_header_style_universal(self, content: str, header_style: str) -> str:
-        """Apply header styling universally"""
-        if header_style == "modern":
-            content = re.sub(r'^#\s+(.+)', r'# 🎯 \1', content, flags=re.MULTILINE)
-            content = re.sub(r'^##\s+(.+)', r'## 📊 \1', content, flags=re.MULTILINE)
-        
-        return content
-    
-    def _organize_sections_universal(self, content: str, organization_rules: dict) -> str:
-        """Organize sections universally"""
-        if organization_rules.get('move_conclusion_to_end', True):
-            conclusion_pattern = r'(#{1,3}\s+Conclusion.*?)(?=#{1,3}|$)'
-            conclusion_match = re.search(conclusion_pattern, content, re.DOTALL)
-            if conclusion_match:
-                conclusion = conclusion_match.group(1)
-                content = re.sub(conclusion_pattern, '', content, flags=re.DOTALL)
-                content += "\n\n" + conclusion
-        
-        return content
-    
-    def _identify_seo_considerations_universal(self, state: EnrichedContentState, template_config: dict) -> list:
-        """Identify SEO considerations universally"""
-        considerations = ["keyword_optimization", "meta_description", "header_structure"]
-        
-        if 'seo_considerations' in template_config:
-            considerations.extend(template_config['seo_considerations'])
-        
-        return list(set(considerations))
-    
-    def _generate_publication_metadata_universal(self, state: EnrichedContentState, template_config: dict) -> dict:
-        """Generate publication metadata universally"""
-        spec = state.get("content_spec", {})
-        
-        metadata = {
-            "title": template_config.get('title', f"{spec.topic}: Analysis"),
-            "description": template_config.get('description', f"Analysis of {spec.topic}"),
-            "keywords": template_config.get('seo_keywords', [spec.topic.lower()]),
-            "audience": spec.audience,
-            "reading_time": f"{len(state.draft_content.split()) // 200 + 1} min"
-        }
-        
-        # Add config-specific metadata
-        if 'metadata' in template_config:
-            metadata.update(template_config['metadata'])
-        
-        return metadata
+    def _generate_excel(self, content: str, title: str, state: EnrichedContentState) -> str:
+        """Generate Excel file with content analysis."""
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, Alignment
+            
+            wb = Workbook()
+            
+            ws_content = wb.active
+            ws_content.title = "Content"
+            
+            ws_content['A1'] = title
+            ws_content['A1'].font = Font(bold=True, size=16)
+            ws_content['A1'].alignment = Alignment(wrap_text=True)
+            
+            row = 3
+            paragraphs = content.split('\n\n')
+            for para in paragraphs:
+                if para.strip():
+                    ws_content.cell(row=row, column=1, value=para.strip())
+                    ws_content.cell(row=row, column=1).alignment = Alignment(wrap_text=True, vertical='top')
+                    row += 1
+            
+            ws_content.column_dimensions['A'].width = 100
+            
+            ws_analytics = wb.create_sheet("Analytics")
+            ws_analytics['A1'] = "Content Analytics"
+            ws_analytics['A1'].font = Font(bold=True, size=14)
+            
+            row = 3
+            ws_analytics.cell(row=row, column=1, value="Metric").font = Font(bold=True)
+            ws_analytics.cell(row=row, column=2, value="Value").font = Font(bold=True)
+            row += 1
+            
+            word_count = len(content.split())
+            metrics = [
+                ("Word Count", word_count),
+                ("Character Count", len(content)),
+                ("Paragraph Count", len([p for p in paragraphs if p.strip()])),
+            ]
+            
+            if state.seo_analysis:
+                metrics.extend([
+                    ("Readability Score", state.seo_analysis.readability_score),
+                    ("Top Keywords", ", ".join(list(state.seo_analysis.keyword_density.keys())[:5])),
+                ])
+            
+            for metric, value in metrics:
+                ws_analytics.cell(row=row, column=1, value=metric)
+                ws_analytics.cell(row=row, column=2, value=value)
+                row += 1
+            
+            ws_analytics.column_dimensions['A'].width = 25
+            ws_analytics.column_dimensions['B'].width = 50
+            
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            safe_title = re.sub(r'[^\w\s-]', '', title).replace(' ', '_')[:50]
+            filename = f"{safe_title}_{timestamp}.xlsx"
+            
+            output_dir = Path("/tmp/writerzroom_output")
+            output_dir.mkdir(exist_ok=True)
+            filepath = output_dir / filename
+            
+            wb.save(filepath)
+            
+            logger.info(f"Excel generated: {filepath}")
+            return str(filepath)
+            
+        except ImportError:
+            logger.warning("openpyxl not installed - skipping Excel generation")
+            return ""
+        except Exception as e:
+            logger.error(f"Excel generation failed: {e}")
+            return ""

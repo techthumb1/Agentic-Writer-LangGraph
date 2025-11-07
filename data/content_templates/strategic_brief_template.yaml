@@ -5,6 +5,7 @@ slug: "strategic_brief_template"
 version: "1.0"
 category: "business"
 template_type: "strategic_brief"
+id: "strategic_brief_template"
 
 description: >
   Executive-level strategic brief generator. Creates concise, actionable strategic 

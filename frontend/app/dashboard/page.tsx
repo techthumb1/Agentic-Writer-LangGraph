@@ -297,9 +297,10 @@ export default function DashboardPage() {
                           {item.status}
                         </span>
                         <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-muted">
-                          <Link href={`/content/${item.id}`}>
+                          <Link href={`/content/${encodeURIComponent(item.id)}`}>
                             <ChevronRight className="h-4 w-4" />
                           </Link>
+
                         </Button>
                       </div>
                     </div>

@@ -298,7 +298,7 @@ export default function TemplatesPage() {
             </div>
             <div className="bg-card/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
               <Users className="h-6 w-6 text-blue-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-foreground">15K+</div>
+              <div className="text-2xl font-bold text-foreground">1K+</div>
               <div className="text-xs text-muted-foreground">Monthly Uses</div>
             </div>
             <div className="bg-card/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">

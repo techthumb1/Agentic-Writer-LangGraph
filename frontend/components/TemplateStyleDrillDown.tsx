@@ -350,6 +350,7 @@ export default function TemplateStyleDrillDown({
       {selectedTemplate && selectedStyle && (
         <div className="flex justify-center">
           <Button
+            type="button"
             onClick={onProceed}
             size="lg"
             className="px-8 py-3 text-base font-medium"

@@ -17,16 +17,16 @@ import {
 export default function CustomersPage() {
   const testimonials = [
     {
-      name: "Sarah Chen",
+      name: "Maggie Kaufman",
       title: "Content Marketing Manager",
-      company: "TechFlow Solutions",
+      company: "ProLyfic Solutions",
       image: "SC",
       rating: 5,
       quote: "WriterzRoom has revolutionized our content creation process. We're producing 3x more high-quality content in half the time. The AI understands our brand voice perfectly.",
       industry: "Technology"
     },
     {
-      name: "Dr. Michael Rodriguez",
+      name: "Dr. Michael J. Schillingsberg",
       title: "Research Director",
       company: "University Research Lab",
       image: "MR",
@@ -35,16 +35,16 @@ export default function CustomersPage() {
       industry: "Education"
     },
     {
-      name: "Emily Watson",
+      name: "Caroline Miller",
       title: "Founder & CEO",
-      company: "GreenTech Startup",
+      company: "MA-Schultz Production",
       image: "EW",
       rating: 5,
       quote: "As a startup founder, time is everything. WriterzRoom helps me create professional content for investors, customers, and partners without hiring a full marketing team.",
       industry: "Startup"
     },
     {
-      name: "James Park",
+      name: "Johnathan Howard",
       title: "Senior Analyst",
       company: "Financial Insights Corp",
       image: "JP",
@@ -53,7 +53,7 @@ export default function CustomersPage() {
       industry: "Finance"
     },
     {
-      name: "Lisa Thompson",
+      name: "Stacey Van Horn",
       title: "Technical Writer",
       company: "DevTools Inc",
       image: "LT",
@@ -62,7 +62,7 @@ export default function CustomersPage() {
       industry: "Software"
     },
     {
-      name: "David Kumar",
+      name: "Ronauld Stewart",
       title: "Marketing Director",
       company: "E-commerce Giant",
       image: "DK",
@@ -112,8 +112,8 @@ export default function CustomersPage() {
   ];
 
   const stats = [
-    { number: "10,000+", label: "Active Users", description: "Content creators worldwide" },
-    { number: "500K+", label: "Content Pieces", description: "Generated monthly" },
+    { number: "1,000+", label: "Active Users", description: "Content creators worldwide" },
+    { number: "50K+", label: "Content Pieces", description: "Generated monthly" },
     { number: "95%", label: "Satisfaction Rate", description: "Customer satisfaction" },
     { number: "40%", label: "Time Saved", description: "Average productivity gain" }
   ];
@@ -245,15 +245,15 @@ export default function CustomersPage() {
           <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
               <div>
-                <h2 className="text-2xl sm:text-3xl font-bold mb-4">Success Story: TechFlow Solutions</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold mb-4">Success Story: ProLyfic Solutions</h2>
                 <p className="text-gray-300 mb-4">
-                  See how TechFlow Solutions increased their content output by 300% while maintaining 
+                  See how ProLyfic Solutions increased their content output by 250% while maintaining 
                   quality and reducing costs by 40% using WriterzRoom.
                 </p>
                 <ul className="space-y-2 mb-6">
                   <li className="flex items-center text-sm">
                     <TrendingUp className="h-4 w-4 text-green-400 mr-2" />
-                    300% increase in content production
+                    250% increase in content production
                   </li>
                   <li className="flex items-center text-sm">
                     <TrendingUp className="h-4 w-4 text-green-400 mr-2" />
@@ -264,7 +264,7 @@ export default function CustomersPage() {
                     50% faster time-to-market for campaigns
                   </li>
                 </ul>
-                <Link href="/case-studies/techflow-solutions">
+                <Link href="/case-studies/prolyfic-solutions">
                   <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
                     Read Full Case Study
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -273,7 +273,7 @@ export default function CustomersPage() {
               </div>
               <div className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 rounded-lg p-6 border border-purple-400/20">
                 <div className="text-center">
-                  <div className="text-4xl font-bold text-purple-400 mb-2">300%</div>
+                  <div className="text-4xl font-bold text-purple-400 mb-2">250%</div>
                   <div className="text-sm text-gray-300">Content Increase</div>
                 </div>
               </div>

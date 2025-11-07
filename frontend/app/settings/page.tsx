@@ -517,25 +517,25 @@ const saveUserSettings = async () => {
                             <SelectItem value="1000">
                               <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4" />
-                                Short (1K tokens)
+                                Short (2K tokens)
                               </div>
                             </SelectItem>
                             <SelectItem value="2000">
                               <div className="flex items-center gap-2">
                                 <BookOpen className="h-4 w-4" />
-                                Medium (2K tokens)
+                                Medium (4K tokens)
                               </div>
                             </SelectItem>
                             <SelectItem value="4000">
                               <div className="flex items-center gap-2">
                                 <Clipboard className="h-4 w-4" />
-                                Long (4K tokens)
+                                Long (8K tokens)
                               </div>
                             </SelectItem>
                             <SelectItem value="8000">
                               <div className="flex items-center gap-2">
                                 <Database className="h-4 w-4" />
-                                Very Long (8K tokens)
+                                Very Long (12K tokens)
                               </div>
                             </SelectItem>
                           </SelectContent>

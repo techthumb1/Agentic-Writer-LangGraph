@@ -133,7 +133,7 @@ export default function PrivacyPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-4 text-sm">
             <span className="bg-white/10 px-4 py-2 rounded-full text-gray-300">
-              Last updated: January 15, 2025
+              Last updated: October 15, 2025
             </span>
             <span className="bg-green-500/20 text-green-400 px-4 py-2 rounded-full flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
@@ -369,7 +369,7 @@ export default function PrivacyPage() {
                 <h3 className="text-xl font-semibold text-white mb-3">Data Protection Officer</h3>
                 <div className="flex items-center gap-2 text-gray-300 mb-2">
                   <Mail className="w-4 h-4" />
-                  <span>privacy@aicontentstudio.com</span>
+                  <span>privacy@writerzroom.com</span>
                 </div>
                 <p className="text-gray-300">Response time: Within 72 hours</p>
               </div>
@@ -377,7 +377,7 @@ export default function PrivacyPage() {
                 <h3 className="text-xl font-semibold text-white mb-3">General Privacy Inquiries</h3>
                 <div className="flex items-center gap-2 text-gray-300 mb-2">
                   <Mail className="w-4 h-4" />
-                  <span>support@aicontentstudio.com</span>
+                  <span>support@writerzroom.com</span>
                 </div>
                 <p className="text-gray-300">Response time: Within 24 hours</p>
               </div>
@@ -403,21 +403,21 @@ export default function PrivacyPage() {
                   <h3 className="text-white font-semibold">Version 3.0</h3>
                   <p className="text-gray-300 text-sm">Enhanced AI-specific privacy provisions</p>
                 </div>
-                <span className="text-gray-400 text-sm">January 15, 2025</span>
+                <span className="text-gray-400 text-sm">October 15, 2025</span>
               </div>
               <div className="flex justify-between items-center border-b border-white/20 pb-4">
                 <div>
                   <h3 className="text-white font-semibold">Version 2.1</h3>
                   <p className="text-gray-300 text-sm">Updated data retention policies</p>
                 </div>
-                <span className="text-gray-400 text-sm">September 20, 2024</span>
+                <span className="text-gray-400 text-sm">September 20, 2025</span>
               </div>
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-white font-semibold">Version 2.0</h3>
                   <p className="text-gray-300 text-sm">GDPR compliance and user rights expansion</p>
                 </div>
-                <span className="text-gray-400 text-sm">May 25, 2024</span>
+                <span className="text-gray-400 text-sm">May 25, 2025</span>
               </div>
             </div>
           </div>

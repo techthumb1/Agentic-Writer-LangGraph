@@ -1,3 +1,5 @@
+// frontend/app/content/%5BcontentID%5D/track-view/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';

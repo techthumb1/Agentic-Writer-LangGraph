@@ -17,10 +17,16 @@ interface ContentItem {
   date: string;
   status: 'draft' | 'published';
   template_type: string;
+  style_profile?: string;
+  subtitle?: string;
   views?: number;
   updated_at?: string;
   created_at?: string;
   week?: string;
+  metadata?: {
+    preview?: string;
+    [key: string]: unknown;
+  };
 }
 
 interface ContentResponse {
@@ -89,6 +95,17 @@ export default function MyContentPage() {
     router.push(`/content/${contentId}`);
   };
 
+  const formatTitle = (title: string) => {
+    // Remove date and ID: "template_name_2025-10-16_1760643509275" -> "template name"
+    const withoutDate = title.replace(/_\d{4}-\d{2}-\d{2}_\d+$/, '');
+    // Remove underscores and capitalize
+    return withoutDate
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+
   const handleDeleteContent = async (contentId: string, title: string) => {
     if (!confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
       return;
@@ -147,24 +164,6 @@ export default function MyContentPage() {
     });
   };
 
-  const getRelativeTime = (dateString: string) => {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-    if (diffDays > 0) {
-      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    } else if (diffHours > 0) {
-      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    } else if (diffMinutes > 0) {
-      return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
-    } else {
-      return 'Just now';
-    }
-  };
 
   if (isLoading) {
     return (
@@ -345,26 +344,12 @@ export default function MyContentPage() {
                 </CardContent>
               </Card>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredAndSortedContent.map((item) => (
                 <Card key={item.id} className="theme-card">
                   <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="flex items-center gap-2 text-foreground">
-                          <FileText className="h-5 w-5 text-primary" />
-                          {item.title}
-                        </CardTitle>
-                        <CardDescription className="text-muted-foreground mt-1">
-                          Created {getRelativeTime(item.created_at || item.date)}
-                          {item.week && (
-                            <span className="block text-xs text-muted-foreground mt-1">
-                              Week: {item.week}
-                            </span>
-                          )}
-                        </CardDescription>
-                      </div>
+                    <div className="flex items-start justify-between mb-2">
+                      <FileText className="h-5 w-5 text-primary flex-shrink-0" />
                       <Badge 
                         variant={item.status === 'published' ? 'default' : 'secondary'}
                         className={`status-badge ${item.status}`}
@@ -372,12 +357,20 @@ export default function MyContentPage() {
                         {item.status}
                       </Badge>
                     </div>
+                    <div>
+                      <CardTitle className="text-foreground mb-1">
+                        {formatTitle(item.title)}
+                      </CardTitle>
+                      <CardDescription className="text-muted-foreground text-sm mb-2 line-clamp-2">
+                        {item.subtitle || item.metadata?.preview || formatDate(item.created_at || item.date)}
+                      </CardDescription>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="border-primary/50 text-primary">
-                          {item.template_type}
+                          {item.style_profile || item.template_type}
                         </Badge>
                         {item.views !== undefined && (
                           <span className="text-xs text-muted-foreground">

@@ -5,6 +5,7 @@ slug: "data_driven_report_template"
 version: "1.0"
 category: "analytics"
 template_type: "data_driven_report"
+id: "data_driven_template"
 
 description: >
   Professional data analysis report generator. Creates comprehensive reports 

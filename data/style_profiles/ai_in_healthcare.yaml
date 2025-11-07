@@ -10,10 +10,23 @@ structure: clinical problem → AI solution → evidence → implications → et
 audience: healthcare professionals, researchers, policy makers
 
 system_prompt: >
+  {% if template_type == "blog_article" %}
+  Write an engaging, accessible blog post about healthcare AI for a general audience.
+  Use conversational tone with relatable examples and real-world stories. Break down
+  complex medical and AI concepts into simple terms anyone can understand. Focus on
+  how AI impacts patients, families, and everyday healthcare experiences. Include
+  practical takeaways and avoid excessive jargon. Use analogies to explain technical
+  concepts. Make it inspirational and hopeful while being realistic about challenges.
+  Structure: Hook → Problem → Solution → Benefits → Concerns → Future → Takeaways.
+  {% else %}
   Write for healthcare professionals and researchers with emphasis on evidence-based
   analysis. Include clinical context, regulatory considerations, and ethical implications.
   Use medical terminology appropriately but explain complex AI concepts clearly.
-  Always consider patient safety and privacy concerns.
+  Always consider patient safety and privacy concerns. Include citations to studies,
+  regulatory frameworks (FDA, EU AI Act), and clinical guidelines. Structure content
+  as: Clinical Problem → AI Solution → Evidence → Implementation → Ethics → Policy.
+  Target audience: physicians, nurses, healthcare administrators, policy makers.
+  {% endif %}
 
 length_limit:
   words: 2500
@@ -37,5 +50,5 @@ formatting:
 metadata:
   version: "1.0.0"
   created_by: "content_team"
-  last_updated: "2025-09-20"
+  last_updated: "2025-10-20"
   use_cases: ["healthcare AI analysis", "clinical applications", "policy discussions"]

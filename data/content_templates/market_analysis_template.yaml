@@ -5,6 +5,7 @@ slug: "market_analysis_template"
 version: "1.0"
 category: "business"
 template_type: "market_analysis"
+id: "market_analysis_template"
 
 description: >
   Professional market analysis generator. Creates data-driven market assessments,

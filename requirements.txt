@@ -1,89 +1,79 @@
-# WriterzRoom Backend Dependencies - Updated from existing requirements
+# === Core Framework ===
+fastapi>=0.103.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.4.0
 
-# LangGraph & LangChain core (existing)
+# === LangGraph & LangChain ===
 langgraph
 langchain
 langchain-openai
 
-# Model APIs (existing)
-openai  # GPT-4o access
-anthropic  # Claude (optional)
-google-generativeai  # Gemini Pro (optional)
+# === Model APIs ===
+openai>=1.0.0
+anthropic>=0.8.0
+google-generativeai>=0.5.0
 
-# Core Framework for API endpoints
-fastapi>=0.100.0
-uvicorn[standard]>=0.23.0
-pydantic>=2.0.0
-
-# Database (for content saving functionality)
+# === Database & Persistence ===
 sqlalchemy>=2.0.0
-psycopg2-binary  # PostgreSQL support
-sqlite3  # SQLite fallback
+psycopg2-binary>=2.9.9  # PostgreSQL driver
+# SQLite included in Python stdlib
 
-# Publishing Platforms Integration
-requests>=2.31.0  # Enhanced from existing
-httpx>=0.24.0  # For async requests
-beautifulsoup4  # HTML parsing for publishing
-python-substack  # Substack API (if available)
-linkedin-api  # LinkedIn publishing
-tweepy  # Twitter/X publishing
+# === Background Tasks / Queues ===
+celery>=5.3.0
+redis>=5.0.0
 
-# Content Processing (enhanced from existing)
-Pillow  # Image generation (existing)
-markdown>=3.4.0  # Markdown processing for exports
-html2text  # HTML to text conversion
-python-magic  # File type detection
+# === Networking & HTTP ===
+requests>=2.31.0
+httpx>=0.25.0
+beautifulsoup4>=4.12.0
 
-# Scheduling and Background Tasks
-celery>=5.3.0  # For scheduled publishing
-redis>=4.5.0  # Celery broker
+# === Publishing Integrations (optional) ===
+python-substack
+linkedin-api==2.0.1
+tweepy>=4.14.0
 
-# Configuration (enhanced from existing)
-python-dotenv  # Environment variables (existing)
-pyyaml  # YAML config (existing)
+# === Content Processing ===
+Pillow>=10.0.0
+markdown>=3.4.0
+html2text>=2020.1.16
+python-magic>=0.4.27
 
-# Content Quality & Spell Checking
-textstat  # Readability analysis
-pyspellchecker  # Spell checking
-language-tool-python  # Grammar checking
-
-# Validation and Serialization
+# === Config & Serialization ===
+python-dotenv>=1.0.0
+pyyaml>=6.0
 marshmallow>=3.20.0
 jsonschema>=4.0.0
 
-# HTTP and CORS
-fastapi-cors
-python-multipart  # For file uploads
+# === Quality & NLP Utilities ===
+textstat>=0.7.3
+pyspellchecker>=0.7.3
+language-tool-python>=2.7.0
 
-# Utilities
+# === Validation & Multipart ===
+python-multipart>=0.0.6
+
+# === Utilities ===
 python-dateutil>=2.8.0
 pytz>=2023.3
 click>=8.0.0
-rich>=13.0.0  # Pretty printing
-structlog>=23.0.0  # Structured logging
+rich>=13.0.0
+structlog>=23.0.0
 
-# Security
+# === Security ===
 cryptography>=41.0.0
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 
-# Development tools (existing)
-black  # Code formatting (existing)
-flake8  # Linting (existing)
-ipython  # Interactive Python (existing)
+# === Development / Testing ===
+black>=23.3.0
+flake8>=6.0.0
+ipython
+pytest
+pytest-asyncio
+pytest-mock
 
-# Testing (existing)
-pytest  # Testing framework (existing)
-pytest-asyncio  # Async testing
-pytest-mock  # Mocking for tests
-
-# Email notifications (optional)
+# === Optional Email / File Exports ===
 sendgrid>=6.10.0
-
-# File Processing for exports
-openpyxl>=3.1.0  # Excel export
-python-docx>=0.8.11  # Word document export
-reportlab>=4.0.0  # PDF generation# Universal Dynamic Template System
-anthropic>=0.8.0
-openai>=1.0.0
-pyyaml>=6.0
+openpyxl>=3.1.0
+python-docx>=0.8.11
+reportlab>=4.0.0

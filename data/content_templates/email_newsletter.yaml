@@ -2,6 +2,7 @@ name: "Email Newsletter Generator"
 slug: "email_newsletter"
 version: "2.0"
 template_type: "email_newsletter"
+id: "email_newsletter"
 
 description: >
   Email newsletter content generator. Creates actual newsletter content with subject lines and CTAs,

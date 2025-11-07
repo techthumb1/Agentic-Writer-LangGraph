@@ -60,7 +60,7 @@ export default function CommunityPage() {
       members: '2.5K+ active members',
       icon: MessageSquare,
       color: 'from-indigo-500 to-purple-500',
-      link: 'https://discord.gg/aicontentstudio',
+      link: 'https://discord.gg/writerzroom',
       features: ['24/7 Support', 'Developer Chat', 'Live Events', 'Beta Access']
     },
     {
@@ -69,7 +69,7 @@ export default function CommunityPage() {
       members: '500+ contributors',
       icon: Github,
       color: 'from-gray-600 to-gray-800',
-      link: 'https://github.com/aicontentstudio',
+      link: 'https://github.com/writerzroom',
       features: ['Open Source', 'Code Examples', 'Issue Tracking', 'Pull Requests']
     },
     {
@@ -78,7 +78,7 @@ export default function CommunityPage() {
       members: '8K+ discussions',
       icon: BookOpen,
       color: 'from-green-500 to-emerald-500',
-      link: 'https://forum.aicontentstudio.com',
+      link: 'https://forum.writerzroom.com',
       features: ['Q&A Support', 'Tutorials', 'Use Cases', 'Best Practices']
     },
     {
@@ -87,7 +87,7 @@ export default function CommunityPage() {
       members: '12K+ subscribers',
       icon: Globe,
       color: 'from-orange-500 to-red-500',
-      link: 'https://reddit.com/r/aicontentstudio',
+      link: 'https://reddit.com/r/writerzroom',
       features: ['News & Updates', 'AMA Sessions', 'Community Posts', 'Memes & Fun']
     }
   ];
@@ -178,14 +178,14 @@ export default function CommunityPage() {
       title: 'Community Code Examples',
       description: 'Open-source examples and templates from the community',
       type: 'GitHub Repository',
-      link: 'https://github.com/aicontentstudio/examples',
+      link: 'https://github.com/writerzroom/examples',
       icon: Code
     },
     {
       title: 'Video Tutorials',
       description: 'Step-by-step video guides and tutorials',
       type: 'YouTube Playlist',
-      link: 'https://youtube.com/aicontentstudio',
+      link: 'https://youtube.com/writerzroom',
       icon: Youtube
     },
     {
@@ -234,7 +234,7 @@ export default function CommunityPage() {
             collaborate on projects, and help shape the future of AI-powered content generation.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="https://discord.gg/aicontentstudio" className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 inline-flex items-center gap-2">
+            <a href="https://discord.gg/writerzroom" className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 inline-flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
               Join Discord
             </a>
@@ -449,16 +449,16 @@ export default function CommunityPage() {
               Stay connected and get the latest updates from our community across all platforms.
             </p>
             <div className="flex justify-center gap-4">
-              <a href="https://twitter.com/aicontentstudio" className="bg-[#1DA1F2] hover:bg-[#1A91DA] text-white p-3 rounded-lg transition-all duration-300">
+              <a href="https://twitter.com/writerzroom" className="bg-[#1DA1F2] hover:bg-[#1A91DA] text-white p-3 rounded-lg transition-all duration-300">
                 <Twitter className="w-6 h-6" />
               </a>
-              <a href="https://linkedin.com/company/aicontentstudio" className="bg-[#0077B5] hover:bg-[#006BA6] text-white p-3 rounded-lg transition-all duration-300">
+              <a href="https://linkedin.com/company/writerzroom" className="bg-[#0077B5] hover:bg-[#006BA6] text-white p-3 rounded-lg transition-all duration-300">
                 <Linkedin className="w-6 h-6" />
               </a>
-              <a href="https://youtube.com/aicontentstudio" className="bg-[#FF0000] hover:bg-[#E60000] text-white p-3 rounded-lg transition-all duration-300">
+              <a href="https://youtube.com/writerzroom" className="bg-[#FF0000] hover:bg-[#E60000] text-white p-3 rounded-lg transition-all duration-300">
                 <Youtube className="w-6 h-6" />
               </a>
-              <a href="https://github.com/aicontentstudio" className="bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-lg transition-all duration-300">
+              <a href="https://github.com/writerzroom" className="bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-lg transition-all duration-300">
                 <Github className="w-6 h-6" />
               </a>
             </div>

@@ -1,112 +1,105 @@
+# data/content_templates/api_documentation_template.yaml
+# FIXED: Added required enterprise metadata, requirements, and research blocks.
+
 name: "API Documentation Template"
 slug: "api_documentation_template"
-version: "2.0"
+version: "2.1"
 template_type: "api_documentation"
+id: "api_documentation_template"
 
 description: >
   Professional API documentation generator. Creates actual API reference docs, not blog posts about APIs.
   Uses MCP tools for dynamic content generation.
 
-# Inputs (resolved at runtime from request payload or style profile)
+# ----------------------------------------------------------------
+# ENTERPRISE METADATA BLOCK (Required by Planner)
+# ----------------------------------------------------------------
+metadata:
+  strategy: "developer_enablement_and_adoption"
+  positioning: "The definitive source of truth for seamless API integration"
+  complexity: 8 # On a scale of 1-10
+  domain: "technical"
+
+# ----------------------------------------------------------------
+# ENTERPRISE STRUCTURE BLOCK (Required by Planner)
+# ----------------------------------------------------------------
+structure:
+  approach: "endpoint_centric_reference_manual"
+  header_hierarchy: [1, 2, 3, 3] # H1 for Title, H2 for Sections, H3 for Endpoints etc.
+  sections:
+    - name: "Introduction"
+      description: "A brief overview of the API's purpose and capabilities."
+    - name: "Authentication"
+      description: "Detailed instructions on how to authenticate requests."
+    - name: "Core Resources & Endpoints"
+      description: "Detailed breakdown of each API endpoint, including methods, parameters, and responses."
+    - name: "Error Handling"
+      description: "A guide to understanding and handling common API errors."
+    - name: "Code Examples"
+      description: "Practical, copy-paste ready examples in multiple languages."
+
+# ----------------------------------------------------------------
+# ENTERPRISE REQUIREMENTS BLOCK (Required by Planner)
+# ----------------------------------------------------------------
+requirements:
+  requires_code: true
+  min_words: 3000
+  key_messages:
+    - "Easy and secure authentication"
+    - "Predictable, well-structured endpoints"
+    - "Robust error handling for reliable integration"
+    - "Actionable code examples to accelerate development"
+  success_metrics:
+    developer_satisfaction_score: 0.95
+    time_to_first_successful_call_minutes: 5
+    api_adoption_rate_increase_percent: 15
+
+# ----------------------------------------------------------------
+# ENTERPRISE RESEARCH BLOCK (Required by Planner)
+# ----------------------------------------------------------------
+research:
+  priorities:
+    - "Best practices for RESTful API documentation structure"
+    - "Common authentication methods (OAuth 2.0, Bearer Tokens, API Keys)"
+    - "Analysis of industry-leading API documentation from Stripe, Twilio, and GitHub"
+    - "Developer pain points in API integration"
+
+# ----------------------------------------------------------------
+# AGENT & SERVER CONFIGURATIONS (Existing)
+# ----------------------------------------------------------------
 inputs:
   api_name: { required: true }
-  api_domain: { default: "web_service" }          # "payments", "data", "messaging", "ai", etc.
-  auth_type: { default: "api_key" }               # "api_key", "oauth", "jwt", "basic"
+  api_domain: { default: "web_service" }
+  auth_type: { default: "api_key" }
   programming_languages: { default: ["curl", "javascript", "python"] }
-  base_url: { optional: true }
+  base_url: { optional: true, default: "https://api.example.com/v1" }
   version_number: { default: "v1" }
-  include_sdks: { default: true }
-  include_postman: { default: true }
-  complexity_level: { default: "intermediate" }   # "beginner", "intermediate", "advanced"
-  # Optional user overrides
-  min_endpoints: { optional: true }
-  code_examples_per_endpoint: { optional: true }
-  include_webhooks: { optional: true }
-  rate_limiting: { optional: true }
 
-# Priority-based requirement resolution
-requirements:
-  min_endpoints:
-    priority:
-      - dynamic.min_endpoints
-      - style.requirements.min_endpoints
-      - 5
-  min_words:
-    priority:
-      - dynamic.min_words
-      - style.length_limit.target
-      - 3000
-  code_examples_per_endpoint:
-    priority:
-      - dynamic.code_examples_per_endpoint
-      - 2
-
-# Template-specific writer instructions
 writer_instructions:
-  content_type: "api_documentation"              # CRITICAL: Not a blog post!
+  content_type: "api_documentation"
   format: "reference_manual"
   include_working_examples: true
   generate_realistic_endpoints: true
-  create_unique_api_structure: true
-  enforce_technical_accuracy:
-    priority:
-      - dynamic.enforce_technical_accuracy
-      - true
 
-mcp:
-  tool_sequence:
-    priority:
-      - dynamic.tool_sequence
-      - [code_generator, api_validator, technical_reviewer]
+distribution_channels:
+  - "developer_portal"
+  - "postman_collection"
+  - "github_wiki"
 
-sections:
-  order:
-    priority:
-      - dynamic.section_order
-      - ["overview", "authentication", "endpoints", "examples", "error_handling", "sdks_libraries"]
-
-prompt_schema:
-  system_preamble: |
-    You are an expert API documentation specialist. Create comprehensive, professional API reference documentation
-    that developers can immediately use to integrate with the API. Generate actual API documentation with working
-    examples, not explanatory content about APIs.
-
-  content_template: |
-    # {{api_name}} API Documentation
-
-    {{overview_section}}
-
-    ## Authentication
-    {{authentication_section}}
-
-    ## Base URL
-    {{base_url_section}}
-
-    ## Endpoints
-    {{endpoints_section}}
-
-    ## Code Examples
-    {{examples_section}}
-
-    ## Error Handling
-    {{error_handling_section}}
-
-    ## SDKs & Libraries
-    {{sdks_section}}
-
-    ## Rate Limiting
-    {{rate_limiting_section}}
-
-  placeholders:
-    - api_name
-    - overview_section
-    - authentication_section
-    - base_url_section
-    - endpoints_section
-    - examples_section
-    - error_handling_section
-    - sdks_section
-    - rate_limiting_section
+code_generation_config:
+  enabled: true
+  languages: ["python", "javascript", "bash"]
+  style: "clear_and_commented"
+  examples:
+    - placeholder: "[CODE_EXAMPLE_AUTHENTICATION]"
+      type: "initialization"
+      description: "Shows how to set up the client and authenticate."
+    - placeholder: "[CODE_EXAMPLE_GET_REQUEST]"
+      type: "function_call"
+      description: "Demonstrates a common GET request."
+    - placeholder: "[CODE_EXAMPLE_POST_REQUEST]"
+      type: "function_call"
+      description: "Demonstrates a common POST request with a payload."
 
 output:
   format: "markdown"
@@ -115,38 +108,3 @@ output:
     multiple_languages: true
     realistic_endpoints: true
     error_codes: true
-
-knowledge_constraints:
-  cutoff_date: "2025-01-31"
-  current_date_context: true
-  avoid_future_references: true
-
-  # === WriterzRoom enterprise output controls ===
-post_config:
-  enabled: false        # set to true in social_media_campaign.yaml
-  min_posts: 3          # used only when enabled
-  max_posts: 5          # used only when enabled
-  paragraph_length: short   # short | medium | long
-  per_post_requirements:
-    min_words: 60
-    max_words: 120
-  composition:
-    include_cta: true
-    include_hashtags: 3      # 0 = none
-    include_links: optional  # optional | required | none
-
-output_policy:
-  no_code: true          # enforce: remove code blocks/inlines
-  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
-  min_paragraphs: 3      # minimum paragraphs after sanitation
-  paragraph_first: true  # prefer paragraphs over lists
-
-# Optional: planner override keys (validated upstream; no fallbacks here)
-planner_overrides:
-  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided
-
-include_code_examples:
-  type: "checkbox"
-  default: true  # Default TRUE for API docs
-  label: "Include Code Examples"
-  description: "Include API code examples in multiple programming languages"

@@ -120,9 +120,9 @@ content = await client.generate(
       icon: Code,
       description: 'Modern SDK with full TypeScript support',
       installCommand: 'npm install @ai-content-studio/sdk',
-      example: `import { AIContentStudio } from '@ai-content-studio/sdk';
+      example: `import { writerzroom } from '@ai-content-studio/sdk';
 
-const client = new AIContentStudio({ apiKey: 'your-api-key' });
+const client = new writerzroom({ apiKey: 'your-api-key' });
 const content = await client.generate({
   template: 'blog_post',
   styleProfile: 'technical_dive',
@@ -134,7 +134,7 @@ const content = await client.generate({
       icon: Database,
       description: 'Direct HTTP API access for any programming language',
       installCommand: 'curl (pre-installed on most systems)',
-      example: `curl -X POST "https://api.aicontentstudio.com/generate" \\
+      example: `curl -X POST "https://api.writerzroom.com/generate" \\
   -H "Authorization: Bearer your-api-key" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -263,7 +263,7 @@ const content = await client.generate({
             <div className="mb-6">
               <h3 className="text-xl font-semibold text-white mb-4">Base URL</h3>
               <code className="bg-black/30 text-green-400 px-4 py-2 rounded-lg">
-                https://api.aicontentstudio.com
+                https://api.writerzroom.com
               </code>
             </div>
             

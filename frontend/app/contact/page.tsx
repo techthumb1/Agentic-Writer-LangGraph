@@ -1,18 +1,15 @@
 // File: frontend/app/contact/page.tsx
-// Enhanced Contact page for AI Content Studio (Professional - No Emojis)
+// Enhanced Contact page for WriterzRoom (Professional - No Emojis)
 
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { 
   Briefcase, 
   Wrench, 
-  Handshake, 
-  Lock, 
   Mail, 
   Phone, 
   Clock, 
   Zap, 
-  AlertTriangle, 
   MessageSquare, 
   Linkedin, 
   Github, 
@@ -20,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Contact Us | AI Content Studio',
+  title: 'Contact Us | WriterzRoom',
   description: 'Get in touch with our team for support, sales inquiries, or partnership opportunities.',
 };
 
@@ -30,8 +27,8 @@ export default function ContactPage() {
       title: 'Sales & Enterprise',
       description: 'Interested in enterprise features or custom solutions?',
       icon: Briefcase,
-      email: 'sales@aicontentstudio.com',
-      phone: '+1 (555) 123-4567',
+      email: 'info@writerzroom.com',
+      phone: '+1 (886) 660-6527',
       hours: 'Mon-Fri, 9 AM - 6 PM PST',
       responseTime: 'Within 2 hours'
     },
@@ -39,57 +36,13 @@ export default function ContactPage() {
       title: 'Technical Support',
       description: 'Need help with APIs, integrations, or technical issues?',
       icon: Wrench,
-      email: 'support@aicontentstudio.com',
-      phone: '+1 (555) 234-5678',
+      email: 'support@writerzroom.com',
+      phone: '+1 (886) 660-6591',
       hours: '24/7 Support Available',
       responseTime: 'Within 1 hour'
-    },
-    {
-      title: 'Partnerships',
-      description: 'Explore integration partnerships and collaboration opportunities',
-      icon: Handshake,
-      email: 'partnerships@aicontentstudio.com',
-      phone: '+1 (555) 345-6789',
-      hours: 'Mon-Fri, 9 AM - 5 PM PST',
-      responseTime: 'Within 24 hours'
-    },
-    {
-      title: 'Privacy & Security',
-      description: 'Questions about data privacy, security, or compliance?',
-      icon: Lock,
-      email: 'privacy@aicontentstudio.com',
-      phone: '+1 (555) 456-7890',
-      hours: 'Mon-Fri, 9 AM - 5 PM PST',
-      responseTime: 'Within 4 hours'
     }
   ];
 
-  const offices = [
-    {
-      city: 'San Francisco',
-      address: '123 AI Innovation Drive\nSan Francisco, CA 94105',
-      phone: '+1 (555) 123-4567',
-      type: 'Headquarters'
-    },
-    {
-      city: 'New York',
-      address: '456 Tech Avenue\nNew York, NY 10001',
-      phone: '+1 (555) 234-5678',
-      type: 'East Coast Office'
-    },
-    {
-      city: 'Austin',
-      address: '789 Innovation Blvd\nAustin, TX 78701',
-      phone: '+1 (555) 345-6789',
-      type: 'Development Center'
-    },
-    {
-      city: 'London',
-      address: '321 AI Street\nLondon, UK EC1A 1BB',
-      phone: '+44 20 1234 5678',
-      type: 'European Operations'
-    }
-  ];
 
   const faqs = [
     {
@@ -294,26 +247,6 @@ export default function ContactPage() {
           </div>
         </section>
 
-        {/* Office Locations */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold text-white mb-8 text-center">Our Global Presence</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {offices.map((office, index) => (
-              <div key={index} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6 text-center hover:bg-white/15 transition-all duration-300">
-                <h3 className="text-xl font-semibold text-white mb-2">{office.city}</h3>
-                <span className="text-sm text-purple-400 font-medium mb-4 block">{office.type}</span>
-                <div className="text-gray-300 text-sm mb-4 whitespace-pre-line">
-                  {office.address}
-                </div>
-                <a href={`tel:${office.phone}`} className="text-white hover:text-purple-400 transition-colors flex items-center justify-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  {office.phone}
-                </a>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* FAQ Section */}
         <section className="mb-16">
           <h2 className="text-3xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h2>
@@ -332,36 +265,6 @@ export default function ContactPage() {
           </div>
         </section>
 
-        {/* Emergency Support */}
-        <section className="mb-16">
-          <div className="bg-gradient-to-r from-red-500/20 to-orange-500/20 backdrop-blur-sm border border-red-500/30 rounded-xl p-8">
-            <div className="flex items-center gap-4 mb-4">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
-              <h2 className="text-2xl font-bold text-white">Emergency Support</h2>
-            </div>
-            <p className="text-gray-300 mb-6">
-              For critical system outages or security incidents affecting production systems, 
-              contact our emergency hotline for immediate assistance.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <a 
-                href="tel:+15551234567" 
-                className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-300 text-center flex items-center justify-center gap-2"
-              >
-                <Phone className="w-4 h-4" />
-                Emergency Hotline: +1 (555) 123-4567
-              </a>
-              <a 
-                href="mailto:emergency@aicontentstudio.com" 
-                className="border border-red-500/50 text-red-400 hover:bg-red-500/10 font-semibold px-6 py-3 rounded-lg transition-all duration-300 text-center flex items-center justify-center gap-2"
-              >
-                <Mail className="w-4 h-4" />
-                emergency@aicontentstudio.com
-              </a>
-            </div>
-          </div>
-        </section>
-
         {/* Social Media & Community */}
         <section className="mb-16">
           <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-8 text-center">
@@ -370,19 +273,19 @@ export default function ContactPage() {
               Connect with other developers, share ideas, and get quick answers from our community.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <a href="https://discord.gg/aicontentstudio" className="bg-[#5865F2] hover:bg-[#4752C4] text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2">
+              <a href="https://discord.gg/writerzroom" className="bg-[#5865F2] hover:bg-[#4752C4] text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
                 Discord Community
               </a>
-              <a href="https://github.com/aicontentstudio" className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2">
+              <a href="https://github.com/writerzroom" className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2">
                 <Github className="w-4 h-4" />
                 GitHub
               </a>
-              <a href="https://twitter.com/aicontentstudio" className="bg-[#1DA1F2] hover:bg-[#1A91DA] text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2">
+              <a href="https://twitter.com/writerzroom" className="bg-[#1DA1F2] hover:bg-[#1A91DA] text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2">
                 <Twitter className="w-4 h-4" />
                 Twitter
               </a>
-              <a href="https://linkedin.com/company/aicontentstudio" className="bg-[#0077B5] hover:bg-[#006BA6] text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2">
+              <a href="https://linkedin.com/company/writerzroom" className="bg-[#0077B5] hover:bg-[#006BA6] text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2">
                 <Linkedin className="w-4 h-4" />
                 LinkedIn
               </a>

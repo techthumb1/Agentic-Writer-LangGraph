@@ -1,335 +1,161 @@
 // frontend/app/api/content/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
-import fs from 'fs/promises'
-import path from 'path'
+import { prisma } from '@/lib/prisma.node'
+import { JsonValue } from '@prisma/client/runtime/library'
 
-interface ContentItem {
+// Type definitions
+interface PrismaContent {
   id: string
   title: string
-  date: string
-  status: 'draft' | 'published'
+  content: string
+  contentHtml: string | null
+  status: string
   type: string
-  views?: number
-  updatedAt?: string
-  createdAt?: string
-  week?: string | null
+  views: number | bigint
+  userId: string
+  createdAt: Date
+  updatedAt: Date
+  metadata: JsonValue
 }
 
-interface ContentMetadata {
-  title: string
-  status: 'published' | 'draft'
-  updatedAt?: string
-  createdAt?: string
-  type?: string
-  views?: number
+interface ContentRequestBody {
+  userId?: string
+  title?: string
   content?: string
   contentHtml?: string
-  author?: string
+  status?: 'draft' | 'published' | 'completed'
+  type?: string
   metadata?: Record<string, unknown>
 }
 
-interface ContentResponse {
-  content: ContentItem[]
-  totalViews: number
-  stats: {
-    total: number
-    published: number
-    drafts: number
-    types: number
-  }
+// Small helper
+function jsonError(message: string, status = 400, details?: unknown) {
+  return NextResponse.json({ error: message, details }, { status })
 }
 
-// Environment configuration
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
-const USE_BACKEND_API = process.env.USE_BACKEND_API === 'true'
-
-async function fetchFromBackend(): Promise<ContentResponse> {
-  try {
-    const response = await fetch(`${BACKEND_URL}/api/content`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      signal: AbortSignal.timeout(5000),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Backend API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error('Failed to fetch from backend:', error)
-    throw error
-  }
-}
-
-// ✅ NEW: Helper function to process individual content files
-async function processContentFile(
-  filePath: string, 
-  week: string | null, 
-  contentItems: ContentItem[]
-): Promise<number> {
-  try {
-    const content = await fs.readFile(filePath, 'utf-8')
-    const metadata: ContentMetadata = JSON.parse(content)
-    const fileStats = await fs.stat(filePath)
-    
-    const slug = path.basename(filePath, '.json')
-    const createdAt = metadata.createdAt || fileStats.birthtime.toISOString()
-    const updatedAt = metadata.updatedAt || fileStats.mtime.toISOString()
-    const views = metadata.views || Math.floor(Math.random() * 500) + 10
-    
-    const contentItem: ContentItem = {
-      id: slug,
-      title: metadata.title || slug.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      date: createdAt,
-      status: metadata.status || 'draft',
-      type: metadata.type || 'article',
-      views,
-      updatedAt,
-      createdAt,
-      week
-    }
-
-    contentItems.push(contentItem)
-    console.log(`✅ [CONTENT-API] Added content: ${contentItem.title} (${contentItem.id})`)
-    
-    return views
-
-  } catch (error) {
-    console.error(`❌ [CONTENT-API] Error processing file ${filePath}:`, error)
-    return 0
-  }
-}
-
-async function getContentFromFileSystem(): Promise<ContentResponse> {
-  const contentItems: ContentItem[] = []
-  let totalViews = 0
-  
-  const storageDir = path.join(process.cwd(), '../generated_content')
-  
-  try {
-    console.log(`📁 [CONTENT-API] Checking directory: ${storageDir}`)
-    const entries = await fs.readdir(storageDir)
-
-    for (const entry of entries) {
-      if (entry.startsWith('.')) continue
-
-      const entryPath = path.join(storageDir, entry)
-      try {
-        const entryStat = await fs.stat(entryPath)
-        
-        if (entryStat.isDirectory()) {
-          const files = await fs.readdir(entryPath)
-          console.log(`📁 [CONTENT-API] Processing directory ${entry} with ${files.length} files`)
-          
-          for (const file of files) {
-            if (file.endsWith('.json')) {
-              const views = await processContentFile(path.join(entryPath, file), entry, contentItems)
-              totalViews += views
-            }
-          }
-        } else if (entry.endsWith('.json')) {
-          const views = await processContentFile(entryPath, null, contentItems)
-          totalViews += views
-        }
-      } catch (error) {
-        console.error(`❌ [CONTENT-API] Error processing entry ${entry}:`, error)
-      }
-    }
-  } catch (error) {
-    console.warn(`⚠️ [CONTENT-API] Directory ${storageDir} not accessible:`, error)
-  }
-
-  // Sort by creation date (most recent first)
-  contentItems.sort((a, b) => {
-    const dateA = new Date(a.createdAt || a.date).getTime()
-    const dateB = new Date(b.createdAt || b.date).getTime()
-    return dateB - dateA
-  })
-
-  const stats = {
-    total: contentItems.length,
-    published: contentItems.filter(item => item.status === 'published').length,
-    drafts: contentItems.filter(item => item.status === 'draft').length,
-    types: new Set(contentItems.map(item => item.type)).size
-  }
-
-  console.log(`📊 [CONTENT-API] Final stats:`, stats)
-
-  return {
-    content: contentItems,
-    totalViews,
-    stats
-  }
-}
-
+/**
+ * GET /api/content
+ * Returns the authenticated user's content list + simple stats.
+ */
 export async function GET() {
   try {
-    // Check authentication
     const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    if (!session?.user) return jsonError('Unauthorized', 401)
 
-    let contentData: ContentResponse
+    const content = await prisma.content.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: 'desc' },
+    })
 
-    if (USE_BACKEND_API) {
-      console.log('🔄 Fetching content from backend API...')
-      try {
-        contentData = await fetchFromBackend()
-        console.log(`✅ Successfully fetched ${contentData.content.length} items from backend`)
-      } catch (backendError) {
-        console.log('❌ Backend API failed, falling back to file system...')
-        console.error('Backend error:', backendError)
-        contentData = await getContentFromFileSystem()
-      }
-    } else {
-      console.log('📁 Fetching content from file system...')
-      contentData = await getContentFromFileSystem()
-    }
+    const totalViews = content.reduce((sum, c) => sum + (Number(c.views) || 0), 0)
+    const uniqueTypes = new Set(content.map((c: PrismaContent) => c.type)).size
 
-    // ✅ ENHANCEMENT: Remove mock data and ensure we're showing real content
-    console.log(`📋 [CONTENT-API] Returning ${contentData.content.length} content items`)
-
-    // Add cache headers for better performance but shorter cache for development
-    const response = NextResponse.json(contentData)
-    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30')
-    
-    return response
-
-  } catch (error) {
-    console.error('❌ [CONTENT-API] Error:', error)
-    
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch content',
-        details: error instanceof Error ? error.message : 'Unknown error'
+    const response = {
+      content: content.map((c: PrismaContent) => ({
+        id: c.id,
+        title: c.title,
+        date: c.createdAt?.toISOString?.() ?? new Date(c.createdAt).toISOString(),
+        status: c.status as 'draft' | 'published' | 'completed',
+        type: c.type,
+        template_type: c.type,
+        views: Number(c.views) || 0,
+        updatedAt: c.updatedAt?.toISOString?.() ?? new Date(c.updatedAt).toISOString(),
+        createdAt: c.createdAt?.toISOString?.() ?? new Date(c.createdAt).toISOString(),
+        metadata: c.metadata as Record<string, unknown>,
+      })),
+      total_views: totalViews,
+      stats: {
+        total: content.length,
+        published: content.filter((c: PrismaContent) => c.status === 'published').length,
+        drafts: content.filter((c: PrismaContent) => c.status === 'draft').length,
+        types: uniqueTypes,
       },
-      { status: 500 }
-    )
+    }
+
+    return NextResponse.json(response)
+  } catch (error) {
+    console.error('❌ [CONTENT-API][GET] Error:', error)
+    return jsonError('Failed to fetch content', 500, error instanceof Error ? error.message : 'Unknown error')
   }
 }
 
-// POST endpoint for creating new content
+/**
+ * POST /api/content
+ * Two paths:
+ * 1) Internal service-to-service write with API key header (bypass NextAuth):
+ *    Header: x-writerzroom-key: <LANGGRAPH_API_KEY>
+ * 2) Authenticated user write (requires session).
+ */
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const body = await request.json().catch(() => ({} as ContentRequestBody))
 
-    const body = await request.json()
-    
-    if (USE_BACKEND_API) {
-      // Forward to backend API
-      const response = await fetch(`${BACKEND_URL}/api/content`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
+    // ---- Path 1: Internal API-key bypass (FastAPI -> Next.js) ----
+    const incomingKey = request.headers.get('x-writerzroom-key')
+    const serverKey = process.env.LANGGRAPH_API_KEY
 
-      if (!response.ok) {
-        throw new Error(`Backend API error: ${response.status}`)
-      }
-
-      const data = await response.json()
-      return NextResponse.json(data)
-    } else {
-      // ✅ ENHANCEMENT: Implement file system content creation
-      try {
-        const contentId = body.id || `content_${Date.now()}`
-        const saveDir = path.join(process.cwd(), '../generated_content')
-        
-        // Create week directory
-        // Helper to get ISO week year
-        function getISOWeekYear(date: Date): number {
-          const tmp = new Date(date.getTime());
-          tmp.setDate(tmp.getDate() + 4 - (tmp.getDay() || 7));
-          return tmp.getFullYear();
-        }
-        // Helper to get ISO week number
-        function getISOWeek(date: Date): number {
-          const tmp = new Date(date.getTime());
-          tmp.setHours(0, 0, 0, 0);
-          tmp.setDate(tmp.getDate() + 4 - (tmp.getDay() || 7));
-          const yearStart = new Date(tmp.getFullYear(), 0, 1);
-          const weekNo = Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-          return weekNo;
-        }
-        const now = new Date();
-        const currentWeek = `week_${getISOWeekYear(now)}_${getISOWeek(now)}`
-        const weekDir = path.join(saveDir, currentWeek)
-        
-        // Ensure directory exists
-        await fs.mkdir(weekDir, { recursive: true })
-        
-        // Create content metadata
-        const contentMetadata = {
-          title: body.title || 'New Content',
-          status: body.status || 'draft',
-          type: body.type || 'article',
-          content: body.content || '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          author: session.user.name || 'User',
-          views: 0,
-          metadata: body.metadata || {}
-        }
-        
-        // Save JSON file
-        const jsonPath = path.join(weekDir, `${contentId}.json`)
-        await fs.writeFile(jsonPath, JSON.stringify(contentMetadata, null, 2))
-        
-        // Save markdown file if content exists
-        if (body.content) {
-          const mdPath = path.join(weekDir, `${contentId}.md`)
-          await fs.writeFile(mdPath, body.content)
-        }
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Content created successfully',
-          contentId,
-          path: jsonPath
-        })
-        
-      } catch (error) {
-        console.error('File system creation error:', error)
-        return NextResponse.json(
-          { error: 'Failed to create content in file system' },
-          { status: 500 }
+    if (incomingKey && serverKey && incomingKey === serverKey) {
+      // Choose a userId to satisfy FK constraints:
+      // - Prefer body.userId if provided
+      // - Else use SERVICE_USER_ID env (set this to a valid user id)
+      const serviceUserId = body.userId || process.env.SERVICE_USER_ID
+      if (!serviceUserId) {
+        return jsonError(
+          'SERVICE_USER_ID missing. Set SERVICE_USER_ID env or include userId in payload when using API key bypass.',
+          400
         )
       }
+
+      const newContent = await prisma.content.create({
+        data: {
+          userId: serviceUserId,
+          title: body.title || 'Untitled',
+          content: body.content || '',
+          contentHtml: body.contentHtml || '',
+          status: body.status || 'completed', // backend sends 'completed'; defaults to 'completed' here
+          type: body.type || 'article',
+          metadata: body.metadata || {},
+        },
+      })
+
+      return NextResponse.json({
+        success: true,
+        contentId: newContent.id,
+        message: 'Content created via internal API key',
+      })
     }
 
-  } catch (error) {
-    console.error('Content creation error:', error)
-    
-    return NextResponse.json(
-      { 
-        error: 'Failed to create content',
-        details: error instanceof Error ? error.message : 'Unknown error'
+    // ---- Path 2: Standard authenticated user write ----
+    const session = await auth()
+    if (!session?.user) return jsonError('Unauthorized', 401)
+
+    const newContent = await prisma.content.create({
+      data: {
+        userId: session.user.id,
+        title: body.title || 'Untitled',
+        content: body.content || '',
+        contentHtml: body.contentHtml || '',
+        status: body.status || 'draft',
+        type: body.type || 'article',
+        metadata: body.metadata || {},
       },
-      { status: 500 }
-    )
+    })
+
+    return NextResponse.json({
+      success: true,
+      contentId: newContent.id,
+      message: 'Content created successfully',
+    })
+  } catch (error) {
+    console.error('❌ [CONTENT-API][POST] Error:', error)
+    return jsonError('Failed to create content', 500, error instanceof Error ? error.message : 'Unknown error')
   }
 }
 
-// Health check endpoint
+/**
+ * HEAD /api/content
+ */
 export async function HEAD() {
   return new NextResponse(null, { status: 200 })
 }

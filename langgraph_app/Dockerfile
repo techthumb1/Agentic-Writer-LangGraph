@@ -1,20 +1,27 @@
-FROM python:3.11-slim
+# syntax=docker/dockerfile:1
+FROM python:3.11-slim AS base
 
-WORKDIR /app
+# Set working directory
+WORKDIR /usr/src/app
 
-RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
+# System deps (curl for healthcheck, gcc for any C extensions)
+RUN apt-get update && apt-get install -y gcc curl && rm -rf /var/lib/apt/lists/*
 
+# Copy and install dependencies first (leverages layer caching)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
+# Copy backend source
 COPY . .
 
-RUN useradd --create-home --shell /bin/bash app
-RUN chown -R app:app /app
-USER app
+# Expose for Cloud Run
+EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
+# Health check (Cloud Run expects port 8080)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
 
-EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the integrated FastAPI server
+# NOTE: langgraph_app.integrated_server defines "app = FastAPI(...)"
+CMD ["uvicorn", "langgraph_app.integrated_server:app", "--host", "0.0.0.0", "--port", "8080"]

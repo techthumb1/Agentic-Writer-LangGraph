@@ -12,6 +12,7 @@ import { SubmitHandler } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { useEnhancedGeneration } from "@/hooks/useEnhancedGeneration";
 import { useSettings } from '@/lib/settings-context'
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -24,7 +25,7 @@ import {
   Check, 
   Copy, 
   Download, 
-  Save,
+//  Save,
   Eye, 
   FileText, 
   Loader2, 
@@ -380,8 +381,8 @@ ${generatedContent}
             onClick={onSave}
             className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
           >
-            <Save className="h-4 w-4 mr-2" />
-            Save Content
+            <FileText className="h-4 w-4 mr-2" />
+            View in Content
           </Button>
         </div>
       </CardContent>
@@ -485,12 +486,13 @@ function createPrintOptimizedHTML(content: string, templateName?: string, styleP
 </body>
 </html>`;
 }
-
 // Main Component
 export default function GeneratePage() {
+  const router = useRouter();
   const [isGeneratingDialogOpen, setIsGeneratingDialogOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState<'selection' | 'generation'>('selection');
-  
+ // const [savedContentId, setSavedContentId] = useState<string | null>(null);
+ // const [savedContentId, setSavedContentId] = useState<string | null>(null);
   // Store selected template/style separately to avoid re-render loops
   const [finalSelections, setFinalSelections] = useState<{
     template: Template | null;
@@ -586,36 +588,41 @@ export default function GeneratePage() {
   // Auto-save functionality
   const autoSaveToGeneratedContentFolder = useCallback(async () => {
     if (!result?.content) return;
-    
+
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
       const templateSlug = selectedTemplate?.id || 'content';
       const filename = `${templateSlug}_${timestamp}_${Date.now()}`;
     
-      const response = await fetch('/api/content/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: result.content,
-          filename: filename,
-          metadata: {
-            template: selectedTemplate?.id,
-            style_profile: selectedStyleProfile?.id,
-            word_count: result.content.split(' ').length,
-            created_at: new Date().toISOString(),
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Save failed: ${response.status}`);
-      }
-
-      console.log('Auto-saved to generated_content folder:', filename);
-    } catch (error) {
-      console.error('Auto-save failed:', error);
+    const response = await fetch('/api/content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: filename,
+        content: result.content,
+        metadata: {
+        template: selectedTemplate?.id,
+        style_profile: selectedStyleProfile?.id,
+        word_count: result.content.split(' ').length,
+        created_at: new Date().toISOString(),
+        preview: result.content.split('\n').find(line => line.trim().length > 0)?.replace(/^#+\s*/, '').trim().substring(0, 100),
+      },
+        status: 'completed',
+        type: 'article',
+      }),
+    });
+  
+    if (!response.ok) {
+      throw new Error(`Save failed: ${response.status}`);
     }
-  }, [result?.content, selectedTemplate?.id, selectedStyleProfile?.id]);
+
+    const data = await response.json();
+    console.log('✅ Auto-saved content:', data);
+
+  } catch (error) {
+    console.error('❌ Auto-save failed:', error);
+  }
+}, [result?.content, selectedTemplate?.id, selectedStyleProfile?.id]);
 
   useEffect(() => {
     if (result?.content && generationSettings.autoSave && !isGenerating) {
@@ -687,21 +694,57 @@ export default function GeneratePage() {
   }, [isGenerating]);
 
   // Handle drill-down completion
-  const handleDrillDownComplete = (template: Template, style: StyleProfile) => {
-    // Set final selections in separate state
-    setFinalSelections({
-      template,
-      style: style as ExtendedStyleProfile
-    });
+  const handleDrillDownComplete = async (template: Template, style: StyleProfile) => {
+    console.log('🔄 Fetching full template details for:', template.id);
     
-    // Update form values with validation
-    form.setValue('templateId', template.id, { shouldValidate: true });
-    form.setValue('styleProfileId', style.id, { shouldValidate: true });
-    
-    // Move to generation step
-    setCurrentStep('generation');
+    try {
+      const response = await fetch(`/api/templates/${template.id}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch template details: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success || !data.data) {
+        throw new Error('Invalid template response format');
+      }
+      
+      console.log('✅ Fetched template details:', {
+        id: data.data.id,
+        parametersCount: Object.keys(data.data.parameters || {}).length
+      });
+      
+      const enrichedTemplate = {
+        ...template,
+        templateData: {
+          ...template.templateData,
+          parameters: data.data.parameters
+        }
+      };
+      
+      setFinalSelections({
+        template: enrichedTemplate,
+        style: style as ExtendedStyleProfile
+      });
+      
+      form.setValue('templateId', template.id, { shouldValidate: true });
+      form.setValue('styleProfileId', style.id, { shouldValidate: true });
+      
+      setCurrentStep('generation');
+      
+    } catch (error) {
+      console.error('❌ Failed to fetch template details:', error);
+      setFinalSelections({
+        template,
+        style: style as ExtendedStyleProfile
+      });
+      form.setValue('templateId', template.id, { shouldValidate: true });
+      form.setValue('styleProfileId', style.id, { shouldValidate: true });
+      
+      setCurrentStep('generation');
+    }
   };
-
   // Handle drill-down template selection
   const handleDrillDownTemplateSelect = (template: Template) => {
     // Just track in form for drill-down component
@@ -935,6 +978,7 @@ export default function GeneratePage() {
 
     console.log('🚀 Enhanced generation request with user settings:', enhancedRequest);
     startGeneration(enhancedRequest);
+    setCurrentStep('generation'); 
   };
 
   const getLengthFromTokens = (tokens: number): string => {
@@ -950,35 +994,69 @@ export default function GeneratePage() {
     return 'creative'
   }
 
-  type GenerationResultMetadata = {
-    saved_path?: string;
-    [key: string]: unknown;
-  };
 
-  const handleSaveContent = () => {
-    if (result && 'metadata' in result && result.metadata) {
-      const savedPath = (result.metadata as GenerationResultMetadata)?.saved_path;
-      if (savedPath) {
-        const slug = savedPath.split("/").pop()?.replace(/\.(json|md)$/, "");
-        if (slug) {
-          window.location.href = `/content/${slug}`;
-          return;
-        }
-      }
-    }
-    
-    window.location.href = '/content';
-  };
-
+//   const handleSaveContent = async () => {
+//    console.log('🔍 Current savedContentId:', savedContentId);
+//    
+//    // If already saved, redirect
+//    if (savedContentId) {
+//      window.location.href = `/content/${savedContentId}`;
+//      return;
+//    }
+//
+//    // Otherwise, save now
+//    if (!result?.content) {
+//      window.location.href = '/content';
+//      return;
+//    }
+//
+//    try {
+//      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+//      const templateSlug = selectedTemplate?.id || 'content';
+//      const filename = `${templateSlug}_${timestamp}_${Date.now()}`;
+//    
+//      const response = await fetch('/api/content', {
+//        method: 'POST',
+//        headers: { 'Content-Type': 'application/json' },
+//        body: JSON.stringify({
+//          title: filename,
+//          content: result.content,
+//          metadata: {
+//            template: selectedTemplate?.id,
+//            style_profile: selectedStyleProfile?.id,
+//            word_count: result.content.split(' ').length,
+//            created_at: new Date().toISOString(),
+//          },
+//          status: 'completed',
+//          type: 'article',
+//        }),
+//      });
+//    
+//      if (!response.ok) throw new Error(`Save failed: ${response.status}`);
+//    
+//      const data = await response.json();
+//      console.log('✅ Manual save:', data);
+//      window.location.href = `/content/${data.contentId}`;
+//      
+//  } catch (error) {
+//    console.error('❌ Save failed:', error);
+//    window.location.href = '/content';
+//  }
+//};
+    const handleViewContent = () => {
+      router.push('/content');
+    };
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 text-gray-900 dark:text-white">
       {/* Enhanced Header */}
       <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+      
+        <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
+
           Generate Enhanced AI Content
         </h1>
-        <p className="text-lg text-white max-w-2xl mx-auto">
+        <p className="text-lg text-gray-300 max-w-2xl mx-auto">
           Create high-quality content using our advanced AI models with enhanced dynamic templates. 
           Select a template and style profile to get started.
         </p>
@@ -1018,18 +1096,18 @@ export default function GeneratePage() {
               </div>
 
               {/* Selection Summary */}
-              <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-purple-200 dark:border-purple-800 mb-6">
+              <Card className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 border-purple-500/40 mb-6">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-medium text-white mb-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-4 py-2 rounded-lg border border-purple-500/30 inline-block">Ready to Generate</h3>
+                      <h3 className="font-medium text-white mb-1 bg-gradient-to-r from-purple-600/30 to-pink-600/30 px-4 py-2 rounded-lg border border-purple-500/50 inline-block">Ready to Generate</h3>
                       <p className="text-sm text-gray-300">
                         Template: <span className="font-medium">{selectedTemplate?.title}</span>
                         {' • '}
                         Style: <span className="font-medium">{selectedStyleProfile?.name}</span>
                       </p>
                     </div>
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <Badge variant="outline" className="bg-green-500/20 text-green-300 border-green-500/50">
                       Optimized Pairing
                     </Badge>
                   </div>
@@ -1043,7 +1121,7 @@ export default function GeneratePage() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-4 py-2 rounded-lg border border-purple-500/30">
+                        <CardTitle className="flex items-center gap-2 text-white">
                           <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg">
                             <Settings className="h-5 w-5 text-white" />
                           </div>
@@ -1073,7 +1151,7 @@ export default function GeneratePage() {
               )}
 
               {/* Enhanced Generation Button */}
-              <Card className="border-2 border-dashed border-purple-200 dark:border-purple-800">
+              <Card className="border-2 border-purple-500/30 bg-purple-950/20">
                 <CardContent className="pt-6">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -1082,7 +1160,7 @@ export default function GeneratePage() {
                       </div>
                       <div>
                         <h3 className="font-semibold bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-4 py-2 rounded-lg border border-purple-500/30 inline-block">Ready to Generate Enhanced Content</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                        <p className="text-sm text-gray-300">
                           {canGenerate 
                             ? `Using ${selectedTemplate?.templateData?.template_type || 'standard'} template with ${enhancedParameters.length} parameters`
                             : "Please complete all required fields"
@@ -1113,7 +1191,7 @@ export default function GeneratePage() {
                         ) : (
                           <>
                             <Zap className="h-4 w-4 mr-2" />
-                            Generate Enhanced Content
+                            Generate Content
                           </>
                         )}
                       </Button>
@@ -1133,7 +1211,7 @@ export default function GeneratePage() {
             <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
               <AlertCircle className="h-5 w-5" />
               <div>
-                <span className="font-medium">Enhanced Generation Failed:</span>
+                <span className="font-medium">Error Generating Content:</span>
                 <p className="text-sm mt-1">{error}</p>
                 {!USE_BACKEND_API && (
                   <p className="text-xs text-red-600 dark:text-red-400 mt-2">
@@ -1151,12 +1229,12 @@ export default function GeneratePage() {
         </Card>
       )}
 
-      {/* Enhanced Generation Preview */}
+      {/* Generation Preview */}
       <EnhancedGenerationPreview
         isGenerating={isGenerating}
         generatedContent={result?.content}
         onCancel={cancelGeneration}
-        onSave={handleSaveContent}
+        onSave={handleViewContent}
         templateName={selectedTemplate?.title}
         styleProfile={selectedStyleProfile?.name}
       />

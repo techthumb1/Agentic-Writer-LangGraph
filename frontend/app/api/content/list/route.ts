@@ -37,8 +37,12 @@ export async function GET() {
         const fileContent = await fs.readFile(filePath, 'utf-8');
         const contentData = JSON.parse(fileContent);
         
+        // Generate ID from filename (remove .json extension)
+        const id = file.replace('.json', '');
+        
         allContent.push({
           ...contentData,
+          id,
           week,
           filename: file
         });

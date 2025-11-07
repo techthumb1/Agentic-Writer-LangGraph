@@ -1,6 +1,7 @@
 // frontend/app/content/[contentID]/page.tsx
 "use client";
 
+import { useSession } from 'next-auth/react'
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,14 @@ interface ContentData {
   week?: string;
 }
 
+const formatTitle = (title: string) => {
+  const withoutDate = title.replace(/_\d{4}-\d{2}-\d{2}_\d+$/, '');
+  return withoutDate
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export default function ContentViewPage() {
   const params = useParams();
   const router = useRouter();
@@ -47,16 +56,23 @@ export default function ContentViewPage() {
   const [content, setContent] = useState<ContentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const contentId = params.contentID as string;
+  const { data: session, status } = useSession();
+  const contentId = decodeURIComponent(params.contentID as string);
 
   useEffect(() => {
+    if (status === 'loading') return
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
     const loadContent = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`/api/content/${contentId}`);
+       const response = await fetch(`/api/content/${contentId}`, {
+        cache: 'no-store'
+      }); 
         
         if (!response.ok) {
           if (response.status === 404) {
@@ -80,12 +96,13 @@ export default function ContentViewPage() {
     if (contentId) {
       loadContent();
     }
-  }, [contentId]);
+  }, [contentId, session, status, router]);
 
   const handleEdit = () => {
     router.push(`/content/${contentId}/edit`);
   };
 
+  
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -238,7 +255,7 @@ export default function ContentViewPage() {
           </Button>
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-bold">{content.title}</h1>
+              <h1 className="text-3xl font-bold">{formatTitle(content.title)}</h1>
               <Badge variant={content.status === 'published' ? 'default' : 'secondary'}>
                 {content.status}
               </Badge>
