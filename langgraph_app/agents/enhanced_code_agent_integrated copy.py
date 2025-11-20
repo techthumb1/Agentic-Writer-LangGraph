@@ -1,7 +1,7 @@
 # File: langgraph_app/agents/enhanced_code_agent_integrated.py
 # COMPLETE FIXED VERSION - Enhanced code block formatting and markdown output
 
-from langgraph_app.core.enriched_content_state import (
+from langgraph_app.core.state import (
     EnrichedContentState, 
     AgentType, 
     ContentPhase,

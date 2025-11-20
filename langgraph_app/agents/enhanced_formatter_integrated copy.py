@@ -1,11 +1,15 @@
 # File: langgraph_app/agents/enhanced_formatter_integrated.py
-from langgraph_app.core.enriched_content_state import (
+from __future__ import annotations
+from ast import List
+from langgraph_app.core.state import (
     EnrichedContentState, 
     AgentType, 
     ContentPhase,
     FormattingRequirements
 )
+from urllib.parse import urlparse
 import re
+
 
 class EnhancedFormatterAgent:
     """FIXED: Universal Configuration-Driven Formatter Agent - NO HARDCODED TEMPLATES"""
@@ -43,7 +47,7 @@ class EnhancedFormatterAgent:
     def _generate_intelligent_config(self, state: EnrichedContentState) -> dict:
         """Generate intelligent config based on content analysis"""
         content = state.draft_content
-        spec = state.get("content_spec", {})
+        spec = state.content_spec or {}
         
         # Analyze content patterns
         content_analysis = {
@@ -91,7 +95,7 @@ class EnhancedFormatterAgent:
     def _create_formatting_requirements_universal(self, state: EnrichedContentState, instructions, template_config: dict) -> FormattingRequirements:
         """Create UNIVERSAL formatting requirements from ANY template configuration"""
         
-        spec = state.get("content_spec", {})
+        spec = state.content_spec or {}
         platform = spec.platform
         
         platform_specs = self._get_platform_specifications_universal(platform, template_config)
@@ -108,7 +112,21 @@ class EnhancedFormatterAgent:
             publication_metadata=self._generate_publication_metadata_universal(state, template_config),
             formatting_confidence=0.92
         )
-    
+    @staticmethod
+    def generate_citations(research_sources: List[dict]) -> str:
+        """Generate APA-style citations from research sources"""
+        citations = []
+        for idx, source in enumerate(research_sources, 1):
+            # Extract domain/author
+            domain = urlparse(source["url"]).netloc
+            year = source.get("published_date", "n.d.")[:4] if source.get("published_date") else "n.d."
+            
+            citation = f"{idx}. {source['title']}. ({year}). {domain}. {source['url']}"
+            citations.append(citation)
+        
+        return "\n".join(citations)
+        return "\n".join(citations)
+
     def _apply_universal_formatting(self, state: EnrichedContentState, instructions, template_config: dict) -> str:
         """Apply UNIVERSAL formatting that works with ANY template configuration"""
         
@@ -418,7 +436,7 @@ class EnhancedFormatterAgent:
     
     def _generate_publication_metadata_universal(self, state: EnrichedContentState, template_config: dict) -> dict:
         """Generate publication metadata universally"""
-        spec = state.get("content_spec", {})
+        spec = state.content_spec or {}
         
         metadata = {
             "title": template_config.get('title', f"{spec.topic}: Analysis"),

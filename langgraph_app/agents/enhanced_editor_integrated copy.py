@@ -1,12 +1,15 @@
 # File: langgraph_app/agents/enhanced_editor_integrated.py
 from types import SimpleNamespace
 from typing import Dict, List
-from langgraph_app.core.enriched_content_state import EditingGuidance
+from langgraph_app.core.state import EditingGuidance
 from datetime import datetime
-from langgraph_app.core.enriched_content_state import (
+from langgraph_app.core.state import (
     EnrichedContentState, 
     AgentType
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 class EnhancedEditorAgent:
     """Universal Configuration-Driven Editor Agent - NO HARDCODED TEMPLATES"""
@@ -509,7 +512,7 @@ class EnhancedEditorAgent:
     def _create_editing_guidance_universal(self, state: EnrichedContentState, instructions) -> EditingGuidance:
         """Create universal editing guidance from configuration"""
         content = state.draft_content
-        spec = state.get("content_spec", {})
+        spec = state.content_spec or {}
         planning = state.planning_output
         template_config = state.template_config
         
@@ -534,7 +537,7 @@ class EnhancedEditorAgent:
         """Edit content universally based on guidance"""
         content = state.draft_content
         guidance = state.editing_guidance
-        spec = state.get("content_spec", {})
+        spec = state.content_spec or {}
         
         content = self._apply_structural_improvements_universal(content, guidance.structural_improvements)
         content = self._apply_clarity_enhancements_universal(content, guidance.clarity_enhancements)

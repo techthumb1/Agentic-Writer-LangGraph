@@ -4,7 +4,7 @@
 import re
 from typing import Dict, List
 from venv import logger
-from langgraph_app.core.enriched_content_state import (
+from langgraph_app.core.state import (
     EnrichedContentState, 
     AgentType, 
     ContentPhase,

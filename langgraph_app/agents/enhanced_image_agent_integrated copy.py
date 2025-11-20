@@ -11,10 +11,10 @@ from openai import OpenAI
 from langchain_core.runnables import RunnableLambda
 from dotenv import load_dotenv
 
-from langgraph_app.core.enriched_content_state import EnrichedContentState
+from langgraph_app.core.state import EnrichedContentState
 
 # Import ContentPhase for phase management
-from langgraph_app.core.enriched_content_state import ContentPhase
+from langgraph_app.core.state import ContentPhase
 
 load_dotenv()
 

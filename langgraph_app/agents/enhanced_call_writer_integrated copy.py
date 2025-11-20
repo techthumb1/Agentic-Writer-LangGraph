@@ -1,6 +1,6 @@
 # File: langgraph_app/agents/enhanced_call_writer_integrated.py
 
-from langgraph_app.core.enriched_content_state import (
+from langgraph_app.core.state import (
     EnrichedContentState, 
     AgentType, 
     ContentPhase
@@ -8,7 +8,7 @@ from langgraph_app.core.enriched_content_state import (
 
 # File: langgraph_app/agents/enhanced_call_writer_integrated.py
 
-from langgraph_app.core.enriched_content_state import EnrichedContentState, AgentType
+from langgraph_app.core.state import EnrichedContentState, AgentType
 from datetime import datetime
 
 class EnhancedCallWriterAgent:
