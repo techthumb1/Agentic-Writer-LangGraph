@@ -105,7 +105,7 @@ export function SimpleTooltip({
         <div
           ref={tooltipRef}
           className={cn(
-            "fixed z-[100] px-2 py-1 text-xs text-white bg-gray-900 rounded shadow-lg pointer-events-none",
+            "fixed z-100 px-2 py-1 text-xs text-white bg-gray-900 rounded shadow-lg pointer-events-none",
             "animate-in fade-in-0 zoom-in-95 duration-150",
             "dark:bg-gray-700",
             className
@@ -121,10 +121,10 @@ export function SimpleTooltip({
           <div
             className={cn(
               "absolute w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45",
-              side === "top" && "bottom-[-4px] left-1/2 transform -translate-x-1/2",
-              side === "bottom" && "top-[-4px] left-1/2 transform -translate-x-1/2",
-              side === "left" && "right-[-4px] top-1/2 transform -translate-y-1/2",
-              side === "right" && "left-[-4px] top-1/2 transform -translate-y-1/2"
+              side === "top" && "-bottom-1 left-1/2 transform -translate-x-1/2",
+              side === "bottom" && "-top-1 left-1/2 transform -translate-x-1/2",
+              side === "left" && "-right-1 top-1/2 transform -translate-y-1/2",
+              side === "right" && "-left-1 top-1/2 transform -translate-y-1/2"
             )}
           />
         </div>

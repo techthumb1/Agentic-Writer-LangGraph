@@ -183,7 +183,7 @@ export function CollapsibleNavigation() {
                   <Link
                     href="/auth/signin"
                     onClick={closeMenu}
-                    className="flex items-center justify-center w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-3 rounded-lg text-base font-medium transition-all duration-200 transform hover:scale-105"
+                    className="flex items-center justify-center w-full bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-3 rounded-lg text-base font-medium transition-all duration-200 transform hover:scale-105"
                   >
                     <User className="h-5 w-5 mr-2" />
                     Sign In

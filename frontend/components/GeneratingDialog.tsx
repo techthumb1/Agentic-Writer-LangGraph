@@ -158,7 +158,7 @@ export default function GeneratingDialog({
       >
         <DialogHeader className="text-center space-y-4">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <DialogTitle className="text-xl font-bold bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
               Generating Content{dots}
             </DialogTitle>
             {onCancel && (

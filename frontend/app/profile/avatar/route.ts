@@ -1,6 +1,6 @@
 // frontend/app/api/user/profile/avatar/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma.node'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'

@@ -118,7 +118,7 @@ export function GenerationPreview(props: GenerationPreviewProps) {
   return (
     <div className="space-y-6">
       {/* Generation Status Card */}
-      <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
+      <Card className="border-2 border-purple-200 bg-linear-to-r from-purple-50 to-pink-50">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">

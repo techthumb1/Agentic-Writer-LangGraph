@@ -1,27 +1,33 @@
 # syntax=docker/dockerfile:1
-FROM python:3.11-slim AS base
+FROM python:3.11-slim
 
-# Set working directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# System deps (curl for healthcheck, gcc for any C extensions)
+# System dependencies
 RUN apt-get update && apt-get install -y gcc curl && rm -rf /var/lib/apt/lists/*
 
-# Copy and install dependencies first (leverages layer caching)
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies
+COPY langgraph_app/requirements.txt /app/requirements.txt
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1
+RUN pip install --upgrade pip setuptools wheel \
+    && pip install -r /app/requirements.txt
 
-# Copy backend source
-COPY . .
+# Copy application code
+COPY langgraph_app /app/langgraph_app
 
-# Expose for Cloud Run
-EXPOSE 8080
+# Copy data directory containing templates and style profiles
+COPY data /app/data
 
-# Health check (Cloud Run expects port 8080)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+# Set data directory environment variable
+ENV WRITERZ_DATA_DIR=/app/data
 
-# Run the integrated FastAPI server
-# NOTE: langgraph_app.integrated_server defines "app = FastAPI(...)"
-CMD ["uvicorn", "langgraph_app.integrated_server:app", "--host", "0.0.0.0", "--port", "8080"]
+# Ensure Python can import from /app
+ENV PYTHONPATH=/app
+
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/api/healthz || exit 1
+
+CMD ["uvicorn", "langgraph_app.integrated_server:app", "--host", "0.0.0.0", "--port", "8000"]

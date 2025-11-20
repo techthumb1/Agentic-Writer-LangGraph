@@ -1,6 +1,6 @@
 # File: langgraph_app/agents/enhanced_publisher_integrated.py
 
-from langgraph_app.core.enriched_content_state import EnrichedContentState, AgentType, ContentPhase
+from langgraph_app.core.state import EnrichedContentState, AgentType, ContentPhase
 from datetime import datetime
 from typing import Dict, Any, List
 import re

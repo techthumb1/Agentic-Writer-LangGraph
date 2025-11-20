@@ -1,7 +1,7 @@
 # File: langgraph_app/agents/enhanced_researcher_integrated.py
 from asyncio.log import logger
 from typing import Optional
-from langgraph_app.core.enriched_content_state import (
+from langgraph_app.core.state import (
     EnrichedContentState, 
     AgentType, 
     ContentPhase,
@@ -13,10 +13,90 @@ class EnhancedResearcherAgent:
     
     def __init__(self):
         self.agent_type = AgentType.RESEARCHER
-        
+
+
+        def _execute_research_logic(self, state: EnrichedContentState, instructions, template_config: dict) -> ResearchFindings:
+            """Execute research using planning context, dynamic instructions, and template configuration"""
+
+            planning = state.planning_output
+            spec = state.content_spec or {}
+
+
+            print(f"DEBUG: planning = {planning}")
+            print(f"DEBUG: state.research_plan = {getattr(state, 'research_plan', 'NOT_SET')}")
+            print(f"DEBUG: template_config = {template_config}")
+
+            # Ensure research_plan exists
+            if not hasattr(state, 'research_plan') or state.research_plan is None:
+                from types import SimpleNamespace
+                state.research_plan = SimpleNamespace(
+                    research_priorities=['overview', 'key_concepts', 'examples'],
+                    depth='moderate',
+                    sources_needed=3,
+                    focus_areas=['background', 'main_concepts', 'practical_applications']
+                )
+
+            # Extract research priorities with template priority
+            research_priorities = self._get_template_research_priorities(template_config, planning, spec, instructions)
+            research_priorities = [str(p) for p in research_priorities if p is not None]
+
+            print(f"DEBUG: Final research_priorities = {research_priorities}")
+
+
+            # Safe logging
+            try:
+                state.log_agent_execution(self.agent_type, {
+                    "research_priorities_source": "template_enhanced",
+                    "priorities_count": len(research_priorities),
+                    "priorities": research_priorities[:3]
+                })
+            except Exception as e:
+                print(f"DEBUG: Failed to log priorities: {e}")
+
+            # Execute research for each priority
+            primary_insights = []
+            for priority in research_priorities:
+                try:
+                    insights = self._research_priority(priority, spec, instructions, template_config)
+                    primary_insights.extend(insights)
+                except Exception as e:
+                    print(f"DEBUG: Failed to research {priority}: {e}")
+                    try:
+                        state.log_agent_execution(self.agent_type, {
+                            "priority_error": f"Failed to research {priority}: {str(e)}"
+                        })
+                    except:
+                        pass
+                    continue
+                
+            # Gather supporting data with template awareness
+            evidence_types = []
+            if instructions and hasattr(instructions, 'specific_requirements'):
+                evidence_types = instructions.specific_requirements.get("evidence_types", [])
+
+            # Add template-specific evidence types
+            template_evidence = template_config.get('required_evidence_types', [])
+            evidence_types.extend(template_evidence)
+
+            supporting_data = self._gather_supporting_data(evidence_types, spec, template_config)
+
+            return ResearchFindings(
+                primary_insights=primary_insights,
+                supporting_data=supporting_data,
+                industry_context=self._research_industry_context(spec, template_config),
+                competitive_landscape=self._research_competitive_landscape(spec, template_config),
+                trending_topics=self._identify_trending_topics(spec, template_config),
+                expert_quotes=self._find_expert_quotes(spec, template_config),
+                research_gaps=self._identify_research_gaps(primary_insights),
+                credibility_sources=self._validate_sources(template_config),
+                research_confidence=0.80
+            )
+
+
+
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
         """Execute research with template + planning context"""
-        template_config = state.template_config or state.content_spec.business_context.get('template_config', {})
+        template_config = state.template_config or state.content_template_config.get("business_context", {}).get('template_config', {})
     
         instructions = state.get_agent_instructions(self.agent_type)
     
@@ -145,83 +225,6 @@ class EnhancedResearcherAgent:
 
         return clean_priorities[:8]  # Limit to 8
     
-    def _execute_research_logic(self, state: EnrichedContentState, instructions, template_config: dict) -> ResearchFindings:
-        """Execute research using planning context, dynamic instructions, and template configuration"""
-        
-        planning = state.planning_output
-        spec = state.get("content_spec", {})
-
-        
-        print(f"DEBUG: planning = {planning}")
-        print(f"DEBUG: state.research_plan = {getattr(state, 'research_plan', 'NOT_SET')}")
-        print(f"DEBUG: template_config = {template_config}")
-
-        # Ensure research_plan exists
-        if not hasattr(state, 'research_plan') or state.research_plan is None:
-            from types import SimpleNamespace
-            state.research_plan = SimpleNamespace(
-                research_priorities=['overview', 'key_concepts', 'examples'],
-                depth='moderate',
-                sources_needed=3,
-                focus_areas=['background', 'main_concepts', 'practical_applications']
-            )
-            
-        # Extract research priorities with template priority
-        research_priorities = self._get_template_research_priorities(template_config, planning, spec, instructions)
-        research_priorities = [str(p) for p in research_priorities if p is not None]
-
-        print(f"DEBUG: Final research_priorities = {research_priorities}")
-
-        
-        # Safe logging
-        try:
-            state.log_agent_execution(self.agent_type, {
-                "research_priorities_source": "template_enhanced",
-                "priorities_count": len(research_priorities),
-                "priorities": research_priorities[:3]
-            })
-        except Exception as e:
-            print(f"DEBUG: Failed to log priorities: {e}")
-        
-        # Execute research for each priority
-        primary_insights = []
-        for priority in research_priorities:
-            try:
-                insights = self._research_priority(priority, spec, instructions, template_config)
-                primary_insights.extend(insights)
-            except Exception as e:
-                print(f"DEBUG: Failed to research {priority}: {e}")
-                try:
-                    state.log_agent_execution(self.agent_type, {
-                        "priority_error": f"Failed to research {priority}: {str(e)}"
-                    })
-                except:
-                    pass
-                continue
-        
-        # Gather supporting data with template awareness
-        evidence_types = []
-        if instructions and hasattr(instructions, 'specific_requirements'):
-            evidence_types = instructions.specific_requirements.get("evidence_types", [])
-        
-        # Add template-specific evidence types
-        template_evidence = template_config.get('required_evidence_types', [])
-        evidence_types.extend(template_evidence)
-        
-        supporting_data = self._gather_supporting_data(evidence_types, spec, template_config)
-        
-        return ResearchFindings(
-            primary_insights=primary_insights,
-            supporting_data=supporting_data,
-            industry_context=self._research_industry_context(spec, template_config),
-            competitive_landscape=self._research_competitive_landscape(spec, template_config),
-            trending_topics=self._identify_trending_topics(spec, template_config),
-            expert_quotes=self._find_expert_quotes(spec, template_config),
-            statistical_evidence=self._gather_statistical_evidence(spec, template_config),
-            research_gaps=self._identify_research_gaps(primary_insights),
-            credibility_sources=self._validate_sources(template_config),
-            research_confidence=0.80
-        )
 
 
     def _research_priority(self, priority: str, spec, instructions, template_config: dict) -> list:
@@ -375,7 +378,7 @@ class EnhancedResearcherAgent:
     def _gather_supporting_data(self, evidence_types: list, spec, template_config: dict) -> dict:
         """Gather supporting data based on required evidence types with template awareness"""
         supporting_data = {}
-        template_type = template_config.get('template_type', spec.template_type)
+        template_type = template_config.get('template_type', 'unknown')
         
         for evidence_type in evidence_types:
             if evidence_type == "market_data":
@@ -478,7 +481,7 @@ class EnhancedResearcherAgent:
     
     def _get_financial_metrics(self, spec, template_config: dict) -> dict:
         """Get financial metrics and benchmarks with template specificity"""
-        template_type = template_config.get('template_type', spec.template_type)
+        template_type = template_config.get('template_type', 'unknown')
         
         if template_type == "venture_capital_pitch":
             return {
@@ -498,7 +501,7 @@ class EnhancedResearcherAgent:
     
     def _get_case_studies(self, spec, template_config: dict) -> list:
         """Get relevant case studies with template focus"""
-        template_type = template_config.get('template_type', spec.template_type)
+        template_type = template_config.get('template_type', 'unknown')
         
         if template_type == "venture_capital_pitch":
             return [
@@ -541,11 +544,11 @@ class EnhancedResearcherAgent:
     
     def _research_industry_context(self, spec, template_config: dict) -> dict:
         """Research industry-specific context with template awareness"""
-        template_type = template_config.get('template_type', spec.template_type)
+        template_type = template_config.get('template_type', 'unknown')
         
         base_context = {
-            "industry": spec.business_context.get("industry", "technology"),
-            "stage": spec.business_context.get("stage", "growth"),
+            "industry": template_config.get("industry"),
+            "stage": template_config.get("business_context", {}).get("stage", "growth"),
             "key_challenges": [f"Challenge 1 in {spec.topic}", f"Challenge 2 in {spec.topic}"],
             "opportunities": [f"Opportunity 1 in {spec.topic}", f"Opportunity 2 in {spec.topic}"]
         }
@@ -554,14 +557,13 @@ class EnhancedResearcherAgent:
             base_context.update({
                 "market_dynamics": f"Rapid consolidation in {spec.topic} sector",
                 "regulatory_environment": "Favorable regulatory tailwinds",
-                "technology_trends": ["AI/ML integration", "Cloud-first architecture", "API-driven ecosystems"]
-            })
+        })
         
         return base_context
     
     def _research_competitive_landscape(self, spec, template_config: dict) -> dict:
         """Research competitive landscape with template specificity"""
-        template_type = template_config.get('template_type', spec.template_type)
+        template_type = template_config.get('template_type', 'unknown')
         
         base_landscape = {
             "direct_competitors": [f"Competitor A", f"Competitor B"],
@@ -580,7 +582,7 @@ class EnhancedResearcherAgent:
     
     def _identify_trending_topics(self, spec, template_config: dict) -> list:
         """Identify trending topics with template relevance"""
-        template_type = template_config.get('template_type', spec.template_type)
+        template_type = template_config.get('template_type', 'unknown')
         
         base_trends = [f"AI integration in {spec.topic}", f"Automation trends in {spec.topic}"]
         
@@ -598,52 +600,6 @@ class EnhancedResearcherAgent:
             ])
         
         return base_trends
-    
-    def _find_expert_quotes(self, spec, template_config: dict) -> list:
-        """Find relevant expert quotes with template context"""
-        template_type = template_config.get('template_type', spec.template_type)
-        
-        if template_type == "venture_capital_pitch":
-            return [
-                {
-                    "expert": "Leading VC Partner",
-                    "quote": f"The {spec.topic} sector represents one of the most compelling investment opportunities we've seen",
-                    "credibility": "high",
-                    "context": "Series B funding announcement"
-                }
-            ]
-        else:
-            return [
-                {
-                    "expert": f"Industry Expert in {spec.topic}",
-                    "quote": f"Implementing {spec.topic} strategies delivers measurable business value",
-                    "credibility": "high",
-                    "context": "Industry conference keynote"
-                }
-            ]
-    
-    def _gather_statistical_evidence(self, spec, template_config: dict) -> list:
-        """Gather statistical evidence with template relevance"""
-        template_type = template_config.get('template_type', spec.template_type)
-        
-        if template_type == "venture_capital_pitch":
-            return [
-                {
-                    "statistic": f"{spec.complexity_level * 15}% of successful startups in this sector achieve unicorn status",
-                    "source": "VC Industry Report 2024",
-                    "relevance": "high",
-                    "context": "Funding success rates"
-                }
-            ]
-        else:
-            return [
-                {
-                    "statistic": f"{spec.complexity_level * 10}% of companies report significant improvement after implementation",
-                    "source": "Industry Survey 2024",
-                    "relevance": "high",
-                    "context": "Implementation success rates"
-                }
-            ]
     
     def _identify_research_gaps(self, insights: list) -> list:
         """Identify gaps in research that need addressing"""

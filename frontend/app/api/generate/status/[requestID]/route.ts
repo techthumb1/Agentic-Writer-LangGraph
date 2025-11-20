@@ -1,4 +1,4 @@
-// File: frontend/app/api/generate/status/[request_id]/route.ts
+// frontend/app/api/generate/status/[requestId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL || 'http://127.0.0.1:8000';
@@ -6,13 +6,13 @@ const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { request_id: string } }
+  context: { params: Promise<{ requestId: string }> }
 ) {
-  const { request_id } = params;
+  // ✅ FIX: await params in Next.js 15
+  const { requestId } = await context.params;
 
   try {
-    // Build backend request
-    const backendUrl = `${FASTAPI_BASE_URL}/api/generate/${request_id}`;
+    const backendUrl = `${FASTAPI_BASE_URL}/api/generate/status/${requestId}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -23,7 +23,6 @@ export async function GET(
 
     console.log(`🔍 [STATUS] Checking backend: ${backendUrl}`);
 
-    // Call backend status endpoint
     const response = await fetch(backendUrl, {
       method: 'GET',
       headers,
@@ -36,7 +35,7 @@ export async function GET(
         {
           success: false,
           error: `Backend unavailable (${response.status})`,
-          request_id
+          request_id: requestId
         },
         { status: 502 }
       );
@@ -44,18 +43,17 @@ export async function GET(
 
     const data = await response.json();
     
-    // Extract status data
     const status = data.success ? data.data?.status || 'unknown' : 'failed';
     const content = data.success ? data.data?.content || '' : '';
     const metadata = data.success ? data.data?.metadata || {} : {};
     const progress = data.success ? data.data?.progress || 0 : 0;
 
-    console.log(`✅ [STATUS] ${request_id}: ${status}, content: ${content.length} chars`);
+    console.log(`✅ [STATUS] ${requestId}: ${status}, content: ${content.length} chars`);
 
     return NextResponse.json({
       success: true,
       data: {
-        request_id,
+        request_id: requestId,
         status,
         content,
         metadata,
@@ -65,14 +63,14 @@ export async function GET(
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`❌ [STATUS] Failed for ${request_id}: ${errorMessage}`);
+    console.error(`❌ [STATUS] Failed for ${requestId}: ${errorMessage}`);
     
     return NextResponse.json(
       {
         success: false,
         error: 'Status check failed',
         message: errorMessage,
-        request_id
+        request_id: requestId
       },
       { status: 500 }
     );

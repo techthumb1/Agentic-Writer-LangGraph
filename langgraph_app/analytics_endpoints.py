@@ -170,3 +170,48 @@ async def get_usage_analytics(
         ],
         "timeRange": range
     }
+
+@router.post("/content")
+async def analyze_content(
+    content: str,
+    analysis_types: list[str],
+    generation_id: str | None = None,
+    db: Session = Depends(get_db)
+):
+    """Enterprise content analysis via SEO agent orchestration"""
+    from agents.enhanced_seo_agent_integrated import invoke_seo_agent
+    
+    if not content:
+        raise HTTPException(status_code=400, detail="Content required")
+    
+    try:
+        analysis_result = await invoke_seo_agent({
+            "final_content": content,
+            "template_type": "article",
+            "style_profile": {},
+            "generation_id": generation_id
+        })
+        
+        return {
+            "readability_score": analysis_result.get("readability_score", 50),
+            "sentiment_analysis": analysis_result.get("sentiment_analysis", {
+                "score": 0,
+                "confidence": 50,
+                "dominant_emotion": "neutral"
+            }),
+            "seo_optimization": analysis_result.get("seo_optimization", {
+                "score": 50,
+                "keyword_density": {},
+                "suggestions": []
+            }),
+            "engagement_prediction": analysis_result.get("engagement_prediction", {
+                "score": 50,
+                "viral_potential": 25,
+                "target_demographics": []
+            }),
+            "analysis_timestamp": datetime.utcnow().isoformat(),
+            "generation_id": generation_id
+        }
+    except Exception as e:
+        logger.error(f"Content analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

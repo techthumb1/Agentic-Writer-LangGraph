@@ -1,6 +1,6 @@
 // File: frontend/app/api/content/[contentID]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma.node'
 
 export const runtime = 'nodejs'
@@ -28,7 +28,7 @@ export async function GET(
     })
 
     if (content) {
-      const wordCount = content.content.split(/\s+/).filter(w => w.length > 0).length
+      const wordCount = content.content.split(/\s+/).filter((w: string) => w.length > 0).length
       const readingTime = Math.ceil(wordCount / 200)
 
       return NextResponse.json({

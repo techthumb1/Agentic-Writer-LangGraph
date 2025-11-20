@@ -496,7 +496,7 @@ export async function POST(request: NextRequest) {
     const temperature = generationSettings.temperature;
     const qualityMode = generationSettings.quality_mode;  
 
-    if (!maxTokens || !temperature || !qualityMode) {
+    if (!maxTokens || temperature === undefined || temperature === null || !qualityMode) {
       return NextResponse.json(
         { 
           success: false, 

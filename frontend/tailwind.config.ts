@@ -1,3 +1,5 @@
+// frontend/tailwinds.config.ts
+
 import type { Config } from 'tailwindcss';
 import forms from '@tailwindcss/forms';
 import animate from 'tailwindcss-animate';

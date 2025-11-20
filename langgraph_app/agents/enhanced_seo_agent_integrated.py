@@ -1,166 +1,440 @@
 # langgraph_app/agents/enhanced_seo_agent_integrated.py
-# FIXED: Removed duplicate function and cleaned up code for a single source of truth.
+"""
+Enterprise SEO Agent with LLM integration, tool use, and optimization loops.
+"""
 
+import os
+import logging
 import re
-from typing import Dict, List
-from langgraph_app.core.state import (
-    EnrichedContentState,
-    AgentType,
-    ContentPhase,
-    SEOOptimizationContext
-)
+from typing import Dict, List, Any, Optional
+from collections import Counter
+
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.tools import tool
+
+from langgraph_app.core.state import EnrichedContentState, AgentType, ContentPhase
+from langgraph_app.core.types import SeoAnalysis, SEOOptimizationContext
+from langgraph_app.enhanced_model_registry import get_model_for_generation
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_INTENTS = {"informational", "commercial", "transactional", "navigational"}
 
-class EnhancedSEOAgent:
-    """Integrated SEO Agent using EnrichedContentState with Template Configuration Support"""
 
+# Tool definitions for SEO agent
+@tool
+def analyze_keyword_density(text: str, target_keywords: List[str]) -> Dict[str, Any]:
+    """Analyze keyword density and distribution.
+    
+    Args:
+        text: Content to analyze
+        target_keywords: Keywords to check
+        
+    Returns:
+        Keyword analysis with density percentages
+    """
+    text_lower = text.lower()
+    words = re.findall(r'\b\w+\b', text_lower)
+    total_words = len(words)
+    
+    if total_words == 0:
+        return {"densities": {}, "total_words": 0, "recommendations": ["Content is empty"]}
+    
+    densities = {}
+    for keyword in target_keywords:
+        kw_lower = keyword.lower()
+        count = text_lower.count(kw_lower)
+        density = (count / total_words) * 100
+        densities[keyword] = {
+            "count": count,
+            "density": round(density, 2),
+            "optimal": 1.0 <= density <= 3.0
+        }
+    
+    recommendations = []
+    for kw, data in densities.items():
+        if data["density"] < 1.0:
+            recommendations.append(f"Increase '{kw}' usage (current: {data['density']}%)")
+        elif data["density"] > 3.0:
+            recommendations.append(f"Reduce '{kw}' usage to avoid stuffing (current: {data['density']}%)")
+    
+    return {
+        "densities": densities,
+        "total_words": total_words,
+        "recommendations": recommendations if recommendations else ["Keyword density optimal"]
+    }
+
+
+@tool
+def generate_meta_tags(text: str, keywords: List[str], max_title_length: int = 60) -> Dict[str, str]:
+    """Generate SEO meta tags from content.
+    
+    Args:
+        text: Content to analyze
+        keywords: Target keywords
+        max_title_length: Maximum title length
+        
+    Returns:
+        Meta title and description
+    """
+    # Extract first meaningful paragraph
+    paragraphs = [p.strip() for p in text.split('\n\n') if p.strip() and not p.startswith('#')]
+    first_para = paragraphs[0] if paragraphs else text[:200]
+    
+    # Generate title from first heading or first sentence
+    headings = re.findall(r'^#+\s+(.+)$', text, re.M)
+    if headings:
+        title_base = headings[0]
+    else:
+        sentences = re.split(r'[.!?]', first_para)
+        title_base = sentences[0].strip() if sentences else "Content"
+    
+    # Optimize title with keywords
+    title = title_base[:max_title_length]
+    if keywords and keywords[0].lower() not in title.lower():
+        title = f"{keywords[0]}: {title}"[:max_title_length]
+    
+    # Generate description
+    description = re.sub(r'[#*`]', '', first_para)[:160]
+    
+    return {
+        "meta_title": title,
+        "meta_description": description,
+        "og_title": title,
+        "og_description": description
+    }
+
+
+@tool
+def check_readability_seo(text: str) -> Dict[str, Any]:
+    """Check content readability for SEO.
+    
+    Args:
+        text: Content to analyze
+        
+    Returns:
+        Readability metrics and SEO impact
+    """
+    words = text.split()
+    sentences = re.split(r'[.!?]+', text)
+    
+    word_count = len(words)
+    sentence_count = max(1, len([s for s in sentences if s.strip()]))
+    avg_sentence_length = word_count / sentence_count
+    
+    # Flesch Reading Ease
+    syllables = sum(len(re.findall(r'[aeiouy]+', word)) for word in words)
+    avg_syllables = syllables / max(word_count, 1)
+    flesch = 206.835 - 1.015 * avg_sentence_length - 84.6 * avg_syllables
+    flesch_score = max(0, min(100, flesch))
+    
+    # SEO impact assessment
+    if flesch_score >= 60:
+        seo_impact = "positive"
+        recommendation = "Good readability improves dwell time and engagement"
+    elif flesch_score >= 50:
+        seo_impact = "neutral"
+        recommendation = "Moderate readability - consider simplification"
+    else:
+        seo_impact = "negative"
+        recommendation = "Poor readability may hurt rankings - simplify content"
+    
+    return {
+        "flesch_score": round(flesch_score, 1),
+        "avg_sentence_length": round(avg_sentence_length, 1),
+        "seo_impact": seo_impact,
+        "recommendation": recommendation
+    }
+
+
+class EnhancedSEOAgent:
+    """
+    Enterprise SEO Agent with:
+    - LLM-driven optimization (GPT-4o / Claude Sonnet 4)
+    - Tool use (keyword analysis, meta generation, readability)
+    - Self-refinement loop for SEO score validation
+    - Dynamic search intent determination
+    """
+    
     def __init__(self):
         self.agent_type = AgentType.SEO
-
+        self.tools = [analyze_keyword_density, generate_meta_tags, check_readability_seo]
+        
+        # SEO thresholds
+        self.min_seo_score = 0.7
+        self.max_refinement_loops = 2
+    
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Optimize content for SEO"""
-        state.log_agent_execution(self.agent_type, { "status": "started" })
-
-        seo_context = self._create_seo_context(state)
-        state.seo_optimization = seo_context
-
-        optimized_content = self._apply_seo_optimizations(state)
-        state.draft_content = optimized_content
+        """Execute SEO optimization with LLM and tools."""
+        
+        logger.info("📈 SEO: Starting enterprise optimization")
+        
+        # Get content to optimize
+        if state.formatted_content and hasattr(state.formatted_content, 'markdown'):
+            content = state.formatted_content.markdown
+        elif state.edited_content and hasattr(state.edited_content, 'body'):
+            content = state.edited_content.body
+        elif state.draft_content:
+            content = state.draft_content.body if hasattr(state.draft_content, 'body') else state.draft_content
+        else:
+            content = state.content
+        
+        if not content or not content.strip():
+            raise RuntimeError("ENTERPRISE: SEO requires content")
+        
+        # Get configs
+        template_config = state.template_config or {}
+        
+        # Extract SEO context
+        target_keywords = self._extract_target_keywords(state)
+        search_intent = self._determine_search_intent(state)
+        
+        # Self-refinement loop
+        seo_score = 0.0
+        refinement_round = 0
+        optimized_content = content
+        
+        while refinement_round < self.max_refinement_loops and seo_score < self.min_seo_score:
+            refinement_round += 1
+            logger.info(f"🔍 SEO refinement round {refinement_round}/{self.max_refinement_loops}")
+            
+            # Run LLM optimization with tools
+            optimized_content, tool_results, seo_score = self._llm_optimize_with_tools(
+                optimized_content,
+                target_keywords,
+                search_intent,
+                template_config,
+                state
+            )
+            
+            if seo_score >= self.min_seo_score:
+                logger.info(f"✅ SEO score acceptable: {seo_score:.2f}")
+                break
+            else:
+                logger.info(f"⚠️ SEO score too low: {seo_score:.2f}, refining...")
+        
+        # Generate meta tags
+        meta_result = generate_meta_tags.invoke({
+            "text": optimized_content,
+            "keywords": target_keywords,
+            "max_title_length": 60
+        })
+        
+        # Create SEO analysis
+        keyword_analysis = analyze_keyword_density.invoke({
+            "text": optimized_content,
+            "target_keywords": target_keywords
+        })
+        
+        state.seo_analysis = SeoAnalysis(
+            keyword_density={kw: data["density"] for kw, data in keyword_analysis["densities"].items()},
+            readability_score=seo_score,
+            recommendations=keyword_analysis["recommendations"],
+            meta_title=meta_result["meta_title"],
+            meta_description=meta_result["meta_description"]
+        )
+        
+        # Create SEO optimization context
+        state.seo_optimization = SEOOptimizationContext(
+            target_keywords=target_keywords,
+            meta_description=meta_result["meta_description"],
+            title_recommendations=[meta_result["meta_title"]],
+            seo_score=seo_score
+        )
+        
+        # Update content
+        state.content = optimized_content
         state.update_phase(ContentPhase.OPTIMIZATION)
-
+        
         state.log_agent_execution(self.agent_type, {
             "status": "completed",
-            "keywords_targeted": len(seo_context.target_keywords),
-            "seo_score": seo_context.seo_score
+            "seo_score": seo_score,
+            "refinement_rounds": refinement_round,
+            "keywords_count": len(target_keywords)
         })
-
-        return state
-
-    def _normalize_user_intent(self, val: str) -> str:
-        v = (val or "").strip().lower()
-        if v in ALLOWED_INTENTS:
-            return v
-        alias = {
-            "info": "informational", "educational": "informational",
-            "trans": "transactional", "comm": "commercial", "nav": "navigational",
-        }
-        if v in alias:
-            return alias[v]
-        raise ValueError(f"ENTERPRISE: SEO intent override invalid: '{val}'. Allowed: {sorted(ALLOWED_INTENTS)}")
-
-    def _extract_target_keywords(self, state: EnrichedContentState) -> List[str]:
-        """Deterministic keyword extraction from state."""
-        # Priority 1: From planning_output
-        planning = getattr(state, "planning_output", None)
-        if planning:
-            keywords = getattr(planning, "target_keywords", None)
-            if keywords and isinstance(keywords, list):
-                return [k.strip() for k in keywords if k and isinstance(k, str)]
-
-        # Priority 2: From template_config
-        template_cfg = getattr(state, "template_config", {}) or {}
-        raw_keywords = template_cfg.get("keywords")
-        if isinstance(raw_keywords, list):
-            return [str(k).strip() for k in raw_keywords if str(k).strip()]
-        if isinstance(raw_keywords, str):
-            return [s.strip() for s in raw_keywords.split(',') if s.strip()]
-
-        # Priority 3: Derived from topic
-        topic = getattr(state.content_spec, "topic", "") or ""
-        tokens = list(dict.fromkeys([t.strip() for t in re.split(r'\W+', topic) if len(t.strip()) > 3]))
-        tokens.sort(key=len, reverse=True)
-        if not tokens:
-             raise RuntimeError("ENTERPRISE: SEO agent could not determine keywords from topic.")
-        return tokens[:5]
-
-    def _determine_search_intent(self, state: EnrichedContentState) -> str:
-        """
-        Deterministic intent mapping.
-        Precedence: Override -> Template Map -> Style Map. Raises error if unmapped.
-        """
-        # 1. Explicit override from planning
-        planning = getattr(state, "planning_output", None)
-        if planning:
-            override = getattr(planning, "search_intent", None)
-            if override:
-                return self._normalize_user_intent(override)
-
-        template_cfg = getattr(state, "template_config", {}) or {}
-        template_type = str(template_cfg.get("template_type", "")).strip().lower()
-
-        style_cfg = getattr(state, "style_config", {}) or {}
-        style_id = str(style_cfg.get("id", "")).strip().lower()
-
-        INTENT_BY_TEMPLATE = {
-            "api_documentation": "informational", "blog_article": "informational",
-            "business_proposal": "commercial", "data_driven_report": "informational",
-            "email_newsletter": "informational", "market_analysis": "informational",
-            "press_release": "commercial", "research_paper": "informational",
-            "social_media_campaign": "commercial", "strategic_brief": "commercial",
-            "technical_documentation": "informational",
-        }
-        if template_type in INTENT_BY_TEMPLATE:
-            return INTENT_BY_TEMPLATE[template_type]
-
-        INTENT_BY_STYLE = {
-            "content_marketing": "commercial", "conversion_optimization": "transactional",
-            "executive_summary": "commercial", "investor_presentation": "commercial",
-            "phd_academic": "informational", "technical_dive": "informational",
-        }
-        if style_id in INTENT_BY_STYLE:
-            return INTENT_BY_STYLE[style_id]
-
-        raise ValueError(f"ENTERPRISE: SEO intent unmapped for template_type '{template_type}' and style_profile '{style_id}'.")
-
-    def _create_seo_context(self, state: EnrichedContentState) -> SEOOptimizationContext:
-        """Create the full SEO context for the optimization step."""
-        target_keywords = self._extract_target_keywords(state)
-        primary_keyword = target_keywords[0]
-        topic = state.content_spec.topic
         
-        # Generate a compelling, keyword-rich title
-        title_recommendations = [
-            f"{primary_keyword.title()}: A Comprehensive Guide to {topic}",
-            f"Understanding {topic}: The Role of {primary_keyword.title()}",
-            f"How {primary_keyword.title()} Is Transforming {topic}"
+        logger.info(f"✅ SEO: Completed with score={seo_score:.2f}")
+        
+        return state
+    
+    def _llm_optimize_with_tools(
+        self,
+        content: str,
+        keywords: List[str],
+        intent: str,
+        template_config: Dict,
+        state: EnrichedContentState
+    ) -> tuple[str, List[Dict], float]:
+        """Use LLM with tools to optimize for SEO."""
+        
+        # Select model
+        model = get_model_for_generation(
+            task_type="seo_optimization",
+            complexity_score=0.5
+        )
+        
+        # Bind tools
+        model_with_tools = model.bind_tools(self.tools)
+        
+        # Build SEO prompt
+        system_prompt = self._build_seo_system_prompt(keywords, intent, template_config)
+        
+        user_prompt = f"""Optimize the following content for search engines.
+
+**Target Keywords:** {', '.join(keywords)}
+**Search Intent:** {intent}
+
+**Content to Optimize:**
+{content}
+
+**Instructions:**
+1. Use analyze_keyword_density to check current keyword usage
+2. Use check_readability_seo to assess SEO impact of readability
+3. Use generate_meta_tags to create optimized meta tags
+4. Adjust keyword placement naturally (1-3% density per keyword)
+5. Maintain content quality while improving discoverability
+6. Ensure headers include target keywords
+7. Add internal linking opportunities where natural
+
+Provide the SEO-optimized content with improvements applied."""
+        
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
         ]
         
-        # Generate a meta description
-        meta_description = f"Explore the critical role of {primary_keyword} in {topic}. This definitive guide covers key strategies, market analysis, and future trends."
-
-        return SEOOptimizationContext(
-            target_keywords=target_keywords,
-            meta_description=meta_description,
-            title_recommendations=title_recommendations,
-            seo_score=0.85 # Base score, can be refined later
-        )
-
-    def _apply_seo_optimizations(self, state: EnrichedContentState) -> str:
-        """Apply SEO optimizations to the draft content."""
-        content = state.draft_content
-        seo_context = state.seo_optimization
+        # Invoke with tools
+        response = model_with_tools.invoke(messages)
         
-        if not seo_context or not seo_context.target_keywords:
-            return content
+        # Extract tool results
+        tool_results = []
+        if hasattr(response, 'tool_calls') and response.tool_calls:
+            for tool_call in response.tool_calls:
+                logger.info(f"🔧 Tool called: {tool_call['name']}")
+                tool_results.append({
+                    "tool": tool_call['name'],
+                    "result": tool_call.get('args', {})
+                })
+        
+        # Calculate SEO score
+        seo_score = self._calculate_seo_score(tool_results, keywords)
+        
+        # Extract optimized content
+        optimized = response.content if hasattr(response, 'content') else content
+        
+        return optimized, tool_results, seo_score
+    
+    def _build_seo_system_prompt(
+        self,
+        keywords: List[str],
+        intent: str,
+        template_config: Dict
+    ) -> str:
+        """Build system prompt for SEO optimization."""
+        
+        template_type = template_config.get('template_type', 'content')
+        
+        prompt = f"""You are an expert SEO specialist optimizing {template_type} content.
 
-        primary_keyword = seo_context.target_keywords[0]
+**SEO Objectives:**
+- Improve search engine rankings for target keywords
+- Optimize for {intent} search intent
+- Maintain natural, readable content (no keyword stuffing)
+- Enhance SERP click-through rates with compelling meta tags
+- Follow E-E-A-T principles (Experience, Expertise, Authority, Trust)
 
-        # 1. Optimize Title: Ensure primary keyword is in the main H1
-        # This assumes markdown format with a single H1 at the start.
-        content_lines = content.split('\n')
-        if content_lines and content_lines[0].startswith('# '):
-            if primary_keyword.lower() not in content_lines[0].lower():
-                content_lines[0] = f'# {primary_keyword.title()}: {content_lines[0][2:]}'
-                content = '\n'.join(content_lines)
+**Target Keywords:** {', '.join(keywords)}
+**Search Intent:** {intent}
 
-        # 2. Keyword Integration: Ensure the primary keyword appears in the first paragraph.
-        paragraphs = content.split('\n\n')
-        if len(paragraphs) > 1 and primary_keyword.lower() not in paragraphs[0].lower():
-            # Find the first sentence and prepend the keyword phrase
-            first_paragraph_sentences = paragraphs[0].split('. ')
-            first_paragraph_sentences[0] = f"In the context of {primary_keyword}, {first_paragraph_sentences[0].lower()}"
-            paragraphs[0] = '. '.join(first_paragraph_sentences)
-            content = '\n\n'.join(paragraphs)
+**Optimization Guidelines:**
+1. Keyword placement: Title, H1, first paragraph, subheadings
+2. Density: 1-3% per keyword (natural distribution)
+3. Semantic variations: Use related terms and synonyms
+4. Internal structure: Clear hierarchy with H2/H3 tags
+5. Readability: Target Flesch score 60+ for wider audience
+6. Meta optimization: Compelling titles/descriptions with keywords
 
-        return content
+**Critical Instructions:**
+- Use available tools to analyze and validate optimizations
+- Never sacrifice content quality for SEO tactics
+- Maintain factual accuracy and authority
+- Focus on user value - search engines reward helpful content
+- Avoid over-optimization that triggers spam filters"""
+        
+        return prompt
+    
+    def _calculate_seo_score(self, tool_results: List[Dict], keywords: List[str]) -> float:
+        """Calculate overall SEO score from tool results."""
+        
+        score = 0.5  # Base
+        
+        # Keyword density score
+        density_results = [r for r in tool_results if r.get('tool') == 'analyze_keyword_density']
+        if density_results:
+            densities = density_results[0].get('result', {}).get('densities', {})
+            optimal_count = sum(1 for data in densities.values() if data.get('optimal', False))
+            density_score = optimal_count / max(len(keywords), 1)
+            score += density_score * 0.3
+        
+        # Readability score
+        readability_results = [r for r in tool_results if r.get('tool') == 'check_readability_seo']
+        if readability_results:
+            flesch = readability_results[0].get('result', {}).get('flesch_score', 50)
+            if flesch >= 60:
+                score += 0.2
+            elif flesch >= 50:
+                score += 0.1
+        
+        return min(1.0, score)
+    
+    def _extract_target_keywords(self, state: EnrichedContentState) -> List[str]:
+        """Extract target keywords with priority order."""
+        
+        # 1. Planning output
+        if state.planning_output:
+            kw = getattr(state.planning_output, 'target_keywords', None)
+            if isinstance(kw, list) and kw:
+                return [k.strip() for k in kw if k]
+        
+        # 2. Template config
+        template_config = state.template_config or {}
+        if isinstance(template_config, dict):
+            raw = template_config.get('keywords')
+            if isinstance(raw, list) and raw:
+                return [str(x).strip() for x in raw if x]
+            elif isinstance(raw, str) and raw:
+                return [s.strip() for s in raw.split(',') if s.strip()]
+        
+        # 3. Topic-derived
+        if state.content_spec:
+            topic = state.content_spec.topic or ""
+            tokens = [t.strip() for t in re.split(r'[^\w\-]+', topic) if t.strip()]
+            tokens = list(dict.fromkeys(tokens))  # Dedupe
+            tokens.sort(key=len, reverse=True)
+            return tokens[:6] if tokens else ["content"]
+        
+        return ["content"]
+    
+    def _determine_search_intent(self, state: EnrichedContentState) -> str:
+        """Determine search intent dynamically."""
+        
+        # Check planning override
+        if state.planning_output:
+            override = getattr(state.planning_output, 'search_intent', None)
+            if override and override in ALLOWED_INTENTS:
+                return override
+        
+        # Analyze template type
+        template_config = state.template_config or {}
+        template_type = str(template_config.get('template_type', '')).lower()
+        
+        if any(w in template_type for w in ['research', 'analysis', 'documentation', 'guide']):
+            return "informational"
+        elif any(w in template_type for w in ['proposal', 'pitch', 'marketing', 'sales']):
+            return "commercial"
+        elif any(w in template_type for w in ['product', 'service', 'buy', 'purchase']):
+            return "transactional"
+        elif any(w in template_type for w in ['brand', 'about', 'company']):
+            return "navigational"
+        
+        return "informational"  # Default

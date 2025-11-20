@@ -35,7 +35,7 @@ export default function WriterzRoomLogo({
   const IconComponent = () => (
     <div 
       className={`
-        bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 
+        bg-linear-to-br from-blue-600 via-purple-600 to-indigo-600 
         rounded-xl flex items-center justify-center 
         shadow-lg hover:shadow-xl transition-all duration-300
         hover:scale-105 group-hover:rotate-3
@@ -58,7 +58,7 @@ export default function WriterzRoomLogo({
   const TextComponent = () => (
     <span 
       className={`
-        font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 
+        font-bold bg-linear-to-r from-gray-900 via-blue-800 to-purple-800 
         bg-clip-text text-transparent dark:from-white dark:via-blue-200 dark:to-purple-200
         ${currentSize.text}
       `}
@@ -150,7 +150,7 @@ export function WriterzRoomHeroLogo() {
         href={undefined}
       />
       <h1 className="text-5xl md:text-6xl font-bold">
-        <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+        <span className="bg-linear-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
           WriterzRoom
         </span>
       </h1>

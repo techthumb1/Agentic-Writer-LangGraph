@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { auth } from "@/app/api/auth/[...nextauth]/route"
+import { auth } from "@/auth"
 import Link from "next/link";
 import { CollapsibleNavigation } from "@/components/CollapsibleNavigation"
 import "./globals.css";

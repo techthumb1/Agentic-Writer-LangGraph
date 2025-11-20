@@ -1,0 +1,56 @@
+OPENAI_API_KEY=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
+ANTHROPIC_API_KEY=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
+#GOOGLE_API_KEY=AIzaSyADMDwz0rxN3fPsiaA46qVsjg_3FSunm3g
+SUBSTACK_EMAIL=substack.com/@jasonsrobinson
+BREVO_API_KEY=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
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+DATABASE_URL="postgresql://postgres:YSH$sqC7XdXpga#HQ@db:5432/ai_content_db"
+DB_PASS="YSH$sqC7XdXpga#HQ"
+DB_USER="jasonrobinson"
+DB_HOST=db
+DB_PORT=5432
+DB_NAME=ai_content_db
+
+NODE_ENV="development"
+LANGGRAPH_API_KEY=prod_api_key_2025_secure_content_gen_v1
+
+# FastAPI
+FASTAPI_BASE_URL=http://127.0.0.1:8000
+FASTAPI_API_KEY=prod_api_key_2025_secure_content_gen_v1
+
+# Session secret or JWT secret (for auth)
+SESSION_SECRET="2c98f34aeecdd5041787608c4573c1e0c5b24cbcad248605392312927d89c70f"
+
+# Optional: Connection pooling override for Prisma
+# Can tune max pool size with PG options if needed:
+# e.g. PGSSLMODE=disable  (if not using SSL on dev)
+PGSSLMODE="disable"
+
+# Optional: If using NextAuth.js, set these variables
+AUTH_SECRET=vbts0ATMNvhZTFcpTsBqJk5FOY7uag3dUbMReMNB2JU=
+NEXTAUTH_SECRET=oiCaXHqp1YZ9KcX7e8EflMkYWkppkuCsyOle81teC/8=
+NEXTAUTH_URL=http://localhost:3000
+AUTH_GOOGLE_ID=732324345493-6ltigl345hidvsncim4ta7pcp5osvhap.apps.googleusercontent.com
+AUTH_GOOGLE_SECRET=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
+
+API_SECRET_KEY="tF9iM7mltRyBbT/QMs/YRbO2DNVu/wrMfiavloBOMx4="
+WEBHOOK_SECRET_KEY="3a0b323fc009d0746db161d1e4cdd850f78d9d8adccbdc10"
+
+## LangChain Services
+LANGSMITH_API_KEY=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
+LANGGRAPH_API_KEY=prod_api_key_2025_secure_content_gen_v1
+LANGCHAIN_TRACING_V2=true
+
+## Secret Key
+SECRET_KEY=XrM_w1b6syYqE6TLgVeVFmEIbflI9yDU3rg1-56_49oLrt4OVAParIvoTrDUmbp5PQ2BQotS9GEsUnERaUCE9g
+
+## Web Search APIs
+TAVILY_API_KEY=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
+
+## Additional AI Services
+HUGGINGFACE_API_KEY=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
+#PERPLEXITY_API_KEY=
+
+## Backend Security
+#API_SECRET_KEY=your-generated-api-secret

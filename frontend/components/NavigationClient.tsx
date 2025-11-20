@@ -105,8 +105,8 @@ const NavigationClient = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
           <Link href="/" className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <div className="shrink-0">
+              <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Zap className="h-6 w-6 text-white" />
               </div>
             </div>

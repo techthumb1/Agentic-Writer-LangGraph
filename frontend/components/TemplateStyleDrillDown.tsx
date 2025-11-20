@@ -126,7 +126,7 @@ export default function TemplateStyleDrillDown({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-4 py-2 rounded-lg border border-purple-500/30">
+              <CardTitle className="flex items-center gap-2 bg-linear-to-r from-purple-500/20 to-pink-500/20 px-4 py-2 rounded-lg border border-purple-500/30">
                 <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full">
                   1
                 </span>
@@ -150,7 +150,7 @@ export default function TemplateStyleDrillDown({
                 key={template.id}
                 className={`cursor-pointer transition-all duration-200 hover:shadow-md h-40 ${
                   selectedTemplate?.id === template.id
-                    ? 'ring-2 ring-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20'
+                    ? 'ring-2 ring-purple-500 bg-linear-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20'
                     : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
                 onClick={() => handleTemplateSelect(template)}
@@ -168,7 +168,7 @@ export default function TemplateStyleDrillDown({
                         {template.description}
                       </p>
                       <div className="flex gap-2 mt-2">
-                        <Badge variant="secondary" className="text-xs bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 dark:from-purple-900 dark:to-pink-900 dark:text-purple-200 border-purple-200 dark:border-purple-700">
+                        <Badge variant="secondary" className="text-xs bg-linear-to-r from-purple-100 to-pink-100 text-purple-800 dark:from-purple-900 dark:to-pink-900 dark:text-purple-200 border-purple-200 dark:border-purple-700">
                           {template.category}
                         </Badge>
                         {template.difficulty && (
@@ -193,7 +193,7 @@ export default function TemplateStyleDrillDown({
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-4 py-2 rounded-lg border border-purple-500/30">
+                <CardTitle className="flex items-center gap-2 bg-linear-to-r from-purple-500/20 to-pink-500/20 px-4 py-2 rounded-lg border border-purple-500/30">
                   <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full">
                     2
                   </span>
@@ -284,7 +284,7 @@ export default function TemplateStyleDrillDown({
                     key={style.id}
                     className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
                       selectedStyle?.id === style.id
-                        ? 'ring-2 ring-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20'
+                        ? 'ring-2 ring-purple-500 bg-linear-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20'
                         : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                     onClick={() => onStyleSelect(style)}
@@ -315,7 +315,7 @@ export default function TemplateStyleDrillDown({
                             {style.description}
                           </p>
                           <div className="flex gap-2">
-                            <Badge variant="secondary" className="text-xs bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 dark:from-purple-900 dark:to-pink-900 dark:text-purple-200 border-purple-200 dark:border-purple-700">
+                            <Badge variant="secondary" className="text-xs bg-linear-to-r from-purple-100 to-pink-100 text-purple-800 dark:from-purple-900 dark:to-pink-900 dark:text-purple-200 border-purple-200 dark:border-purple-700">
                               {style.category}
                             </Badge>
                             {style.tone && (

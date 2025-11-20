@@ -349,7 +349,7 @@ export default function MyContentPage() {
                 <Card key={item.id} className="theme-card">
                   <CardHeader>
                     <div className="flex items-start justify-between mb-2">
-                      <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+                      <FileText className="h-5 w-5 text-primary shrink-0" />
                       <Badge 
                         variant={item.status === 'published' ? 'default' : 'secondary'}
                         className={`status-badge ${item.status}`}

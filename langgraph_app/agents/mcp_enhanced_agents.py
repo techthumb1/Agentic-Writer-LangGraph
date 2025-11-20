@@ -1,11 +1,11 @@
 # langgraph_app/agents/mcp_enhanced_agents.py
 
-from ..mcp_server_extension import MCPGenerationRequest
+from ..mcp_server_extension import MCPGenerationRequest # type: ignore
 from ..enhanced_model_registry import get_model
-from ..mcp_server_extension import execute_enhanced_mcp_generation
+from ..mcp_server_extension import execute_enhanced_mcp_generation # pyright: ignore[reportMissingImports]
 
 try:
-    from ..mcp_server_extension import (
+    from ..mcp_server_extension import ( # type: ignore
         initialize_mcp_for_existing_server,
         cleanup_mcp_for_existing_server,
         enhance_generation_with_mcp,
@@ -478,7 +478,7 @@ async def execute_content_generation(
     
     # FIXED: Initialize result to None before try block
     result = None
-    from ..mcp_server_extension import execute_enhanced_mcp_generation
+    from ..mcp_server_extension import execute_enhanced_mcp_generation # type: ignore
 
     try:
         logger.info("Starting MCP-enhanced content generation",

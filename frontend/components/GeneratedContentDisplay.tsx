@@ -160,6 +160,8 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
     },
   ];
 
+
+
   // Enterprise content analysis
   const contentStats = useMemo(() => {
     if (!content) return null;
@@ -453,8 +455,9 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
         const analysisPromises = [];
         
         // Basic analytics via API
+        // Enterprise analytics via backend orchestration
         analysisPromises.push(
-          fetch('/api/analyze/content', {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analytics/content`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -686,7 +689,7 @@ const GeneratedContentDisplay: React.FC<GeneratedContentDisplayProps> = ({
     <div className="w-full space-y-6">
       {/* Enterprise Analytics Dashboard */}
       {analytics && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-linear-to-r from-blue-50 to-purple-50 rounded-lg border">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">
               {analytics.seo_optimization.score}

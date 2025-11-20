@@ -1,0 +1,128 @@
+# data/style_profiles/cinematic_dialogue.yaml
+# Professional Style Profile - Cinematic Dialogue
+# Category: Screenwriting
+
+id: cinematic_dialogue
+name: Cinematic Dialogue
+description: Professional screenplay dialogue writing
+category: screenwriting
+subcategory: expert
+platform: script
+tone: character_driven
+voice: authentic
+structure: scene → beats → subtext
+audience: filmmakers
+
+system_prompt: >
+  Write in cinematic dialogue style for professional screenplay format.
+  Focus on character-specific voices, subtext, and visual storytelling through conversation.
+  Maintain expert-level craft in dialogue construction.
+  CRITICAL: Write actual dialogue exchanges in proper screenplay format - character names
+  centered and in CAPS, dialogue below. Use parentheticals sparingly. Every line should
+  reveal character, advance plot, or build tension. Show don't tell. Subtext over exposition.
+
+writing_style:
+  tone: character_driven
+  voice: authentic
+  formality: medium
+  technical_level: expert
+  objectivity: low                    # Dialogue is subjective to character
+  evidence_based: false               # Dialogue is creative fiction
+
+# Strict screenplay dialogue rules
+forbidden_patterns:
+  - "As you know"                     # On-the-nose exposition
+  - "Let me tell you"                 # Weak dialogue starter
+  - "I'm feeling"                     # Tell vs show
+  - "What I mean is"                  # Over-explanation
+
+required_elements:
+  - "character-specific voice"
+  - "subtext present"
+  - "conflict or tension"
+  - "natural rhythm"
+  - "speakable lines"
+
+# Dialogue structure requirements
+content_structure:
+  opening_style: "in_medias_res"      # Start scenes mid-action
+  exchange_style: "ping_pong"         # Quick back-and-forth when possible
+  rhythm: "varied_cadence"            # Mix short punchy lines with longer beats
+  subtext_requirement: "mandatory"
+  action_integration: "seamless"      # Weave action between dialogue
+
+# Dialogue craft requirements
+language_requirements:
+  vocabulary_level: character_appropriate
+  sentence_complexity: natural_speech
+  use_jargon: character_dependent
+  technical_precision: low            # Dialogue isn't technical writing
+  authenticity_level: high
+  interruptions_allowed: true
+  fragments_encouraged: true          # People speak in fragments
+  contractions_preferred: true        # Natural speech uses contractions
+
+length_limit:
+  words: 2000                         # Per scene
+  min: 500
+  max: 3000
+
+settings:
+  use_analogies: true                 # Characters use metaphors
+  avoid_jargon: false
+  include_examples: false
+  conversational_tone: true
+  encourage_questions: true           # Dialogue often includes questions
+  reading_level: "natural_speech"
+  eliminate_exposition: true
+  enforce_subtext: true
+  conflict_in_dialogue: true
+
+formatting:
+  character_names: "ALL_CAPS_CENTERED"
+  dialogue_format: "below_character_name"
+  parentheticals: "minimal"           # (beat), (to himself), etc.
+  action_between_lines: true
+  simultaneous_dialogue: false        # Generally avoid
+  overlapping_dialogue: "when_necessary"
+
+# Quality thresholds for dialogue
+quality_requirements:
+  authenticity_score: 90
+  character_voice_consistency: 95
+  subtext_presence: 80
+  conflict_tension: 75
+  rhythm_variation: 85
+  speakability: 95                    # Must sound natural when read aloud
+  visual_storytelling: 80             # Even dialogue should be visual
+  economy_of_language: 85             # Cut every unnecessary word
+
+# Dialogue violations to avoid
+violation_detection:
+  exposition_dumps: ["as you know", "remember when", "let me explain"]
+  on_the_nose: ["i feel", "i think", "what i mean is"]
+  speechifying: ["paragraph_length_monologues"]
+  unnatural_constructions: ["nobody talks like this"]
+  character_voice_breaks: ["inconsistent_speaking_patterns"]
+
+# Dialogue techniques to employ
+advanced_techniques:
+  - "arguing_about_surface_fighting_about_depth"
+  - "characters_talking_past_each_other"
+  - "subtext_contradicting_text"
+  - "silence_and_pauses_as_dialogue"
+  - "interruptions_and_overlaps"
+  - "dialect_and_rhythm_variation"
+  - "power_dynamics_in_exchange"
+
+metadata:
+  version: "1.0.0"
+  created_by: "screenwriting_system"
+  last_updated: "2025-11-17"
+  use_cases: ['screenplay dialogue', 'character scenes', 'dramatic exchanges']
+  target_audience: "screenwriters"
+  complexity_level: "expert"
+  category: "Screenwriting"
+  enforcement_level: "strict"
+  professional_grade: true
+  industry_standard: true

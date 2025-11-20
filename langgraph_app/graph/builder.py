@@ -17,7 +17,7 @@ from .nodes import (
     run_call_writer,
     run_writer,
     run_editor,
-    run_image_generator,
+    #run_image_generator,
     run_formatter,
     run_seo_analyzer,
     run_publisher,
@@ -63,7 +63,7 @@ def build_content_generation_graph() -> Callable:
     workflow.add_node(AgentType.CALL_WRITER.value, run_call_writer)
     workflow.add_node(AgentType.WRITER.value, run_writer)
     workflow.add_node(AgentType.EDITOR.value, run_editor)
-    workflow.add_node(AgentType.IMAGE.value, run_image_generator)
+    #workflow.add_node(AgentType.IMAGE.value, run_image_generator)
     workflow.add_node(AgentType.FORMATTER.value, run_formatter)
     workflow.add_node(AgentType.SEO.value, run_seo_analyzer)
     workflow.add_node(AgentType.PUBLISHER.value, run_publisher)
@@ -76,8 +76,9 @@ def build_content_generation_graph() -> Callable:
     workflow.add_edge(AgentType.RESEARCHER.value, AgentType.CALL_WRITER.value)
     workflow.add_edge(AgentType.CALL_WRITER.value, AgentType.WRITER.value)
     workflow.add_edge(AgentType.WRITER.value, AgentType.EDITOR.value)
-    workflow.add_edge(AgentType.EDITOR.value, AgentType.IMAGE.value)
-    workflow.add_edge(AgentType.IMAGE.value, AgentType.FORMATTER.value)
+    workflow.add_edge(AgentType.EDITOR.value, AgentType.FORMATTER.value)
+    #workflow.add_edge(AgentType.EDITOR.value, AgentType.IMAGE.value)
+    #workflow.add_edge(AgentType.IMAGE.value, AgentType.FORMATTER.value)
     
     # Conditional edge for optional SEO
     workflow.add_conditional_edges(

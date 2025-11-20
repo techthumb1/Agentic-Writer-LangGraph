@@ -1,6 +1,6 @@
 // frontend/app/api/content/save/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma.node'
 
 function jsonError(message: string, status = 400, details?: unknown) {

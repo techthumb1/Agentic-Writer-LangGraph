@@ -1,148 +1,75 @@
-# File: data/content_templates/blog_article_generator.yaml
-id: "blog_article_generator"
-name: "Blog Article Generator"
-slug: "blog_article_generator"
-version: "2.0"
-template_type: "blog_article"
+id: general_blog
+name: General Blog Style Profile
+description: Narrative + analytical human-grade style for publication-quality blog articles.
+category: content
+platform: blog
+audience: general
 
-description: >
-  Professional blog article generator. Creates engaging, SEO-optimized blog posts with clear structure,
-  compelling narratives, and actionable insights for target audiences.
+system_prompt: >
+  Write naturally with a calm, informed voice. Blend narrative and analytical reasoning
+  without hooks, CTAs, marketing tone, hype language, or punchy intros. Avoid AI-tell
+  patterns, mechanical transitions, list-heavy structure, or any use of em dashes.
+  Use smooth, multi-sentence paragraphs. Support claims with evidence and citations.
+  Maintain human pacing and nuance.
 
-# Inputs (resolved at runtime from request payload or style profile)
-inputs:
-  topic: { required: true }
-  target_audience: { required: true }           # "developers", "business_leaders", "general_public", "technical_experts"
-  article_tone: { default: "informative" }      # "informative", "conversational", "authoritative", "educational"
-  seo_keywords: { optional: true }
-  word_count_target: { default: "1500" }        # "800", "1500", "2500", "3000+"
-  include_examples: { default: true }
-  include_statistics: { default: true }
-  include_expert_quotes: { optional: true }
-  call_to_action: { optional: true }
-  related_topics: { optional: true }
+tone: natural_informed
+voice: expert_relaxed
+formality: medium
+technical_level: accessible
+objectivity: balanced
 
-# Priority-based requirement resolution
-requirements:
-  min_words:
-    priority:
-      - dynamic.min_words
-      - style.length_limit.target
-      - 1500
-  min_sections:
-    priority:
-      - dynamic.min_sections
-      - 5
-  include_images:
-    priority:
-      - dynamic.include_images
-      - true
-  seo_optimized:
-    priority:
-      - dynamic.seo_optimized
-      - true
+style_constraints:
+  avoid_ai_tells: true
+  avoid_em_dashes: true
+  avoid_marketing_tone: true
+  avoid_hook_structures: true
+  avoid_template_intros: true
+  avoid_mechanical_transitions: true
+  require_narrative: true
+  require_analytic_depth: true
+  require_evidence: true
+  citation_format: bracket_numeric     # [1], [2]
 
-# Template-specific writer instructions
-writer_instructions:
-  content_type: "blog_article"
-  format: "long_form_article"
-  include_introduction: true
-  include_conclusion: true
-  create_engaging_headlines: true
-  use_subheadings: true
-  focus_on_readability:
-    priority:
-      - dynamic.focus_on_readability
-      - true
+structure_alignment:
+  matches_template: blog_article_generator
+  flow:
+    - narrative_opening
+    - analytic_development
+    - synthesis
+    - references
+  headings_allowed: false
+  bullet_points_allowed: false
+  paragraph_style: natural
+  pacing: smooth
 
-mcp:
-  tool_sequence:
-    priority:
-      - dynamic.tool_sequence
-      - [content_researcher, seo_analyzer, readability_optimizer]
+length_profile:
+  target_word_count: 1600
+  min_words: 1200
+  max_words: 3000
 
-sections:
-  order:
-    priority:
-      - dynamic.section_order
-      - ["introduction", "background", "main_content", "practical_applications", "conclusion"]
+language_rules:
+  vocabulary_level: accessible
+  sentence_complexity: varied
+  clarity: high
+  jargon: discouraged
+  precision: moderate
 
-prompt_schema:
-  system_preamble: |
-    You are an expert content writer and blogger. Create engaging, well-researched blog articles that
-    educate and inspire readers. Focus on clarity, actionable insights, and SEO optimization while
-    maintaining an authentic voice that resonates with the target audience.
+formatting:
+  markdown: true
+  use_headers: false
+  use_bullets: false
+  code_blocks: none
+  references_section: true
 
-  content_template: |
-    # {{article_title}}
-
-    ## Introduction
-    {{introduction}}
-
-    ## {{section_1_title}}
-    {{section_1_content}}
-
-    ## {{section_2_title}}
-    {{section_2_content}}
-
-    ## {{section_3_title}}
-    {{section_3_content}}
-
-    ## Practical Applications
-    {{practical_applications}}
-
-    ## Conclusion
-    {{conclusion}}
-
-    ### Key Takeaways
-    {{key_takeaways}}
-
-  placeholders:
-    - article_title
-    - introduction
-    - section_1_title
-    - section_1_content
-    - section_2_title
-    - section_2_content
-    - section_3_title
-    - section_3_content
-    - practical_applications
-    - conclusion
-    - key_takeaways
-
-output:
-  format: "markdown"
-  require:
-    engaging_introduction: true
-    clear_structure: true
-    actionable_insights: true
-    strong_conclusion: true
-    seo_metadata: true
-
-# === WriterzRoom enterprise output controls ===
-post_config:
-  enabled: false
-  min_posts: 1
-  max_posts: 1
-  paragraph_length: medium
-  per_post_requirements:
-    min_words: 1500
-    max_words: 3000
-  composition:
-    include_cta: true
-    include_hashtags: 0
-    include_links: optional
-
-output_policy:
-  no_code: false
-  max_bullets: 8
-  min_paragraphs: 10
-  paragraph_first: true
-
-planner_overrides:
-  planned_posts: null
+quality_targets:
+  analytical_depth: high
+  narrative_quality: high
+  evidence_support: strong
+  pattern_suppression: strict
+  human_likeness: 0.92   # 90–95% human target
 
 metadata:
-  strategy: "audience_education"
-  positioning: "authoritative_yet_accessible"
-  complexity: 6
+  version: "2.0.0"
+  compatible_templates:
+    - blog_article_generator
+  enforcement_level: strict

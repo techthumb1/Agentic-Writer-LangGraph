@@ -33,7 +33,7 @@ export function PageHeader({
       <h1 className={`${sizeClasses[size]} font-bold mb-4 sm:mb-6 text-foreground`}>
         {title}
         {gradientText && (
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+          <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-600">
             {" "}{gradientText}
           </span>
         )}

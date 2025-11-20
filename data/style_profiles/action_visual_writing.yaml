@@ -1,0 +1,148 @@
+# data/style_profiles/action_visual_writing.yaml
+# Professional Style Profile - Action/Visual Writing
+# Category: Screenwriting
+
+id: action_visual_writing
+name: Action Visual Writing
+description: Cinematic action line writing for screenplays
+category: screenwriting
+subcategory: expert
+platform: script
+tone: dynamic
+voice: present_tense
+structure: visual_sequence → moment_to_moment
+audience: directors_cinematographers
+
+system_prompt: >
+  Write in action/visual screenplay style for filmmakers and directors.
+  Focus on what we SEE and HEAR on screen. Write in present tense, active voice.
+  Paint visual images with economy and precision. Every word should be filmable.
+  CRITICAL: Write actual screenplay action lines - what appears on screen, not
+  internal thoughts or unfilmable concepts. Be specific, visceral, and cinematic.
+  Direct the reader's eye. Create rhythm through sentence variation. Show, never tell.
+
+writing_style:
+  tone: dynamic
+  voice: present_tense
+  formality: medium
+  technical_level: expert
+  objectivity: high                    # Action is objective observable reality
+  evidence_based: false                # Visual storytelling is creative
+
+# Strict action line rules
+forbidden_patterns:
+  - "we see"                           # Redundant - everything is what we see
+  - "we hear"                          # Redundant - everything is what we hear
+  - "he thinks"                        # Unfilmable - can't show thoughts
+  - "she feels"                        # Unfilmable - show emotion through action
+  - "suddenly"                         # Lazy intensifier
+  - "starts to"                        # Just show the action
+  - "begins to"                        # Just show the action
+
+required_elements:
+  - "present_tense_active"
+  - "specific_visual_details"
+  - "filmable_actions_only"
+  - "sensory_concrete"
+
+# Action line structure
+content_structure:
+  opening_style: "establishing_visual"
+  sentence_style: "varied_length"      # Mix short punchy lines with longer sweeps
+  paragraph_breaks: "visual_beats"     # New paragraph = new visual beat
+  rhythm_requirement: "deliberate"
+  white_space: "generous"              # Action blocks should breathe
+
+# Visual writing requirements
+language_requirements:
+  vocabulary_level: precise
+  sentence_complexity: varied
+  use_jargon: minimal                  # Camera terms only when necessary
+  technical_precision: high
+  sensory_language: emphasized
+  verb_strength: maximum               # Strong active verbs only
+  adjective_economy: strict            # Every adjective earns its place
+
+length_limit:
+  words: 3000                          # Per sequence
+  min: 800
+  max: 4000
+  max_action_block: 4                  # Lines before paragraph break
+
+settings:
+  use_analogies: false                 # Action is literal not metaphorical
+  avoid_jargon: true
+  include_examples: false
+  conversational_tone: false
+  encourage_questions: false
+  reading_level: "visual_literacy"
+  eliminate_unfilmables: true
+  enforce_present_tense: true
+  show_dont_tell: true
+
+formatting:
+  paragraph_length: "4_lines_maximum"
+  white_space: "generous"
+  character_intro: "ALL_CAPS_FIRST_TIME"
+  sound_effects: "ALL_CAPS"
+  important_props: "capitalized"
+  scene_headings: "standard_format"
+
+# Quality thresholds
+quality_requirements:
+  visual_clarity: 95
+  filmability: 100                     # Nothing unfilmable
+  present_tense_consistency: 100
+  active_voice: 95
+  sensory_engagement: 85
+  rhythm_variation: 90
+  economy_of_language: 90
+  readability: 95                      # Fast, clear read
+
+# Action writing violations
+violation_detection:
+  unfilmable_internals: ["thinks", "feels", "realizes", "remembers"]
+  passive_constructions: ["is walking", "was running"]
+  redundant_phrases: ["we see", "we hear", "we watch"]
+  weak_intensifiers: ["suddenly", "very", "really"]
+  telling_not_showing: ["angry", "sad", "happy"]  # Show through action
+  lazy_starts: ["starts to", "begins to"]
+
+# Advanced techniques
+advanced_techniques:
+  - "one_line_paragraphs_for_impact"
+  - "sentence_fragments_for_pace"
+  - "visual_metaphors_through_objects"
+  - "environment_as_character"
+  - "sound_design_on_page"
+  - "montage_sequencing"
+  - "parallel_action_cutting"
+  - "micro_details_macro_meaning"
+
+# Pacing tools
+pacing_techniques:
+  tension_building: "short_sentences_staccato"
+  action_sequences: "rapid_fire_visuals"
+  emotional_beats: "longer_observational_lines"
+  transitions: "single_line_bridges"
+  emphasis: "white_space_isolation"
+
+# Sensory palette
+sensory_focus:
+  primary: "visual"                    # What we see
+  secondary: "sound"                   # What we hear
+  tertiary: "tactile"                  # Touch/texture when relevant
+  minimize: "taste_smell"              # Hard to film
+
+metadata:
+  version: "1.0.0"
+  created_by: "screenwriting_system"
+  last_updated: "2025-11-17"
+  use_cases: ['screenplay action', 'visual sequences', 'scene description']
+  target_audience: "filmmakers"
+  complexity_level: "expert"
+  category: "Screenwriting"
+  enforcement_level: "strict"
+  professional_grade: true
+  industry_standard: true
+  page_to_screen_ratio: "1:1"         # 1 page = 1 minute screen time

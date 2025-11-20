@@ -91,6 +91,7 @@ class ResearchFindings:
     credibility_sources: List[str]
     research_confidence: float = 1.0
     industry_context: Dict[str, Any] = field(default_factory=dict)
+    supporting_data: Dict[str, Any] = field(default_factory=dict)
     competitive_landscape: Dict[str, Any] = field(default_factory=dict)
     trending_topics: List[str] = field(default_factory=list)
     research_gaps: List[str] = field(default_factory=list)

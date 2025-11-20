@@ -130,7 +130,7 @@ export function ThemeSelector() {
               </SelectItem>
               <SelectItem value="agentwrite-pro">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-gradient-to-r from-purple-500 to-blue-600"></div>
+                  <div className="w-4 h-4 rounded-full bg-linear-to-r from-purple-500 to-blue-600"></div>
                   AgentWrite Pro
                 </div>
               </SelectItem>

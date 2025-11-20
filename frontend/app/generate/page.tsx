@@ -379,7 +379,7 @@ ${generatedContent}
           
           <Button
             onClick={onSave}
-            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+            className="bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
           >
             <FileText className="h-4 w-4 mr-2" />
             View in Content
@@ -511,6 +511,7 @@ export default function GeneratePage() {
     resetGeneration,
   } = useEnhancedGeneration();
 
+  
   const convertedTemplates = useMemo(() => 
     (templates || []).map(template => ({
       id: template.id,
@@ -1052,7 +1053,7 @@ export default function GeneratePage() {
       {/* Enhanced Header */}
       <div className="text-center space-y-4">
       
-        <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
+        <h1 className="text-5xl font-bold bg-linear-to-r from-purple-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
 
           Generate Enhanced AI Content
         </h1>
@@ -1096,11 +1097,11 @@ export default function GeneratePage() {
               </div>
 
               {/* Selection Summary */}
-              <Card className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 border-purple-500/40 mb-6">
+              <Card className="bg-linear-to-r from-purple-900/30 to-pink-900/30 border-purple-500/40 mb-6">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-medium text-white mb-1 bg-gradient-to-r from-purple-600/30 to-pink-600/30 px-4 py-2 rounded-lg border border-purple-500/50 inline-block">Ready to Generate</h3>
+                      <h3 className="font-medium text-white mb-1 bg-linear-to-r from-purple-600/30 to-pink-600/30 px-4 py-2 rounded-lg border border-purple-500/50 inline-block">Ready to Generate</h3>
                       <p className="text-sm text-gray-300">
                         Template: <span className="font-medium">{selectedTemplate?.title}</span>
                         {' • '}
@@ -1122,7 +1123,7 @@ export default function GeneratePage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="flex items-center gap-2 text-white">
-                          <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg">
+                          <div className="p-2 bg-linear-to-r from-purple-500 to-pink-500 rounded-lg">
                             <Settings className="h-5 w-5 text-white" />
                           </div>
                           Template Parameters
@@ -1155,11 +1156,11 @@ export default function GeneratePage() {
                 <CardContent className="pt-6">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg">
+                      <div className="p-3 bg-linear-to-r from-purple-500 to-pink-500 rounded-lg">
                         <Zap className="h-6 w-6 text-purple-300" />
                       </div>
                       <div>
-                        <h3 className="font-semibold bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-4 py-2 rounded-lg border border-purple-500/30 inline-block">Ready to Generate Enhanced Content</h3>
+                        <h3 className="font-semibold bg-linear-to-r from-purple-500/20 to-pink-500/20 px-4 py-2 rounded-lg border border-purple-500/30 inline-block">Ready to Generate Enhanced Content</h3>
                         <p className="text-sm text-gray-300">
                           {canGenerate 
                             ? `Using ${selectedTemplate?.templateData?.template_type || 'standard'} template with ${enhancedParameters.length} parameters`
@@ -1180,7 +1181,7 @@ export default function GeneratePage() {
                       <Button
                       type="submit"
                       size="lg"
-                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      className="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                       onClick={() => console.log('Button clicked:', { canGenerate, disabled: !canGenerate })}
                     >
                         {isGenerating ? (

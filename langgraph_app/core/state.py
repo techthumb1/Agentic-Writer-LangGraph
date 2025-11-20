@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from pydantic import BaseModel
 
 from .types import (
     AgentExecutionEvent,
@@ -23,6 +24,12 @@ from .types import (
     SEOOptimizationContext,
 )
 
+class EditingGuidance(BaseModel):
+    """Guidance for editor agent"""
+    tone_adjustments: Optional[List[str]] = None
+    clarity_improvements: Optional[List[str]] = None
+    fact_checks: Optional[List[str]] = None
+    structural_suggestions: Optional[List[str]] = None
 
 @dataclass
 class EnrichedContentState:
@@ -90,3 +97,9 @@ class EnrichedContentState:
     def to_dict(self) -> Dict[str, Any]:
         # Dataclasses inside are already dataclasses; asdict will recurse.
         return asdict(self)
+
+    def get_agent_instructions(self, agent_type: AgentType) -> str:
+        """Return agent-specific instructions from template config"""
+        template_config = self.template_config or {}
+        agent_instructions = template_config.get('agent_instructions', {})
+        return agent_instructions.get(agent_type.value, "")

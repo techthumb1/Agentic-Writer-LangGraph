@@ -7,6 +7,9 @@ Main FastAPI application entry point.
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from langgraph_app.core.provider_pool import initialize_provider_pool_from_env
+from datetime import datetime
+
 
 import uvicorn
 from fastapi import FastAPI
@@ -34,6 +37,7 @@ async def lifespan(app: FastAPI):
         # Initialize the ConfigManager
         # It will find data/content_templates and data/style_profiles
         app.state.config_manager = ConfigManager(base_dir=base_dir)
+        initialize_provider_pool_from_env()  # ← Add this
         
         logger.info("✅ ConfigManager initialized and all configurations validated.")
         logger.info(f"Loaded {len(app.state.config_manager.list_templates())} templates.")
@@ -73,6 +77,7 @@ def create_app() -> FastAPI:
     app.include_router(generation.router, prefix="/api", tags=["Generation"])
     app.include_router(status.router, prefix="/api/generate", tags=["Status"])
     app.include_router(configuration.router, prefix="/api", tags=["Configuration"])
+    app.include_router(debug_router, tags=["Debug"])  # ← Add this before "return app"
     
     # Include placeholder routers for future implementation
     app.include_router(content.router, prefix="/api/content", tags=["Content (Stub)"])
@@ -82,6 +87,46 @@ def create_app() -> FastAPI:
     return app
 
 app = create_app()
+
+# ADD THIS NEW ROUTER after the create_app() function:
+from fastapi import APIRouter
+from langgraph_app.core import get_circuit_breaker, get_provider_pool
+
+debug_router = APIRouter(prefix="/api/debug", tags=["debug"])
+
+@debug_router.get("/circuit-breaker-status")
+async def get_circuit_breaker_status():
+    cb = get_circuit_breaker()
+    return {
+        "circuit_breakers": {
+            "anthropic": cb.get_status("anthropic"),
+            "openai": cb.get_status("openai"),
+        },
+        "timestamp": datetime.now().isoformat()
+    }
+
+@debug_router.get("/provider-pool-status")
+async def get_provider_pool_status():
+    pool = get_provider_pool()
+    return {
+        "provider_pools": pool.get_all_status(),
+        "timestamp": datetime.now().isoformat()
+    }
+
+@debug_router.get("/system-health")
+async def get_system_health():
+    cb = get_circuit_breaker()
+    pool = get_provider_pool()
+    
+    all_healthy = True
+    for provider in ["anthropic", "openai"]:
+        if cb.get_status(provider)["state"] == "open":
+            all_healthy = False
+    
+    return {
+        "overall_health": "healthy" if all_healthy else "degraded",
+        "timestamp": datetime.now().isoformat()
+    }
 
 if __name__ == "__main__":
     # For direct running (e.g., debugging)

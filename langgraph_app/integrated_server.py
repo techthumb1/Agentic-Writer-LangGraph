@@ -16,6 +16,10 @@ import os
 import json
 import frontmatter
 from collections import defaultdict
+from fastapi import APIRouter
+from langgraph_app.core.circuit_breaker import get_circuit_breaker
+from langgraph_app.core.provider_pool import get_provider_pool
+
 
 # In-memory metrics tracking
 content_metrics = defaultdict(lambda: {"views": 0, "unique_sessions": set(), "last_viewed": None})
@@ -31,6 +35,7 @@ from langgraph_app.database.models import GenerationLog, get_db
 # --- Core Refactored Imports ---
 from .core.config_manager import ConfigManager, ConfigManagerError
 from .graph.workflow import get_compiled_graph
+from langgraph_app.core.provider_pool import initialize_provider_pool_from_env
 
 from .core.state import EnrichedContentState
 from .core.schemas import Template, StyleProfile
@@ -39,6 +44,9 @@ from .core.types import ContentSpec
 # --- Existing Integrations ---
 from .health_routes import router as health_router
 #from .content_routes import register_content_routes
+
+debug_router = APIRouter(prefix="/api/debug", tags=["debug"])
+
 
 def _normalize_parameters(yaml_obj: Dict[str, Any]) -> Dict[str, Any]:
     """Transform YAML inputs into frontend parameters format"""
@@ -123,6 +131,8 @@ app = FastAPI(title="WriterzRoom Orchestrator", version="2.0", lifespan=lifespan
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(health_router)
 app.include_router(analytics_router)
+app.include_router(debug_router, tags=["Debug"])  # ← Add this before "return app"
+    
 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats_direct():
@@ -306,6 +316,176 @@ async def list_content():
     }
 
 # ====== Background Task for Content Generation ======
+@debug_router.get("/circuit-breaker-status")
+async def get_circuit_breaker_status():
+    """
+    Get current circuit breaker status for all providers.
+    
+    Returns:
+        Dict with status for anthropic, openai, tavily providers
+    
+    Example response:
+    {
+        "anthropic": {
+            "provider": "anthropic",
+            "state": "closed",
+            "failure_count": 0,
+            "last_failure": null,
+            "can_execute": true
+        },
+        "openai": {...},
+        "tavily": {...}
+    }
+    """
+    cb = get_circuit_breaker()
+    
+    providers = ["anthropic", "openai", "tavily"]
+    
+    status = {}
+    for provider in providers:
+        status[provider] = cb.get_status(provider)
+    
+    return {
+        "circuit_breakers": status,
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@debug_router.get("/provider-pool-status")
+async def get_provider_pool_status():
+    """
+    Get provider pool status showing API key distribution.
+    
+    Returns:
+        Dict with key pool status for all providers
+    
+    Example response:
+    {
+        "anthropic": {
+            "total_keys": 3,
+            "enabled_keys": 3,
+            "disabled_keys": 0,
+            "keys": [
+                {
+                    "name": "anthropic_primary",
+                    "priority": 10,
+                    "enabled": true,
+                    "request_count": 1523
+                },
+                ...
+            ]
+        },
+        ...
+    }
+    """
+    pool = get_provider_pool()
+    
+    return {
+        "provider_pools": pool.get_all_status(),
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@debug_router.post("/circuit-breaker/{provider}/force-close")
+async def force_close_circuit(provider: str):
+    """
+    Manually close a circuit breaker (admin/emergency use).
+    
+    Args:
+        provider: "anthropic", "openai", or "tavily"
+    
+    Returns:
+        Success message
+    """
+    cb = get_circuit_breaker()
+    
+    if provider not in ["anthropic", "openai", "tavily"]:
+        return {"error": f"Invalid provider: {provider}"}, 400
+    
+    cb.force_close(provider)
+    
+    return {
+        "message": f"Circuit breaker for {provider} manually closed",
+        "new_status": cb.get_status(provider),
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@debug_router.post("/circuit-breaker/{provider}/force-open")
+async def force_open_circuit(provider: str):
+    """
+    Manually open a circuit breaker (admin/maintenance use).
+    
+    Args:
+        provider: "anthropic", "openai", or "tavily"
+    
+    Returns:
+        Success message
+    """
+    cb = get_circuit_breaker()
+    
+    if provider not in ["anthropic", "openai", "tavily"]:
+        return {"error": f"Invalid provider: {provider}"}, 400
+    
+    cb.force_open(provider)
+    
+    return {
+        "message": f"Circuit breaker for {provider} manually opened",
+        "new_status": cb.get_status(provider),
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@debug_router.get("/system-health")
+async def get_system_health():
+    """
+    Comprehensive system health check including circuit breakers and provider pools.
+    
+    Returns:
+        Overall system health status
+    """
+    cb = get_circuit_breaker()
+    pool = get_provider_pool()
+    
+    # Check circuit breaker health
+    circuit_status = {}
+    all_circuits_healthy = True
+    
+    for provider in ["anthropic", "openai", "tavily"]:
+        status = cb.get_status(provider)
+        circuit_status[provider] = status
+        
+        if status["state"] == "open":
+            all_circuits_healthy = False
+    
+    # Check provider pool health
+    pool_status = pool.get_all_status()
+    all_pools_healthy = True
+    
+    for provider, status in pool_status.items():
+        if status["enabled_keys"] == 0:
+            all_pools_healthy = False
+    
+    # Overall health
+    overall_health = "healthy" if (all_circuits_healthy and all_pools_healthy) else "degraded"
+    
+    if not all_circuits_healthy:
+        overall_health = "unhealthy"
+    
+    return {
+        "overall_health": overall_health,
+        "circuit_breakers": {
+            "healthy": all_circuits_healthy,
+            "status": circuit_status
+        },
+        "provider_pools": {
+            "healthy": all_pools_healthy,
+            "status": pool_status
+        },
+        "timestamp": datetime.now().isoformat()
+    }
+
+
 async def run_generation_workflow(request_id: str, initial_state: EnrichedContentState):
     """Invokes the main LangGraph graph to run the content generation pipeline."""
     logger.info(f"[{request_id}] Starting background generation workflow.")
@@ -372,7 +552,7 @@ async def run_generation_workflow(request_id: str, initial_state: EnrichedConten
                 # Fallback to topic from content_spec
                 if isinstance(final_state_data, dict):
                     spec = final_state_data.get("content_spec", {})
-                    topic = spec.get("topic", "Generated Content")
+                    topic = getattr(spec, 'topic', "Generated Content")
                 else:
                     topic = getattr(getattr(final_state_data, "content_spec", None), "topic", "Generated Content")
                 title = f"{topic} | {template_name}"
@@ -790,6 +970,53 @@ async def track_content_view(content_id: str):
     return {"success": False, "views": 0, "unique_views": 0}
 
 # Add this endpoint to integrated_server.py
+
+@app.post("/api/analyze/content")
+async def analyze_content(request: Request):
+    """Enterprise content analysis via SEO agent"""
+    body = await request.json()
+    content = body.get("content", "")
+    analysis_types = body.get("analysis_types", [])
+    generation_id = body.get("generation_id")
+    
+    if not content:
+        raise HTTPException(status_code=400, detail="Content required")
+    
+    # Invoke SEO agent for analysis
+    try:
+        from agents.enhanced_seo_agent_integrated import invoke_seo_agent
+        
+        analysis_result = await invoke_seo_agent({
+            "final_content": content,
+            "template_type": body.get("template_type", "article"),
+            "style_profile": body.get("style_profile", {}),
+            "generation_id": generation_id
+        })
+        
+        return {
+            "readability_score": analysis_result.get("readability_score", 50),
+            "sentiment_analysis": analysis_result.get("sentiment_analysis", {
+                "score": 0,
+                "confidence": 50,
+                "dominant_emotion": "neutral"
+            }),
+            "seo_optimization": analysis_result.get("seo_optimization", {
+                "score": 50,
+                "keyword_density": {},
+                "suggestions": []
+            }),
+            "engagement_prediction": analysis_result.get("engagement_prediction", {
+                "score": 50,
+                "viral_potential": 25,
+                "target_demographics": []
+            }),
+            "analysis_timestamp": datetime.utcnow().isoformat(),
+            "generation_id": generation_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Content analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/admin/backfill-titles")
 async def backfill_titles():

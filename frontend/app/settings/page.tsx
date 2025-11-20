@@ -193,7 +193,7 @@ const saveUserSettings = async () => {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-4xl sm:text-5xl font-bold mb-4 text-foreground">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-600">
                 Settings
               </span>
             </h1>
@@ -313,7 +313,7 @@ const saveUserSettings = async () => {
                   <Button 
                     onClick={saveUserSettings} 
                     disabled={isLoading} 
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                    className="bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                   >
                     <Save className="h-4 w-4 mr-2" />
                     Save Profile
@@ -388,7 +388,7 @@ const saveUserSettings = async () => {
                   <Button 
                     onClick={saveUserSettings} 
                     disabled={isLoading} 
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                    className="bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                   >
                     <Save className="h-4 w-4 mr-2" />
                     Save Notifications
@@ -623,7 +623,7 @@ const saveUserSettings = async () => {
                     <Button 
                       onClick={saveGenerationSettings} 
                       disabled={isLoading} 
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                      className="bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                     >
                       <Save className="h-4 w-4 mr-2" />
                       Save Generation Settings

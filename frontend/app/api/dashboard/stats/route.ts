@@ -1,6 +1,7 @@
 // File: frontend/app/api/dashboard/stats/route.ts
 import { NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from "@/auth";
+
 
 interface DashboardStats {
   totalContent: number

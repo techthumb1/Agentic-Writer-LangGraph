@@ -3,6 +3,7 @@
 
 import logging
 from typing import Dict, Any, List, Optional
+from langgraph_app.core.state import EnrichedContentState
 from dataclasses import dataclass
 import json
 

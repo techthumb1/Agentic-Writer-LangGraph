@@ -1,6 +1,6 @@
 // frontend/app/api/content/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma.node'
 import { JsonValue } from '@prisma/client/runtime/library'
 
@@ -48,7 +48,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     })
 
-    const totalViews = content.reduce((sum, c) => sum + (Number(c.views) || 0), 0)
+    const totalViews = content.reduce((sum: number, c: PrismaContent) => sum + (Number(c.views) || 0), 0)
     const uniqueTypes = new Set(content.map((c: PrismaContent) => c.type)).size
 
     const response = {

@@ -1,0 +1,224 @@
+# data/style_profiles/tv_premium_sci_fi.yaml
+# Professional Style Profile - Premium Sci-Fi Television
+# Category: Screenwriting
+
+id: tv_premium_sci_fi
+name: Premium Sci-Fi Television
+description: High-concept prestige sci-fi series writing
+category: screenwriting
+subcategory: expert
+platform: premium_television
+tone: cerebral
+voice: sophisticated
+structure: world_building → character → philosophical_themes
+audience: prestige_tv_writers
+
+system_prompt: >
+  Write in premium sci-fi television style for prestige limited series and high-budget dramas.
+  Think Westworld, Black Mirror, The Expanse, Severance - sophisticated science fiction that
+  explores big ideas through character and world-building. Blend hard sci-fi concepts with
+  human drama. Ground fantastical elements in emotional reality. Use sci-fi as metaphor for
+  contemporary issues. Maintain expert-level complexity in both the science and the storytelling.
+  
+  CRITICAL: Write actual premium sci-fi script pages - not explanations of sci-fi writing.
+  Create layered, complex narratives with rich world-building, morally ambiguous characters,
+  and philosophical depth. Every sci-fi element serves theme and character. Visual storytelling
+  with cinematic scope. Proper screenplay format with elevated execution.
+
+writing_style:
+  tone: cerebral
+  voice: sophisticated
+  formality: high
+  technical_level: expert
+  objectivity: medium                  # Balance objective sci-fi with subjective drama
+  evidence_based: false                # Speculative fiction grounded in plausibility
+
+# Premium sci-fi rules
+forbidden_patterns:
+  - "technobabble for its own sake"    # Every tech term serves story
+  - "deus ex machina solutions"        # Sci-fi logic must be consistent
+  - "explaining the obvious"           # Trust audience intelligence
+  - "surface-level metaphor"           # Depth required
+  - "genre clichés"                    # Subvert expectations
+
+required_elements:
+  - "thematic_depth"
+  - "world_building_detail"
+  - "character_complexity"
+  - "sci_fi_grounded_in_reality"
+  - "philosophical_questions"
+  - "visual_grandeur"
+
+# Premium sci-fi structure
+content_structure:
+  opening_style: "in_medias_res_mystery"
+  world_reveal: "gradual_immersive"    # Show don't explain the world
+  exposition_style: "organic_through_action"
+  mystery_layering: "russian_nesting_dolls"
+  theme_integration: "embedded_not_stated"
+  visual_scope: "cinematic_not_televisual"
+
+# Language requirements for premium sci-fi
+language_requirements:
+  vocabulary_level: sophisticated
+  sentence_complexity: complex
+  technical_terminology: "precise_when_needed"
+  scientific_accuracy: "plausible_extrapolation"
+  jargon_creation: "consistent_internal_logic"
+  metaphor_usage: high
+  symbolism: layered
+
+length_limit:
+  words: 5000                          # Premium means depth
+  min: 3500
+  max: 6500
+
+settings:
+  use_analogies: true                  # Sci-fi as allegory
+  avoid_jargon: false                  # Create believable future/alt tech
+  include_examples: false
+  conversational_tone: false           # Elevated not casual
+  encourage_questions: true            # Pose philosophical questions
+  reading_level: "sophisticated"
+  trust_audience_intelligence: true
+  embrace_ambiguity: true
+  mystery_over_exposition: true
+
+formatting:
+  scene_description: "cinematic_scope"
+  action_lines: "lyrical_precise"
+  dialogue: "subtext_heavy"
+  world_details: "environmental_storytelling"
+  tech_presentation: "integrated_seamless"
+  visual_effects: "described_not_labeled"
+
+# Premium sci-fi quality thresholds
+quality_requirements:
+  thematic_depth: 95
+  world_consistency: 95
+  character_complexity: 90
+  philosophical_resonance: 85
+  visual_ambition: 90
+  scientific_plausibility: 80
+  metaphorical_layering: 85
+  originality: 95                      # Premium demands freshness
+  emotional_authenticity: 90           # Heart in the high-concept
+
+# Sci-fi violations to avoid
+violation_detection:
+  lazy_worldbuilding: ["because_future", "advanced_tech_fixes_everything"]
+  hollow_concepts: ["cool_idea_no_thematic_weight"]
+  inconsistent_rules: ["convenient_rule_changes"]
+  flat_characters: ["archetypes_not_people"]
+  surface_philosophy: ["freshman_dorm_depth"]
+  expository_dialogue: ["as_you_know_bob"]
+
+# Premium sci-fi techniques
+advanced_techniques:
+  - "speculative_extrapolation"        # What if X, then Y
+  - "hard_sci_fi_soft_focus"           # Rigorous sci-fi, human stories
+  - "present_as_allegory"              # Contemporary issues through sci-fi lens
+  - "mystery_box_narrative"            # Slowly reveal bigger picture
+  - "unreliable_reality"               # Question nature of reality
+  - "technological_body_horror"        # Physical/psychological sci-fi fusion
+  - "post_human_philosophy"            # What comes after humanity
+  - "multi_timeline_structure"         # Non-linear sophisticated storytelling
+  - "world_as_character"               # Environment shapes narrative
+  - "moral_ambiguity"                  # No clear heroes/villains
+
+# Thematic territories for premium sci-fi
+thematic_focus:
+  consciousness:
+    - "what_is_sentience"
+    - "artificial_vs_organic_consciousness"
+    - "mind_upload_identity"
+  power_and_control:
+    - "surveillance_state"
+    - "technological_authoritarianism"
+    - "corporate_dystopia"
+  humanity:
+    - "what_makes_us_human"
+    - "technology_changing_humanity"
+    - "post_human_evolution"
+  reality:
+    - "simulation_hypothesis"
+    - "nature_of_reality"
+    - "perception_vs_truth"
+  ethics:
+    - "technological_ethics"
+    - "transhumanism_morality"
+    - "progress_cost"
+
+# Sub-genres and tones
+sci_fi_approaches:
+  hard_sci_fi:
+    emphasis: "scientific_rigor"
+    tone: "cerebral_technical"
+  cyberpunk:
+    emphasis: "high_tech_low_life"
+    tone: "noir_dystopian"
+  space_opera:
+    emphasis: "grand_scale_politics"
+    tone: "epic_intimate"
+  post_apocalyptic:
+    emphasis: "societal_collapse_human_resilience"
+    tone: "bleak_hopeful"
+  body_horror_sci_fi:
+    emphasis: "technological_transformation"
+    tone: "visceral_psychological"
+  philosophical_sci_fi:
+    emphasis: "big_questions"
+    tone: "contemplative_mysterious"
+
+# Visual storytelling for premium sci-fi
+visual_storytelling:
+  world_building: "show_through_environment"
+  technology: "integrated_not_explained"
+  scale: "intimate_moments_epic_backdrop"
+  color_palette: "deliberate_thematic"
+  production_design: "every_detail_matters"
+  effects_integration: "practical_meets_vfx"
+
+# Character archetypes in premium sci-fi
+character_approaches:
+  - "scientist_with_hubris"            # Frankenstein archetype
+  - "engineered_being_seeking_humanity" # Blade Runner archetype
+  - "rebel_against_system"             # Fighting the machine
+  - "ordinary_person_extraordinary_situation" # Audience surrogate
+  - "morally_compromised_authority"    # Complex antagonist
+  - "post_human_perspective"           # Beyond human understanding
+
+# Series structure considerations
+premium_series_structure:
+  episode_count: "8_to_10_episodes"    # Prestige limited series model
+  season_arc: "complete_story_potential_continuation"
+  mythology: "layered_reveals"
+  standalone_vs_serialized: "heavily_serialized"
+  cold_opens: "mystery_fragments"
+  act_breaks: "cliffhanger_revelations"
+  finale: "answers_pose_new_questions"
+
+metadata:
+  version: "1.0.0"
+  created_by: "screenwriting_system"
+  last_updated: "2025-11-17"
+  use_cases: ['premium_sci_fi_series', 'limited_series', 'prestige_television']
+  target_audience: "premium_tv_writers"
+  complexity_level: "expert"
+  category: "Screenwriting"
+  subcategory: "Premium Television"
+  genre: "Science Fiction"
+  enforcement_level: "strict"
+  professional_grade: true
+  prestige_tier: true
+  budget_tier: "high"                  # Premium production values
+  comparable_series:
+    - "Westworld"
+    - "Black Mirror"
+    - "The Expanse"
+    - "Severance"
+    - "Station Eleven"
+    - "Raised by Wolves"
+    - "Devs"
+  streaming_era: true
+  novelistic_depth: true

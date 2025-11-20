@@ -2,7 +2,7 @@
 # Unified coordination system for template+style awareness across all agents
 
 from typing import Dict, Any, List, Optional
-from langgraph_app.core.enriched_content_state import EnrichedContentState, AgentType
+from langgraph_app.core.state import EnrichedContentState, AgentType
 import logging
 
 logger = logging.getLogger(__name__)
