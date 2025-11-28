@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     if (incomingKey && serverKey && incomingKey === serverKey) {
       const userId = body.userId || process.env.SERVICE_USER_ID;
-        
+
       if (!userId) {
         return jsonError('userId required for API key bypass', 400)
       }
@@ -91,11 +91,11 @@ export async function POST(request: NextRequest) {
       const user = await prisma.user.findUnique({
         where: { id: userId }
       })
-      
+
       if (!user) {
         return jsonError('User not found', 404)
       }
-      
+
       const newContent = await prisma.content.create({
         data: {
           userId: userId,
@@ -126,6 +126,10 @@ export async function POST(request: NextRequest) {
 
     const userId = existingUser?.id || session.user.id
 
+    if (!userId) {
+      return jsonError('User ID required', 400);
+    }
+
     if (!existingUser) {
       await prisma.user.create({
         data: {
@@ -135,6 +139,10 @@ export async function POST(request: NextRequest) {
           image: session.user.image,
         },
       })
+    }
+
+    if (!userId) {
+      return jsonError('User ID required', 400);
     }
 
     const newContent = await prisma.content.create({
