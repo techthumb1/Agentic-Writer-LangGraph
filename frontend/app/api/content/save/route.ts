@@ -20,6 +20,10 @@ export async function POST(request: NextRequest) {
       return jsonError('Content is required', 400)
     }
 
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const newContent = await prisma.content.create({
       data: {
         userId: session.user.id,
