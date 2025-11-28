@@ -26,7 +26,7 @@ class EnhancedCallWriterAgent(BaseAgent):
     def __init__(self):
         super().__init__(AgentType.CALL_WRITER)
     
-    def execute(self, state: EnrichedContentState) -> EnrichedContentState:
+    async def execute(self, state: EnrichedContentState) -> EnrichedContentState:
         """Coordinate writing process with validation."""
         
         logger.info("📞 CALL_WRITER: Coordinating writing process")
@@ -60,11 +60,10 @@ class EnhancedCallWriterAgent(BaseAgent):
         logger.info("✅ CALL_WRITER: Coordination complete")
         
         return state
-    
+
     def _build_writing_instructions(self, state: EnrichedContentState) -> Dict[str, Any]:
         """Build comprehensive writing instructions."""
-        
-        # Extract planning guidance
+
         if state.planning_output:
             content_strategy = getattr(state.planning_output, 'content_strategy', 'balanced')
             structure_approach = getattr(state.planning_output, 'structure_approach', 'standard')
@@ -75,8 +74,7 @@ class EnhancedCallWriterAgent(BaseAgent):
             structure_approach = 'standard'
             key_messages = []
             research_priorities = []
-        
-        # Extract research context
+
         research_context = {}
         if state.research_findings:
             research_context = {
@@ -84,22 +82,23 @@ class EnhancedCallWriterAgent(BaseAgent):
                 'statistical_evidence': getattr(state.research_findings, 'statistical_evidence', []),
                 'credibility_sources': getattr(state.research_findings, 'credibility_sources', [])
             }
-        
-        # Build instructions
+
+        template_config = state.template_config or {}
+
         instructions = {
             "strategy": content_strategy,
             "structure": structure_approach,
             "key_messages": key_messages,
             "research_priorities": research_priorities,
             "research_context": research_context,
-            "template_type": state.content_spec.template_type if state.content_spec else "default",
-            "target_audience": state.content_spec.target_audience if state.content_spec else "general",
-            "topic": state.content_spec.topic if state.content_spec else "Content",
-            "platform": state.content_spec.platform if state.content_spec else "web"
+            "template_type": getattr(state.content_spec, 'template_type', None) or template_config.get('template_type', 'default'),
+            "target_audience": getattr(state.content_spec, 'target_audience', None) or template_config.get('target_audience', 'general'),
+            "topic": getattr(state.content_spec, 'topic', None) or template_config.get('topic', 'Content'),
+            "platform": getattr(state.content_spec, 'platform', None) or template_config.get('platform', 'web')
         }
-        
-        return instructions
     
+        return instructions
+
     def _coordinate_template_requirements(self, state: EnrichedContentState) -> None:
         """Coordinate template-specific requirements."""
         

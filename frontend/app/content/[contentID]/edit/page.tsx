@@ -292,7 +292,7 @@ export default function EditContentPage() {
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              className="bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
             >
               {isSaving ? (
                 <>
@@ -375,7 +375,7 @@ export default function EditContentPage() {
               {showExport && exportMenuPos && createPortal(
                 <div
                   id="export-menu-portal"
-                  className="fixed bg-gray-900 border border-white/30 rounded-md shadow-2xl w-44 z-[9999]"
+                  className="fixed bg-gray-900 border border-white/30 rounded-md shadow-2xl w-44 z-9999"
                   style={{ top: exportMenuPos.top, left: exportMenuPos.left }}
                 >
                   <div className="p-1">

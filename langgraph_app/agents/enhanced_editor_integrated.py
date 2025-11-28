@@ -139,7 +139,7 @@ class EnhancedEditorAgent:
         # Quality thresholds
         self.min_readability = 60.0
         self.max_ai_tells = 3
-        self.max_refinement_loops = 2
+        self.max_refinement_loops = 1
     
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
         """Execute editor with LLM-driven editing and self-refinement."""

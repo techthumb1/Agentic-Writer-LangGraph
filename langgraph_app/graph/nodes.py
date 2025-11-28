@@ -14,6 +14,7 @@ from langgraph_app.core.types import AgentType, ContentPhase
 # Correct agent paths
 from langgraph_app.agents.enhanced_planner_integrated import EnhancedPlannerAgent
 from langgraph_app.agents.enhanced_researcher_integrated import EnhancedResearcherAgent
+from langgraph_app.agents.enhanced_call_writer_integrated import EnhancedCallWriterAgent
 from langgraph_app.agents.writer import WriterAgent
 from langgraph_app.agents.enhanced_editor_integrated import EnhancedEditorAgent
 from langgraph_app.agents.enhanced_formatter_integrated import EnhancedFormatterAgent
@@ -25,6 +26,7 @@ logger = logging.getLogger("writerzroom.graph.nodes")
 # Instantiate agents
 planner_agent = EnhancedPlannerAgent()
 researcher_agent = EnhancedResearcherAgent()
+call_writer_agent = EnhancedCallWriterAgent()
 writer_agent = WriterAgent()
 editor_agent = EnhancedEditorAgent()
 formatter_agent = EnhancedFormatterAgent()
@@ -39,7 +41,7 @@ async def run_planner(state: EnrichedContentState) -> EnrichedContentState:
     logger.info("🧠 EXECUTING PLANNER")
     state.update_phase(ContentPhase.PLANNING)
 
-    updated_state = await planner_agent.execute(state)
+    updated_state = planner_agent.execute(state)
     logger.info("✅ Planner completed")
 
     return updated_state
@@ -48,12 +50,28 @@ async def run_planner(state: EnrichedContentState) -> EnrichedContentState:
 # ---------------------------------------------------------
 # RESEARCHER
 # ---------------------------------------------------------
-async def run_researcher(state: EnrichedContentState) -> EnrichedContentState:
+def run_researcher(state: EnrichedContentState) -> EnrichedContentState:
     logger.info("🔬 EXECUTING RESEARCHER")
     state.update_phase(ContentPhase.RESEARCH)
 
-    updated_state = await researcher_agent.execute(state)
+    updated_state = researcher_agent.execute(state)
     logger.info("✅ Researcher completed")
+
+    return updated_state
+
+
+# ---------------------------------------------------------
+# CALL WRITER
+# ---------------------------------------------------------
+async def run_call_writer(state: EnrichedContentState) -> EnrichedContentState:
+    logger.info("📞 EXECUTING CALL WRITER")
+    state.update_phase(ContentPhase.WRITING)
+
+    if not state.planning_output or not state.research_findings:
+        raise RuntimeError("ENTERPRISE: Call Writer requires both planning_output and research_findings.")
+
+    updated_state = await call_writer_agent.execute(state)
+    logger.info("✅ Call Writer completed")
 
     return updated_state
 
@@ -61,14 +79,14 @@ async def run_researcher(state: EnrichedContentState) -> EnrichedContentState:
 # ---------------------------------------------------------
 # WRITER
 # ---------------------------------------------------------
-async def run_writer(state: EnrichedContentState) -> EnrichedContentState:
+def run_writer(state: EnrichedContentState) -> EnrichedContentState:
     logger.info("✍️ EXECUTING WRITER")
     state.update_phase(ContentPhase.WRITING)
 
     # Force new generation mode
     state.content_to_edit = None
 
-    updated_state = await writer_agent.execute(state)
+    updated_state = writer_agent.execute(state)
     logger.info("✅ Writer completed")
 
     return updated_state
@@ -77,11 +95,11 @@ async def run_writer(state: EnrichedContentState) -> EnrichedContentState:
 # ---------------------------------------------------------
 # EDITOR
 # ---------------------------------------------------------
-async def run_editor(state: EnrichedContentState) -> EnrichedContentState:
+def run_editor(state: EnrichedContentState) -> EnrichedContentState:
     logger.info("🧐 EXECUTING EDITOR")
     state.update_phase(ContentPhase.EDITING)
 
-    updated_state = await editor_agent.execute(state)
+    updated_state = editor_agent.execute(state)
     logger.info("✅ Editor completed")
 
     return updated_state
@@ -103,11 +121,11 @@ async def run_formatter(state: EnrichedContentState) -> EnrichedContentState:
 # ---------------------------------------------------------
 # SEO ANALYZER
 # ---------------------------------------------------------
-async def run_seo_analyzer(state: EnrichedContentState) -> EnrichedContentState:
+def run_seo_analyzer(state: EnrichedContentState) -> EnrichedContentState:
     logger.info("📈 EXECUTING SEO AGENT")
     state.update_phase(ContentPhase.SEO_ANALYSIS)
 
-    updated_state = await seo_agent.execute(state)
+    updated_state = seo_agent.execute(state)
     logger.info("✅ SEO completed")
 
     return updated_state
@@ -148,41 +166,7 @@ async def run_publisher(state: EnrichedContentState) -> EnrichedContentState:
     logger.info("🚀 EXECUTING PUBLISHER")
     state.update_phase(ContentPhase.PUBLISHING)
 
-    final = state.content
-
-    if not final and state.formatted_content:
-        final = getattr(state.formatted_content, "markdown", "")
-
-    if not final and state.edited_content:
-        final = getattr(state.edited_content, "body", "")
-
-    if not final and state.draft_content:
-        final = getattr(state.draft_content, "body", "")
-
-    if not final or not final.strip():
-        raise RuntimeError("ENTERPRISE: Publisher requires content")
-
-    # Inject SEO metadata if present
-    if state.seo_analysis:
-        meta = state.seo_analysis
-        final = f"""---
-title: {meta.meta_title}
-description: {meta.meta_description}
-keywords: {', '.join(list(meta.keyword_density.keys())[:5])}
-readability_score: {meta.readability_score}
----
-
-{final}
-"""
-
-    state.final_content = final
-    state.update_phase(ContentPhase.COMPLETE)
-
-    state.log_agent_execution(AgentType.PUBLISHER, {
-        "status": "completed",
-        "word_count": len(final.split()),
-        "has_metadata": bool(state.seo_analysis)
-    })
-
+    updated_state = publisher_agent.execute(state)
     logger.info("✅ Publisher completed")
-    return state
+
+    return updated_state

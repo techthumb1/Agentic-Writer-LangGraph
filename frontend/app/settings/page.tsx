@@ -1,6 +1,6 @@
 // File: frontend/app/settings/page.tsx
 'use client'
-
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -45,6 +45,7 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme() // Use next-themes instead of custom theme management
   const [isLoading, setIsLoading] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const { data: session } = useSession()
   
 const {
   userSettings,
@@ -517,25 +518,31 @@ const saveUserSettings = async () => {
                             <SelectItem value="1000">
                               <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4" />
-                                Short (2K tokens)
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="2000">
-                              <div className="flex items-center gap-2">
-                                <BookOpen className="h-4 w-4" />
-                                Medium (4K tokens)
+                                Short (4K tokens)
                               </div>
                             </SelectItem>
                             <SelectItem value="4000">
                               <div className="flex items-center gap-2">
-                                <Clipboard className="h-4 w-4" />
-                                Long (8K tokens)
+                                <BookOpen className="h-4 w-4" />
+                                Medium (8K tokens)
                               </div>
                             </SelectItem>
                             <SelectItem value="8000">
                               <div className="flex items-center gap-2">
+                                <Clipboard className="h-4 w-4" />
+                                Long (12K tokens)
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="16000">
+                              <div className="flex items-center gap-2">
                                 <Database className="h-4 w-4" />
-                                Very Long (12K tokens)
+                                Very Long (16K tokens)
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="24000">
+                              <div className="flex items-center gap-2">
+                                <Sparkles className="h-4 w-4" />
+                                Ultra Long (24K tokens)
                               </div>
                             </SelectItem>
                           </SelectContent>
@@ -697,19 +704,19 @@ const saveUserSettings = async () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Account ID</Label>
-                    <Input value="user_agp_12345" disabled />
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Account ID</Label>
+                    <p className="text-foreground">{session?.user?.id || 'N/A'}</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Member Since</Label>
-                    <Input value="January 15, 2025" disabled />
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Member Since</Label>
+                    <p className="text-foreground">N/A</p>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Account Type</Label>
-                  <Input value="WriterzRoom Premium" disabled />
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Account Type</Label>
+                    <p className="text-foreground">Free Tier</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

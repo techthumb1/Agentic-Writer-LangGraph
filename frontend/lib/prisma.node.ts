@@ -1,16 +1,26 @@
+// frontend/lib/prisma.node.ts
+
 import { PrismaClient } from '@prisma/client'
-// One-time debug
-if (process.env.AUTH_DEBUG === "true") {
-  try {
-    const u = new URL(process.env.DATABASE_URL || "");
-    console.log("[auth][debug] DB target:", { protocol: u.protocol, host: u.host, pathname: u.pathname });
-  } catch {
-    console.log("[auth][debug] DATABASE_URL not parseable");
-  }
+
+const dbUrl = process.env.DATABASE_URL || '';
+
+// Enterprise fail-fast: validate correct database
+if (!dbUrl.includes('ai_content_db')) {
+  throw new Error(
+    `[prisma.node] FATAL: DATABASE_URL must target ai_content_db. Current: ${dbUrl}`
+  );
 }
 
+// Validate Docker hostname in production
+if (process.env.NODE_ENV === 'production' && !dbUrl.includes('@db:')) {
+  throw new Error(
+    `[prisma.node] FATAL: Production must use Docker hostname 'db'. Current: ${dbUrl}`
+  );
+}
+
+console.log('[prisma.node] ✓ Connected to:', dbUrl.split('@')[1]?.split('/')[0]);
+
 declare global {
-  // Prevent hot-reload instantiations in dev
   // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined
 }
@@ -22,5 +32,3 @@ export const prisma =
   })
 
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma
-
-// No process.on hooks — handled by container orchestration (Fastify/Next.js lifecycle)

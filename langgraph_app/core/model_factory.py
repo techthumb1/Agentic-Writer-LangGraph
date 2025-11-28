@@ -24,7 +24,7 @@ class ModelInterface(Protocol):
         system_prompt: str,
         user_prompt: str,
         temperature: float = 0.7,
-        max_tokens: int = 2000
+        max_tokens: int = 4000
     ) -> str:
         """Generate response from LLM"""
         ...
@@ -41,7 +41,7 @@ class OpenAIModel:
         system_prompt: str,
         user_prompt: str,
         temperature: float = 0.7,
-        max_tokens: int = 2000
+        max_tokens: int = 4000
     ) -> str:
         """Generate response using OpenAI API"""
         try:
@@ -72,12 +72,12 @@ AGENT_MODEL_CONFIGS = {
     "planner": {
         "preferred": "gpt-4-turbo-preview",
         "temperature": 0.3,  # Lower for structured output
-        "max_tokens": 2000
+        "max_tokens": 4000
     },
     "researcher": {
         "preferred": "gpt-4-turbo-preview",
         "temperature": 0.5,
-        "max_tokens": 3000
+        "max_tokens": 4000
     },
     "writer": {
         "preferred": "gpt-4-turbo-preview",

@@ -92,20 +92,10 @@ function useDashboardData() {
 }
 
 export default function DashboardPage() {
-  const { data: session } = useSession()
-  const { data: dashboardData, isLoading, error } = useDashboardData()
+  const { data: session, status } = useSession()
+  const { data: dashboardData, error } = useDashboardData()
 
-  useEffect(() => {
-    if (!session?.user) {
-      redirect('/auth/signin')
-    }
-  }, [session])
-
-  if (!session?.user) {
-    return null
-  }
-
-  if (isLoading) {
+  if (status === 'loading') {
     return (
       <div className="min-h-screen theme-background">
         <div className="container mx-auto p-6 flex items-center justify-center min-h-[400px]">
@@ -116,6 +106,11 @@ export default function DashboardPage() {
         </div>
       </div>
     )
+  }
+
+  if (!session?.user) {
+    redirect('/auth/signin')
+    return null
   }
 
   if (error || !dashboardData) {
@@ -156,7 +151,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 text-foreground">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-600">
                 Dashboard
               </span>
             </h1>
@@ -280,7 +275,7 @@ export default function DashboardPage() {
                       className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                           <FileText className="h-5 w-5 text-primary" />
                         </div>
                         <div>

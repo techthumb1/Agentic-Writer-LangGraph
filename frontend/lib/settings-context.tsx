@@ -42,7 +42,7 @@ export interface ContentItem {
   createdAt: string
   words: number
   rating: number
-  metadata?: {  // Add optional metadata
+  metadata?: {
     wordCount?: number
     words?: number
     rating?: number
@@ -80,7 +80,7 @@ const defaultUserSettings: UserSettings = {
 }
 
 const defaultGenerationSettings: GenerationSettings = {
-  maxTokens: 2000,
+  maxTokens: 4000,
   temperature: 0.7,
   autoSave: true,
   backupFrequency: 'weekly',
@@ -95,10 +95,6 @@ const defaultUserStats: UserStats = {
   daysActive: 0
 }
 
-// Storage keys
-const USER_SETTINGS_KEY = 'writerzroom_user_settings'
-const GENERATION_SETTINGS_KEY = 'writerzroom_generation_settings'
-
 // Context
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
@@ -109,15 +105,42 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [userStats, setUserStats] = useState<UserStats>(defaultUserStats)
   const [recentContent, setRecentContent] = useState<ContentItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   // Track if mounted to skip initial save
   const hasMounted = React.useRef(false)
 
-  // Load settings from localStorage on mount
+  // Fetch current user session to get user ID
   useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch('/api/auth/session')
+        if (response.ok) {
+          const session = await response.json()
+          if (session?.user?.id) {
+            setCurrentUserId(session.user.id)
+            console.log('✅ User ID set for settings:', session.user.id)
+          }
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch session:', error)
+      }
+    }
+    
+    fetchSession()
+  }, [])
+
+  // Load settings from localStorage on mount (user-scoped)
+  useEffect(() => {
+    if (!currentUserId) return // Wait for user ID
+
     const loadSettings = async () => {
       try {
         if (typeof window !== 'undefined') {
+          // User-specific keys
+          const USER_SETTINGS_KEY = `writerzroom_user_settings_${currentUserId}`
+          const GENERATION_SETTINGS_KEY = `writerzroom_generation_settings_${currentUserId}`
+
           // Load user settings
           const storedUser = localStorage.getItem(USER_SETTINGS_KEY)
           if (storedUser) {
@@ -132,7 +155,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             setGenerationSettings(prev => ({ ...prev, ...parsed }))
           }
 
-          console.log('✅ Settings loaded from localStorage')
+          console.log(`✅ Settings loaded for user ${currentUserId}`)
         }
       } catch (error) {
         console.error('❌ Failed to load settings from storage:', error)
@@ -142,7 +165,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
 
     loadSettings()
-  }, [])
+  }, [currentUserId]) // Re-run when user changes
 
   // Save to localStorage whenever settings change (after initial load)
   useEffect(() => {
@@ -151,24 +174,30 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    if (!currentUserId) return // Don't save without user ID
+
     if (typeof window !== 'undefined') {
       try {
+        // User-specific keys
+        const USER_SETTINGS_KEY = `writerzroom_user_settings_${currentUserId}`
+        const GENERATION_SETTINGS_KEY = `writerzroom_generation_settings_${currentUserId}`
+
         localStorage.setItem(USER_SETTINGS_KEY, JSON.stringify(userSettings))
         localStorage.setItem(GENERATION_SETTINGS_KEY, JSON.stringify(generationSettings))
-        console.log('✅ Settings saved to localStorage')
+        console.log(`✅ Settings saved for user ${currentUserId}`)
       } catch (error) {
         console.error('❌ Failed to save settings to storage:', error)
         throw error
       }
     }
-  }, [userSettings, generationSettings])
+  }, [userSettings, generationSettings, currentUserId])
 
   // Load stats from generated content
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && currentUserId) {
       refreshStats()
     }
-  }, [isLoading])
+  }, [isLoading, currentUserId])
 
   // Refresh stats from content API
   const refreshStats = async () => {

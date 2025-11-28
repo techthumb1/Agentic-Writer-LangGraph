@@ -5,7 +5,7 @@ SUBSTACK_EMAIL=substack.com/@jasonsrobinson
 BREVO_API_KEY=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
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-DATABASE_URL="postgresql://postgres:YSH$sqC7XdXpga#HQ@db:5432/ai_content_db"
+DATABASE_URL="postgresql://postgres:YSH$sqC7XdXpga#HQlocalhost:5432/ai_content_db"
 DB_PASS="YSH$sqC7XdXpga#HQ"
 DB_USER="jasonrobinson"
 DB_HOST=db

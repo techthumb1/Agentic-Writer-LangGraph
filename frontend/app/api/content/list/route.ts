@@ -1,10 +1,17 @@
 // frontend/app/api/content/list/route.ts
 
 import { NextResponse } from 'next/server';
+import { auth } from '@/auth';
 import fs from 'fs/promises';
 import path from 'path';
 
 export async function GET() {
+  // ✅ SECURITY: Require authentication
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const contentDir = path.join(process.cwd(), '../generated_content');
     
@@ -37,6 +44,11 @@ export async function GET() {
         const fileContent = await fs.readFile(filePath, 'utf-8');
         const contentData = JSON.parse(fileContent);
         
+        // ✅ SECURITY: Filter by user_id
+        if (contentData.user_id !== session.user.id) {
+          continue; // Skip content belonging to other users
+        }
+        
         // Generate ID from filename (remove .json extension)
         const id = file.replace('.json', '');
         
@@ -55,6 +67,8 @@ export async function GET() {
       const dateB = new Date((b as { createdAt?: string }).createdAt || 0).getTime();
       return dateB - dateA;
     });
+    
+    console.log(`✅ [CONTENT_LIST] Returned ${allContent.length} items for user ${session.user.id}`);
     
     return NextResponse.json({
       success: true,

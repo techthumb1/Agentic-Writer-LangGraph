@@ -210,7 +210,7 @@ async function main() {
           bio: 'System administrator account',
           defaultModel: 'gpt-4-turbo',
           defaultContentQuality: 'balanced',
-          defaultMaxTokens: 2000,
+          defaultMaxTokens: 4000,
           defaultTemperature: 0.7,
         },
       });

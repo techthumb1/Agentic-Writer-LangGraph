@@ -53,30 +53,25 @@ export default async function RootLayout({
           <Providers session={session}>
             <SettingsProvider>
               <ToastProvider />
-              {/* Compact Header with Collapsible Navigation */}
               <header className="bg-gray-800 text-white shadow-lg sticky top-0 z-50">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                   <div className="flex items-center justify-between h-16">
-                    {/* Logo */}
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       <Link
                         href="/"
-                        className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 hover:from-purple-300 hover:to-pink-500 transition-all duration-200"
+                        className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-600 hover:from-purple-300 hover:to-pink-500 transition-all duration-200"
                       >
                         {APP_CONFIG.name}
                       </Link>
                     </div>
               
-                    {/* User Actions & Navigation */}
                     <div className="flex items-center space-x-3">
                       {session?.user ? (
                         <>
-                          {/* User Welcome - Hidden on small screens */}
                           <span className="hidden sm:block text-sm text-gray-300 max-w-32 sm:max-w-none truncate">
                             Welcome, {String(session.user.name || session.user.email || 'User').split(' ')[0]}
                           </span>
                           
-                          {/* Sign Out Button */}
                           <Link
                             href="/api/auth/signout"
                             className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-800"
@@ -93,23 +88,19 @@ export default async function RootLayout({
                         </Link>
                       )}
             
-                      {/* Collapsible Navigation Menu */}
                       <CollapsibleNavigation />
                     </div>
                   </div>
                 </div>
               </header>
                     
-              {/* Main Content with Theme-Aware Background */}
               <main className="min-h-screen theme-background">
                 {children}
               </main>
                     
-              {/* Professional Footer */}
               <footer className="bg-gray-900 text-gray-300 border-t border-gray-800">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {/* Company Info */}
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-white">{APP_CONFIG.name}</h3>
                       <p className="text-sm text-gray-400 leading-relaxed">
@@ -134,7 +125,6 @@ export default async function RootLayout({
                       </div>
                     </div>
                     
-                    {/* Product */}
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-white">Product</h3>
                       <ul className="space-y-2">
@@ -150,7 +140,6 @@ export default async function RootLayout({
                       </ul>
                     </div>
                       
-                    {/* Support */}
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-white">Support</h3>
                       <ul className="space-y-2">
@@ -162,7 +151,6 @@ export default async function RootLayout({
                       </ul>
                     </div>
                       
-                    {/* Company */}
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-white">Company</h3>
                       <ul className="space-y-2">
@@ -175,7 +163,6 @@ export default async function RootLayout({
                     </div>
                   </div>
                       
-                  {/* Bottom Section */}
                   <div className="mt-6 pt-4 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
                     <div className="text-sm text-gray-400">
                       © {new Date().getFullYear()} {APP_CONFIG.name}. All rights reserved.

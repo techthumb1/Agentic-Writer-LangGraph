@@ -109,22 +109,41 @@ export function useEnhancedGeneration() {
   const [isPolling, setIsPolling] = useState(false);
 
   const startGeneration = async (params: GenerationParams): Promise<GenerationResponse> => {
+    const sessionRes = await fetch('/api/auth/session')
+    const session = await sessionRes.json()
+
     const response = await fetch('/api/generate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-User-ID': session?.user?.id || ''
+      },
       body: JSON.stringify({
+        // ✅ Fixed field names
         template: params.template,
         style_profile: params.style_profile,
-        dynamic_parameters: params.dynamic_parameters || {},
-        priority: params.priority ?? 1,
-        timeout_seconds: params.timeout_seconds ?? 300,
-        generation_mode: params.generation_mode || 'standard',
-        platform: params.platform,
+
+        // ✅ Moved to top level with required quality_mode
+        generation_settings: params.generation_settings || {
+          max_tokens: 8000,
+          temperature: 0.7,
+          quality_mode: 'balanced'
+        },
+
+        // Top-level request fields
         topic: params.topic,
         audience: params.audience,
+        platform: params.platform,
         tags: params.tags,
-        use_mock: params.use_mock,
-        generation_settings: params.generation_settings,
+        priority: params.priority ?? 1,
+        timeout_seconds: params.timeout_seconds ?? 1000,
+        generation_mode: params.generation_mode || 'standard',
+
+        // Separate dynamic parameters
+        dynamic_parameters: {
+          ...params.dynamic_parameters,
+          user_id: session?.user?.id
+        },
       }),
     })
 
@@ -135,7 +154,7 @@ export function useEnhancedGeneration() {
 
     return await response.json();
   };
-
+  
   const checkStatus = async (request_id: string): Promise<GenerationStatusResponse> => {
     const response = await fetch(`/api/generate/status/${request_id}`, {
       method: 'GET',

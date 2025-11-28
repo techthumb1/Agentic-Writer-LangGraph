@@ -10,6 +10,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+import tiktoken
 from types import SimpleNamespace
 import asyncio
 from dotenv import load_dotenv
@@ -86,8 +87,10 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         """Check if model supports custom temperature values"""
         non_temperature_models = [
             "gpt-4.1",
-            "gpt-4o-2024-08-06",
+            "gpt-4o",
             "chatgpt-4o-latest",
+            "gpt-5",
+            "gpt-5.1",
             "o1",
             "o1-mini",
             "o1-preview"
@@ -131,6 +134,7 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                 {"role": "user", "content": user_content}
             ],
             "max_completion_tokens": max_tokens,
+            "timeout": 800.0 # Overall timeout for the API call
         }
     
         # Add temperature if supported
@@ -820,6 +824,7 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                 raise RuntimeError("ENTERPRISE: User prompt invalid or empty")
 
             generation_settings = self._get_user_generation_settings(state)
+            logger.info(f"DEBUG: generation_settings = {generation_settings}")
             model_obj = get_model("writer", generation_settings)
             model_name = model_obj.model_name
 
@@ -831,13 +836,10 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             max_completion = (
                 generation_settings.get("max_completion_tokens")
                 or generation_settings.get("max_tokens")
-                or 24000  # Match frontend default
             )
-            
-            # Ensure adequate token allocation
-            if max_completion < 24000:
-                logger.warning(f"Token allocation {max_completion} too low, increasing to 24000")
-                max_completion = 24000
+
+            if not max_completion:
+                raise ValueError("max_tokens required in generation_settings")
 
             # Single unified call
             response = self._call_openai(
@@ -1182,41 +1184,47 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         return text
 
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
-        """Execute writer with config-based prompts"""
-            # UNIVERSAL: Disable editor/fallback modes
-        # UNIVERSAL: Disable legacy edit-mode logic
-        state.content_to_edit = None
-
-        if not state.template_config or not state.style_config:
-            raise RuntimeError("ENTERPRISE: template_config and style_config required")
+        """Execute writer with config-based prompts."""
     
+        # UNIVERSAL: disable edit-mode behavior
+        state.content_to_edit = None
+    
+        # Validate required configs
+        if not state.template_config:
+            raise RuntimeError("ENTERPRISE: template_config required")
+        if not state.style_config:
+            raise RuntimeError("ENTERPRISE: style_config required")
+    
+        # Build prompts
         system_content, user_content = self._build_comprehensive_prompt(state)
+    
         logger.info(f"System content type: {type(system_content)}, length: {len(str(system_content))}")
         logger.info(f"User content type: {type(user_content)}, length: {len(str(user_content))}")
     
+        # Sanitize
         system_content = self._sanitize_prompt(system_content)
         user_content = self._sanitize_prompt(user_content)
     
+        # Fail-fast validation
         if len(system_content) < 50:
             raise RuntimeError("ENTERPRISE: System prompt too short")
         if len(user_content) < 20:
             raise RuntimeError("ENTERPRISE: User prompt too short")
     
+        # Generation settings
         generation_settings = self._get_user_generation_settings(state)
         model_name = get_model("writer", generation_settings).model_name
     
+        # Token limit
         max_completion = (
             generation_settings.get("max_completion_tokens")
             or generation_settings.get("max_tokens")
-            or 24000
         )
-        
-        if max_completion < 24000:
-            logger.warning(f"Token allocation {max_completion} too low, increasing to 24000")
-            max_completion = 24000
+        if not max_completion:
+            raise ValueError("ENTERPRISE: max_tokens or max_completion_tokens required in generation_settings")
     
         try:
-            # Single unified call
+            # Single unified model call
             response = self._call_openai(
                 model_name=model_name,
                 system_content=system_content,
@@ -1226,11 +1234,13 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
                 generation_settings=generation_settings,
             )
     
+            # Extract content
             content = self._extract_content_from_openai_response(response)
     
             if not content or len(content.strip()) < 100:
                 raise RuntimeError("ENTERPRISE: Insufficient content generated")
     
+            # Final sanitization/formatting
             final_content = self._sanitize_and_enforce(
                 content,
                 template_config=state.template_config,
@@ -1246,7 +1256,25 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
         except Exception as e:
             logger.error(f"Writer execution failed: {e}")
             raise RuntimeError(f"ENTERPRISE: Writer failed - {e}")
-        
+
+    def _enforce_token_budget(self, system_prompt: str, user_prompt: str, model_name: str, target_max: int = 24000) -> Tuple[str, str, int]:
+        """Estimate token usage and trim or summarize prompts to stay within safe model limits."""
+        enc = tiktoken.encoding_for_model(model_name if "gpt" in model_name else "gpt-4o")
+        system_tokens = len(enc.encode(system_prompt))
+        user_tokens = len(enc.encode(user_prompt))
+        total_tokens = system_tokens + user_tokens
+
+        # Safe cap margin (keep ~10% buffer)
+        if total_tokens > target_max * 0.9:
+            logger.warning(f"⚠️ Token budget exceeded ({total_tokens}). Summarizing user prompt to reduce length.")
+            # Keep last 1500 characters of user prompt (most relevant research)
+            user_prompt = user_prompt[-1500:]
+            total_tokens = len(enc.encode(system_prompt)) + len(enc.encode(user_prompt))
+
+        # Remaining token budget for generation
+        available = max(1000, target_max - total_tokens)
+        return system_prompt, user_prompt, available
+
     def _extract_sources(self, result: Any) -> List[str]:
         sources = []
         if isinstance(result, dict):
@@ -1358,6 +1386,84 @@ class TemplateAwareWriterAgent(RealTimeSearchMixin):
             return enhanced_prompt
 
         return base_prompt
+    
+    def _integrate_research_into_writer_prompt(
+        self,
+        base_system_prompt: str,
+        research_findings,
+        planning_output,
+        template_config: Dict[str, Any]
+    ) -> str:
+        """Integrate research insights into writer system prompt"""
+
+        if not research_findings:
+            return base_system_prompt
+
+        # Extract actionable research
+        research_sections = []
+
+        # Primary insights
+        primary_insights = getattr(research_findings, 'primary_insights', [])
+        if primary_insights:
+            research_sections.append("\n## CRITICAL RESEARCH INSIGHTS TO INTEGRATE:")
+            for insight in primary_insights[:5]:
+                if isinstance(insight, dict):
+                    finding = insight.get('finding', '')
+                    relevance = insight.get('relevance', 'medium')
+                    if finding:
+                        research_sections.append(f"- [{relevance.upper()}] {finding}")
+
+        # Statistical evidence
+        stats = getattr(research_findings, 'statistical_evidence', [])
+        if stats:
+            research_sections.append("\n## KEY DATA POINTS TO USE:")
+            for stat in stats[:3]:
+                if isinstance(stat, dict):
+                    stat_text = stat.get('statistic', '')
+                    source = stat.get('source', '')
+                    if stat_text:
+                        research_sections.append(f"- {stat_text} (Source: {source})")
+
+        # Industry context
+        industry = getattr(research_findings, 'industry_context', {})
+        if industry and isinstance(industry, dict):
+            challenges = industry.get('key_challenges', [])
+            if challenges:
+                research_sections.append("\n## INDUSTRY CHALLENGES TO ADDRESS:")
+                for challenge in challenges[:3]:
+                    research_sections.append(f"- {challenge}")
+
+        # Planning guidance
+        if planning_output:
+            key_messages = getattr(planning_output, 'key_messages', [])
+            if key_messages:
+                research_sections.append("\n## CORE MESSAGES TO CONVEY:")
+                for msg in key_messages[:3]:
+                    research_sections.append(f"- {msg}")
+
+        # Build enhanced prompt
+        if research_sections:
+            template_type = template_config.get('template_type', 'content')
+
+            enhanced_prompt = f"""{base_system_prompt}
+
+    RESEARCH INTELLIGENCE PACKAGE (Must integrate naturally):
+    {''.join(research_sections)}
+
+    INTEGRATION INSTRUCTIONS:
+    - Weave these insights organically throughout the {template_type}
+    - Use specific data points to support all major claims
+    - Address identified industry challenges directly
+    - Ensure all core messages are prominently featured
+    - Cite sources appropriately for credibility
+    - Make research the backbone of your argument, not decoration
+
+    CRITICAL: This is not background information - this is THE SUBSTANCE of what you're writing about. Build your {template_type} around these researched facts."""
+
+            return enhanced_prompt
+
+        return base_system_prompt
+
 
 # Optional shim so legacy wrapper works
 def generate_adaptive_content(self, state: Dict[str, Any]) -> str:
@@ -1365,87 +1471,6 @@ def generate_adaptive_content(self, state: Dict[str, Any]) -> str:
 
  # Export the universal template-aware agent
 template_aware_writer_agent = TemplateAwareWriterAgent()
-
-# Legacy compatibility wrapper
-def _legacy_writer_fn(state: dict) -> dict:
-    return template_aware_writer_agent.generate_adaptive_content(state)
-
-def _integrate_research_into_writer_prompt(
-    self,
-    base_system_prompt: str,
-    research_findings,
-    planning_output,
-    template_config: Dict[str, Any]
-) -> str:
-    """Integrate research insights into writer system prompt"""
-    
-    if not research_findings:
-        return base_system_prompt
-    
-    # Extract actionable research
-    research_sections = []
-    
-    # Primary insights
-    primary_insights = getattr(research_findings, 'primary_insights', [])
-    if primary_insights:
-        research_sections.append("\n## CRITICAL RESEARCH INSIGHTS TO INTEGRATE:")
-        for insight in primary_insights[:5]:
-            if isinstance(insight, dict):
-                finding = insight.get('finding', '')
-                relevance = insight.get('relevance', 'medium')
-                if finding:
-                    research_sections.append(f"- [{relevance.upper()}] {finding}")
-    
-    # Statistical evidence
-    stats = getattr(research_findings, 'statistical_evidence', [])
-    if stats:
-        research_sections.append("\n## KEY DATA POINTS TO USE:")
-        for stat in stats[:3]:
-            if isinstance(stat, dict):
-                stat_text = stat.get('statistic', '')
-                source = stat.get('source', '')
-                if stat_text:
-                    research_sections.append(f"- {stat_text} (Source: {source})")
-    
-    # Industry context
-    industry = getattr(research_findings, 'industry_context', {})
-    if industry and isinstance(industry, dict):
-        challenges = industry.get('key_challenges', [])
-        if challenges:
-            research_sections.append("\n## INDUSTRY CHALLENGES TO ADDRESS:")
-            for challenge in challenges[:3]:
-                research_sections.append(f"- {challenge}")
-    
-    # Planning guidance
-    if planning_output:
-        key_messages = getattr(planning_output, 'key_messages', [])
-        if key_messages:
-            research_sections.append("\n## CORE MESSAGES TO CONVEY:")
-            for msg in key_messages[:3]:
-                research_sections.append(f"- {msg}")
-    
-    # Build enhanced prompt
-    if research_sections:
-        template_type = template_config.get('template_type', 'content')
-        
-        enhanced_prompt = f"""{base_system_prompt}
-
-RESEARCH INTELLIGENCE PACKAGE (Must integrate naturally):
-{''.join(research_sections)}
-
-INTEGRATION INSTRUCTIONS:
-- Weave these insights organically throughout the {template_type}
-- Use specific data points to support all major claims
-- Address identified industry challenges directly
-- Ensure all core messages are prominently featured
-- Cite sources appropriately for credibility
-- Make research the backbone of your argument, not decoration
-
-CRITICAL: This is not background information - this is THE SUBSTANCE of what you're writing about. Build your {template_type} around these researched facts."""
-        
-        return enhanced_prompt
-    
-    return base_system_prompt
 
 # Exports
 WriterAgent = TemplateAwareWriterAgent

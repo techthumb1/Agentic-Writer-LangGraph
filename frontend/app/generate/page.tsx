@@ -4,7 +4,7 @@
 // RELEVANT FILES: components/TemplateStyleDrillDown.tsx, hooks/useTemplateStyleDrillDown.ts, lib/template-style-mapping.ts
 
 "use client";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
@@ -586,54 +586,6 @@ export default function GeneratePage() {
     }
   }, [templates, form]);
 
-  // Auto-save functionality
-  const autoSaveToGeneratedContentFolder = useCallback(async () => {
-    if (!result?.content) return;
-
-    try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-      const templateSlug = selectedTemplate?.id || 'content';
-      const filename = `${templateSlug}_${timestamp}_${Date.now()}`;
-    
-    const response = await fetch('/api/content', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: filename,
-        content: result.content,
-        metadata: {
-        template: selectedTemplate?.id,
-        style_profile: selectedStyleProfile?.id,
-        word_count: result.content.split(' ').length,
-        created_at: new Date().toISOString(),
-        preview: result.content.split('\n').find(line => line.trim().length > 0)?.replace(/^#+\s*/, '').trim().substring(0, 100),
-      },
-        status: 'completed',
-        type: 'article',
-      }),
-    });
-  
-    if (!response.ok) {
-      throw new Error(`Save failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('✅ Auto-saved content:', data);
-
-  } catch (error) {
-    console.error('❌ Auto-save failed:', error);
-  }
-}, [result?.content, selectedTemplate?.id, selectedStyleProfile?.id]);
-
-  useEffect(() => {
-    if (result?.content && generationSettings.autoSave && !isGenerating) {
-      const saveTimeout = setTimeout(() => {
-        autoSaveToGeneratedContentFolder();
-      }, 2000);
-
-      return () => clearTimeout(saveTimeout);
-    }
-  }, [result?.content, isGenerating, generationSettings.autoSave, autoSaveToGeneratedContentFolder]);
 
   useEffect(() => {
     if (currentStep !== 'generation' || !selectedTemplate?.templateData?.parameters) {
@@ -983,10 +935,12 @@ export default function GeneratePage() {
   };
 
   const getLengthFromTokens = (tokens: number): string => {
-    if (tokens <= 1000) return 'short'
-    if (tokens <= 2000) return 'medium' 
-    if (tokens <= 4000) return 'long'
-    return 'comprehensive'
+    if (tokens <= 4000) return 'short'
+    if (tokens <= 8000) return 'medium' 
+    if (tokens <= 12000) return 'long'
+    if (tokens <= 16000) return 'very long'
+    if (tokens <= 24000) return 'ultra long'
+    return 'long'
   }
 
   const getCreativityLevel = (temperature: number): string => {

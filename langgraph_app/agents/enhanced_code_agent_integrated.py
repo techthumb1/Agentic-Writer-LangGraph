@@ -278,8 +278,8 @@ class EnhancedCodeAgent:
         
         # Select model
         model = get_model_for_generation(
-            task_type="code_generation",
-            complexity_score=0.6
+            settings={},
+            mode="code_generation"
         )
         
         # Bind tools

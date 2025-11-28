@@ -261,7 +261,10 @@ class OpenAIModel:
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
                 raise RuntimeError("ENTERPRISE: OPENAI_API_KEY required")
-            self.client = openai.OpenAI(api_key=api_key)
+            self.client = openai.OpenAI(
+                api_key=api_key,
+                timeout=180.0  # 3 minutes for long generations
+            )
     
     def generate(
         self,

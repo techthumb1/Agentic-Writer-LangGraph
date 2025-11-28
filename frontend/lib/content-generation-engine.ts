@@ -155,11 +155,17 @@ export class EnterpriseContentGenerationEngine {
   private styleProfiles: Map<string, StyleProfileInfo> = new Map();
   private isInitialized = false;
 
-  constructor(baseUrl = '', apiKey = '') {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-    this.apiKey = apiKey || process.env.NEXT_PUBLIC_LANGGRAPH_API_KEY || 'dev-key';
+  constructor(baseUrl: string = '', apiKey: string = '') {
+    this.templates = new Map();
+    this.styleProfiles = new Map();
+    this.isInitialized = false;
+    this.baseUrl = baseUrl || process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://backend:8000';
+    this.apiKey = apiKey || process.env.LANGGRAPH_API_KEY || process.env.NEXT_PUBLIC_LANGGRAPH_API_KEY || 'dev-key';
+    
     console.log('🔧 ContentEngine initialized with baseUrl:', this.baseUrl);
-    this.initialize();
+    
+    // âŒ REMOVE THIS LINE - causes client-side fetch
+    // this.initialize();
   }
 
   private async initialize() {
@@ -277,7 +283,7 @@ export class EnterpriseContentGenerationEngine {
         },
       },
       preferences: {
-        maxTokens: (params.max_tokens as number) || 2000,
+        maxTokens: (params.max_tokens as number) || 24000,
         temperature: (params.temperature as number) || 0.7,
         model: (params.model as string) || 'gpt-4-turbo',
       },
@@ -286,8 +292,9 @@ export class EnterpriseContentGenerationEngine {
   }
 
   async generateContent(request: SimpleGenerationRequest): Promise<EnterpriseGenerationResult> {
+    // ✅ Lazy initialize on first use (server-side only)
     if (!this.isInitialized) {
-      throw new Error('Enterprise Content Generation Engine is not initialized yet.');
+      await this.initialize();
     }
 
     const generationId = `gen_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;

@@ -1,68 +1,61 @@
 // File: frontend/app/api/dashboard/stats/route.ts
 import { NextResponse } from 'next/server'
-import { auth } from "@/auth";
-
-
-interface DashboardStats {
-  totalContent: number
-  drafts: number
-  published: number
-  views: number
-  recentContent: RecentContentItem[]
-  recentActivity: ActivityItem[]
-}
-
-interface RecentContentItem {
-  id: string
-  title: string
-  status: 'published' | 'draft'
-  updatedAt: string
-  type: string
-}
-
-interface ActivityItem {
-  id: string
-  type: 'published' | 'created' | 'updated' | 'generated'
-  description: string
-  timestamp: string
-}
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
-
-async function getStatsFromBackend(): Promise<DashboardStats> {
-  const response = await fetch(`${BACKEND_URL}/api/dashboard/stats`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    signal: AbortSignal.timeout(5000),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Backend API error: ${response.status}`)
-  }
-
-  return await response.json()
-}
+import { auth } from '@/auth'
+import { prisma } from '@/lib/prisma.node'
 
 export async function GET() {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
-    console.log('📊 Fetching dashboard stats from backend API...')
-    const stats = await getStatsFromBackend()
-    console.log('✅ Successfully fetched stats from backend')
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userId = session.user.id
+    console.log(`📊 Fetching dashboard stats for user: ${userId}`)
+
+    // Fetch ONLY this user's content
+    const content = await prisma.content.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+    })
+
+    const totalContent = content.length
+    const drafts = content.filter(c => c.status === 'draft').length
+    const published = content.filter(c => c.status === 'published').length
+    const totalViews = content.reduce((sum, c) => sum + Number(c.views || 0), 0)
+
+    const recentContent = content.slice(0, 5).map(c => ({
+      id: c.id,
+      title: c.title,
+      status: c.status as 'draft' | 'published',
+      updated_at: c.updatedAt.toISOString(),
+      type: c.type,
+    }))
+
+    const recentActivity = content.slice(0, 5).map(c => ({
+      id: c.id,
+      type: (c.status === 'published' ? 'published' : 'updated') as 'published' | 'updated',
+      description: `${c.status === 'published' ? 'Published' : 'Updated'} "${c.title}"`,
+      timestamp: c.updatedAt.toISOString(),
+    }))
+
+    const stats = {
+      total_content: totalContent,
+      drafts,
+      published,
+      views: totalViews,
+      recent_content: recentContent,
+      recent_activity: recentActivity,
+    }
+
+    console.log('✅ Successfully fetched stats from database')
 
     const response = NextResponse.json(stats)
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
+    response.headers.set('Cache-Control', 'private, s-maxage=60, stale-while-revalidate=120')
     
     return response
   } catch (error) {
-    console.error('Dashboard stats API error:', error)
+    console.error('❌ Dashboard stats error:', error)
     return NextResponse.json(
       { 
         error: 'Failed to fetch dashboard stats',

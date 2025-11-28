@@ -24,6 +24,9 @@ COPY prisma ./prisma
 # Copy entire source
 COPY . .
 
+# Force correct DATABASE_URL for Prisma generation
+ENV DATABASE_URL="postgresql://postgres:YSH$$^sqC7XdXpga#HQ@db:5432/ai_content_db"
+
 # Generate Prisma client before build
 RUN npx prisma generate --schema=./prisma/schema.prisma
 
@@ -35,7 +38,8 @@ FROM base AS runner
 WORKDIR /app
 ENV PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    NODE_ENV=production
+    NODE_ENV=production \
+    DATABASE_URL="postgresql://postgres:YSH$$^sqC7XdXpga#HQ@db:5432/ai_content_db"
 
 RUN useradd -m -u 1001 nextjs
 

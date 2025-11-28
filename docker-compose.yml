@@ -31,7 +31,7 @@ services:
     container_name: writerzroom-frontend
     ports: ["3000:3000"]
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       DATABASE_URL: "postgresql://postgres:YSH$$^sqC7XdXpga%23HQ@db:5432/ai_content_db"
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: ${AUTH_SECRET}

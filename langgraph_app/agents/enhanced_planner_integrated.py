@@ -172,12 +172,9 @@ Output JSON array: [{{"tool_name": "name", "parameters": {{}}, "rationale": "why
         
         return results
 
-# UPDATED SECTION FOR: langgraph_app/agents/enhanced_planner_integrated.py
-# Lines 180-238 (the _llm_generate_planning method)
-
     def _llm_generate_planning(
         self,
-        state: Dict,
+        state: EnrichedContentState,
         model_name: str,
         tool_results: dict
     ) -> PlanningOutput:
@@ -185,17 +182,14 @@ Output JSON array: [{{"tool_name": "name", "parameters": {{}}, "rationale": "why
         system_prompt = self._build_system_prompt(state)
         user_prompt = self._build_user_prompt(state, tool_results)
 
-        max_attempts = 4  # Increased from 3
+        max_attempts = 4
         circuit_breaker = get_circuit_breaker()
         last_exception = None
         provider = "anthropic" if "claude" in model_name.lower() else "openai"
-
-        # Exponential backoff delays: 2s, 5s, 12s, 30s (total ~49s worst case)
         delays = [2.0, 5.0, 12.0, 30.0]
 
         for attempt in range(max_attempts):
             try:
-                # Check circuit breaker before attempting call
                 if not circuit_breaker.can_execute(provider):
                     logger.error(
                         f"Circuit breaker OPEN for {provider} - aborting planner "
@@ -206,7 +200,6 @@ Output JSON array: [{{"tool_name": "name", "parameters": {{}}, "rationale": "why
                         f"Provider may be experiencing outage. Please try again later."
                     )
 
-                # Attempt API call
                 if "gpt" in model_name:
                     response = self.openai_client.chat.completions.create(
                         model=model_name,
@@ -231,17 +224,15 @@ Output JSON array: [{{"tool_name": "name", "parameters": {{}}, "rationale": "why
                     json_match = re.search(r'\{.*\}', content, re.DOTALL)
                     planning_data = json.loads(json_match.group(0))
 
-                # Success - record with circuit breaker
                 circuit_breaker.record_success(provider)
 
-                # Log retry success if not first attempt
                 if attempt > 0:
                     logger.info(
                         f"✅ Planner succeeded on retry {attempt + 1}/{max_attempts} "
                         f"using {model_name}"
                     )
 
-                return PlanningOutput(
+                planning_output = PlanningOutput(
                     content_strategy=planning_data["content_strategy"],
                     structure_approach=planning_data["structure_approach"],
                     key_messages=planning_data["key_messages"],
@@ -253,29 +244,48 @@ Output JSON array: [{{"tool_name": "name", "parameters": {{}}, "rationale": "why
                     planning_confidence=planning_data.get("planning_confidence", 0.85)
                 )
 
+                # Override generic priorities with actual search queries
+                template_config = state.template_config or {}
+                if template_config.get('real_time_support', {}).get('enabled'):
+                    from datetime import datetime
+
+                    # Extract user requirements from dynamic_parameters
+                    dynamic_params = state.dynamic_parameters or {}
+
+                    focus = dynamic_params.get('content_focus', 'general')
+                    topic = dynamic_params.get('newsletter_type', state.content_spec.topic if state.content_spec else 'industry news')
+                    audience = dynamic_params.get('target_audience', 'professionals')
+                    company = dynamic_params.get('company_name', 'technology')
+
+                    planning_output.research_priorities = [
+                        f"{topic} latest news {datetime.now().strftime('%B %Y')}",
+                        f"{focus} industry trends 2024",
+                        f"{audience} {topic} insights",
+                        f"{company} {focus} developments",
+                        f"{topic} regulations policy updates 2024"
+                    ]
+                    logger.info(f"✓ Generated {len(planning_output.research_priorities)} search queries for Tavily")
+
+                return planning_output
+
             except OverloadedError as e:
                 last_exception = e
                 error_type = "overloaded"
-                
-                # Record failure with circuit breaker
                 circuit_breaker.record_failure(provider, error_type)
 
-                # Check if we should retry
                 if attempt < max_attempts - 1:
-                    # Calculate delay with jitter
                     base_delay = delays[attempt]
-                    jitter = random.uniform(0, 1.0)  # Add 0-1s random jitter
+                    jitter = random.uniform(0, 1.0)
                     total_delay = base_delay + jitter
-                    
+
                     logger.warning(
                         f"⚠️ Anthropic API overloaded (529) - "
                         f"retry {attempt + 1}/{max_attempts} in {total_delay:.1f}s "
                         f"(base={base_delay}s + jitter={jitter:.1f}s)"
                     )
-                    
+
                     time.sleep(total_delay)
                 else:
-                    # Final attempt failed
                     logger.error(
                         f"❌ Planner failed after {max_attempts} attempts. "
                         f"Anthropic API remained overloaded (529). "
@@ -288,17 +298,13 @@ Output JSON array: [{{"tool_name": "name", "parameters": {{}}, "rationale": "why
                     )
 
             except Exception as e:
-                # Non-retryable errors (JSON parsing, network, etc.)
                 error_type = type(e).__name__
                 logger.error(f"❌ Planner failed with non-retryable error: {error_type} - {str(e)}")
-                
-                # Record failure but don't retry
                 circuit_breaker.record_failure(provider, error_type)
-                
                 raise AgentExecutionError(f"Plan generation failed: {error_type} - {str(e)}")
 
-        # Should never reach here, but for safety
         raise AgentExecutionError(f"Plan generation failed after {max_attempts} attempts: {last_exception}")    
+    
     def _self_critique_plan(
         self,
         plan: PlanningOutput,

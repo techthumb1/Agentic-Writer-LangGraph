@@ -11,7 +11,7 @@ from collections import Counter
 
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.tools import tool
-
+from langgraph_app.enhanced_model_registry import get_model
 from langgraph_app.core.state import EnrichedContentState, AgentType, ContentPhase
 from langgraph_app.core.types import SeoAnalysis, SEOOptimizationContext
 from langgraph_app.enhanced_model_registry import get_model_for_generation
@@ -162,7 +162,7 @@ class EnhancedSEOAgent:
         
         # SEO thresholds
         self.min_seo_score = 0.7
-        self.max_refinement_loops = 2
+        self.max_refinement_loops = 1
     
     def execute(self, state: EnrichedContentState) -> EnrichedContentState:
         """Execute SEO optimization with LLM and tools."""
@@ -258,71 +258,74 @@ class EnhancedSEOAgent:
         return state
     
     def _llm_optimize_with_tools(
-        self,
-        content: str,
-        keywords: List[str],
-        intent: str,
-        template_config: Dict,
-        state: EnrichedContentState
-    ) -> tuple[str, List[Dict], float]:
-        """Use LLM with tools to optimize for SEO."""
-        
-        # Select model
-        model = get_model_for_generation(
-            task_type="seo_optimization",
-            complexity_score=0.5
-        )
-        
-        # Bind tools
-        model_with_tools = model.bind_tools(self.tools)
-        
-        # Build SEO prompt
-        system_prompt = self._build_seo_system_prompt(keywords, intent, template_config)
-        
-        user_prompt = f"""Optimize the following content for search engines.
+            self,
+            content: str,
+            keywords: List[str],
+            intent: str,
+            template_config: Dict,
+            state: EnrichedContentState
+        ) -> tuple[str, List[Dict], float]:
+            """Use LLM with tools to optimize for SEO."""
 
-**Target Keywords:** {', '.join(keywords)}
-**Search Intent:** {intent}
+            # Get model with proper settings
+            model = get_model(
+                agent_name="seo",
+                settings={
+                    "temperature": 1.0,
+                    "max_tokens": 4000
+                }
+            )
 
-**Content to Optimize:**
-{content}
+            # Bind tools
+            model_with_tools = model.bind_tools(self.tools)
 
-**Instructions:**
-1. Use analyze_keyword_density to check current keyword usage
-2. Use check_readability_seo to assess SEO impact of readability
-3. Use generate_meta_tags to create optimized meta tags
-4. Adjust keyword placement naturally (1-3% density per keyword)
-5. Maintain content quality while improving discoverability
-6. Ensure headers include target keywords
-7. Add internal linking opportunities where natural
+            # Build SEO prompt
+            system_prompt = self._build_seo_system_prompt(keywords, intent, template_config)
 
-Provide the SEO-optimized content with improvements applied."""
-        
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt)
-        ]
-        
-        # Invoke with tools
-        response = model_with_tools.invoke(messages)
-        
-        # Extract tool results
-        tool_results = []
-        if hasattr(response, 'tool_calls') and response.tool_calls:
-            for tool_call in response.tool_calls:
-                logger.info(f"🔧 Tool called: {tool_call['name']}")
-                tool_results.append({
-                    "tool": tool_call['name'],
-                    "result": tool_call.get('args', {})
-                })
-        
-        # Calculate SEO score
-        seo_score = self._calculate_seo_score(tool_results, keywords)
-        
-        # Extract optimized content
-        optimized = response.content if hasattr(response, 'content') else content
-        
-        return optimized, tool_results, seo_score
+            user_prompt = f"""Optimize the following content for search engines.
+
+    **Target Keywords:** {', '.join(keywords)}
+    **Search Intent:** {intent}
+
+    **Content to Optimize:**
+    {content}
+
+    **Instructions:**
+    1. Use analyze_keyword_density to check current keyword usage
+    2. Use check_readability_seo to assess SEO impact of readability
+    3. Use generate_meta_tags to create optimized meta tags
+    4. Adjust keyword placement naturally (1-3% density per keyword)
+    5. Maintain content quality while improving discoverability
+    6. Ensure headers include target keywords
+    7. Add internal linking opportunities where natural
+
+    Provide the SEO-optimized content with improvements applied."""
+
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+
+            # Invoke with tools
+            response = model_with_tools.invoke(messages)
+
+            # Extract tool results
+            tool_results = []
+            if hasattr(response, 'tool_calls') and response.tool_calls:
+                for tool_call in response.tool_calls:
+                    logger.info(f"🔧 Tool called: {tool_call['name']}")
+                    tool_results.append({
+                        "tool": tool_call['name'],
+                        "result": tool_call.get('args', {})
+                    })
+
+            # Calculate SEO score
+            seo_score = self._calculate_seo_score(tool_results, keywords)
+
+            # Extract optimized content
+            optimized = response.content if hasattr(response, 'content') else content
+
+            return optimized, tool_results, seo_score    
     
     def _build_seo_system_prompt(
         self,

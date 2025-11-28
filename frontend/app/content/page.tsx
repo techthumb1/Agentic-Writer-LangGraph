@@ -362,7 +362,12 @@ export default function MyContentPage() {
                         {formatTitle(item.title)}
                       </CardTitle>
                       <CardDescription className="text-muted-foreground text-sm mb-2 line-clamp-2">
-                        {item.subtitle || item.metadata?.preview || formatDate(item.created_at || item.date)}
+                        {(
+                          (typeof item.metadata?.subtitle === 'string' && item.metadata.subtitle) ||
+                          (typeof item.subtitle === 'string' && item.subtitle) ||
+                          (typeof item.metadata?.preview === 'string' && item.metadata.preview) ||
+                          formatDate(item.created_at || item.date)
+                        ) as React.ReactNode}
                       </CardDescription>
                     </div>
                   </CardHeader>

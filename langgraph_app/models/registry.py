@@ -38,7 +38,7 @@ AGENT_MODEL_MAP: Dict[AgentType, ModelConfig] = {
         provider="anthropic",
         model_name="claude-sonnet-4-20250514",
         temperature=0.3,
-        max_tokens=2000
+        max_tokens=4000
     ),
     
     # Researcher: Claude Sonnet (analysis and synthesis)
@@ -46,7 +46,7 @@ AGENT_MODEL_MAP: Dict[AgentType, ModelConfig] = {
         provider="anthropic",
         model_name="claude-sonnet-4-20250514",
         temperature=0.2,
-        max_tokens=3000
+        max_tokens=4000
     ),
     
     # Call Writer: GPT-4 (instruction synthesis)
@@ -54,21 +54,21 @@ AGENT_MODEL_MAP: Dict[AgentType, ModelConfig] = {
         provider="openai",
         model_name="gpt-4-turbo",
         temperature=0.5,
-        max_tokens=2000
+        max_tokens=4000
     ),
     
     # Writer: GPT-4 (creative content generation)
     AgentType.WRITER: ModelConfig(
         provider="openai",
-        model_name="gpt-4-turbo",
+        model_name="gpt-5.1",
         temperature=0.7,
         max_tokens=4000
     ),
     
-    # Editor: Claude Opus (quality and precision)
+    # Editor: Claude Sonnet (quality and precision)
     AgentType.EDITOR: ModelConfig(
         provider="anthropic",
-        model_name="claude-opus-4-20250514",
+        model_name="claude-sonnet-4-20250514",
         temperature=0.1,
         max_tokens=4000
     ),
@@ -76,9 +76,9 @@ AGENT_MODEL_MAP: Dict[AgentType, ModelConfig] = {
     # Formatter: Deterministic (no LLM needed, but fallback available)
     AgentType.FORMATTER: ModelConfig(
         provider="openai",
-        model_name="gpt-3.5-turbo",
+        model_name="gpt-4o",
         temperature=0.0,
-        max_tokens=1000
+        max_tokens=4000
     ),
     
     # SEO: Claude Sonnet (technical optimization)
@@ -86,16 +86,16 @@ AGENT_MODEL_MAP: Dict[AgentType, ModelConfig] = {
         provider="anthropic",
         model_name="claude-sonnet-4-20250514",
         temperature=0.2,
-        max_tokens=2000
+        max_tokens=4000
     ),
     
-    # Image: Stable for prompt generation
-    AgentType.IMAGE: ModelConfig(
-        provider="openai",
-        model_name="gpt-4-turbo",
-        temperature=0.8,
-        max_tokens=500
-    ),
+    ## Image: Stable for prompt generation
+    #AgentType.IMAGE: ModelConfig(
+    #    provider="openai",
+    #    model_name="gpt-4-turbo",
+    #    temperature=0.8,
+    #    max_tokens=500
+    #),
     
     # Code: GPT-4 (technical code generation)
     AgentType.CODE: ModelConfig(
@@ -110,7 +110,7 @@ AGENT_MODEL_MAP: Dict[AgentType, ModelConfig] = {
         provider="openai",
         model_name="gpt-3.5-turbo",
         temperature=0.0,
-        max_tokens=500
+        max_tokens=4000
     ),
 }
 

@@ -8,6 +8,7 @@ import uuid
 import time
 import logging
 import yaml
+import requests
 from datetime import datetime
 from typing import Dict, Any, Optional
 from contextlib import asynccontextmanager
@@ -100,7 +101,9 @@ class GenerateRequest(BaseModel):
     style_profile_id: Optional[str] = Field(None, min_length=1) 
     style_profile: Optional[str] = Field(None, min_length=1)
     user_input: Dict[str, Any] = Field(default_factory=dict)
+    generation_settings: Dict[str, Any] = Field(default_factory=dict)
     request_id: Optional[str] = None
+    user_id: Optional[str] = None
     
     def get_template(self) -> str:
         return self.template_id or self.template or ""
@@ -541,48 +544,18 @@ async def run_generation_workflow(request_id: str, initial_state: EnrichedConten
                         frontmatter_description = stripped.replace('description:', '').strip()
             
             # Build title from template name + topic
+            # Use template name as title, frontmatter as subtitle
             template_name = initial_state.template_config.get("name", "Content")
+            title = template_name
             
-            # Clean frontmatter title - keep everything before first |
             if frontmatter_title:
-                title_parts = frontmatter_title.split('|')
-                topic = title_parts[0].strip()
-                title = f"{topic} | {template_name}"
-            else:
-                # Fallback to topic from content_spec
-                if isinstance(final_state_data, dict):
-                    spec = final_state_data.get("content_spec", {})
-                    topic = getattr(spec, 'topic', "Generated Content")
-                else:
-                    topic = getattr(getattr(final_state_data, "content_spec", None), "topic", "Generated Content")
-                title = f"{topic} | {template_name}"
-            
-            # Clean subtitle from description field
-            if frontmatter_description:
-                import re
-                clean_desc = frontmatter_description
-                
-                # Remove "Caption:" prefix (case-insensitive)
-                if 'caption:' in clean_desc.lower():
-                    clean_desc = clean_desc.split(':', 1)[1].strip()
-                
-                # Remove "Module X -" patterns
-                clean_desc = re.sub(r'Module\s+\d+\s*[-—–]\s*', '', clean_desc, flags=re.IGNORECASE).strip()
-                
-                # Remove everything after first parenthesis
-                if '(' in clean_desc:
-                    clean_desc = clean_desc.split('(')[0].strip()
-                
-                # Remove emojis and special chars
-                clean_desc = re.sub(r'[🌍⚙️🔐🗣️🧠⚡📈🚀🌱💡🔍📊]', '', clean_desc).strip()
-                
-                # Remove trailing dash/hyphen
-                clean_desc = clean_desc.rstrip(' -—–')
-                
-                subtitle = clean_desc
+                subtitle = frontmatter_title.strip('"').strip("'").split('|')[0].strip()
+            elif frontmatter_description:
+                subtitle = frontmatter_description.strip('"').strip("'")
             else:
                 subtitle = ""
-
+            
+            subtitle = subtitle[:200] if subtitle else ""
         # Fallback if no title extracted
         if not title:
             template_name = initial_state.template_config.get("name", "Content")
@@ -604,7 +577,6 @@ async def run_generation_workflow(request_id: str, initial_state: EnrichedConten
                         subtitle += "..."
                     break
 
-        subtitle = subtitle[:200] if subtitle else ""
 
         # Save to database
         from .database.models import GenerationLog, SessionLocal
@@ -659,6 +631,53 @@ async def run_generation_workflow(request_id: str, initial_state: EnrichedConten
         
         logger.info(f"[{request_id}] Content saved to {output_file} - Title: {title} | Subtitle: {subtitle}")
 
+        # ✅ NEW: Sync to frontend database
+        import requests
+        import os
+        
+        try:
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            api_key = os.getenv("LANGGRAPH_API_KEY")
+            
+            # Get user_id from dynamic_parameters or environment
+            user_id = initial_state.dynamic_parameters.get("user_id") or os.getenv("SERVICE_USER_ID")
+            
+            if not user_id:
+                logger.warning(f"[{request_id}] No user_id for database sync - skipping")
+            else:
+                sync_response = requests.post(
+                    f"{frontend_url}/api/content",
+                    headers={
+                        "Content-Type": "application/json",
+                        "x-writerzroom-key": api_key
+                    },
+                    json={
+                        "userId": user_id,
+                        "title": title,
+                        "content": content,
+                        "contentHtml": "",
+                        "status": "completed",
+                        "type": initial_state.template_config.get("template_type", "article"),
+                        "metadata": {
+                            "file_id": file_id,
+                            "template_id": initial_state.template_config.get("id"),
+                            "style_profile_id": initial_state.style_config.get("id"),
+                            "subtitle": subtitle,
+                            "request_id": request_id
+                        }
+                    },
+                    timeout=10
+                )
+                
+                if sync_response.status_code == 200:
+                    logger.info(f"✓ [{request_id}] Content synced to database")
+                else:
+                    logger.error(f"✗ [{request_id}] Database sync failed: {sync_response.status_code} - {sync_response.text}")
+                    
+        except Exception as sync_error:
+            logger.error(f"[{request_id}] Database sync exception: {sync_error}")
+            # Don't fail generation if sync fails
+
         app.state.generation_tasks[request_id] = {
             "status": "completed",
             "progress": 1.0,
@@ -680,9 +699,8 @@ async def run_generation_workflow(request_id: str, initial_state: EnrichedConten
             "progress": 0,
             "error": str(e)
         }
-# ====== API Endpoints ======
-# Add to integrated_server.py after the list_templates endpoint
 
+# ====== API Endpoints ======
 @app.get("/api/templates/{template_id}")
 async def get_template_details(template_id: str):
     """Get full template details including normalized parameters"""
@@ -750,8 +768,8 @@ from .core.types import ContentSpec
 @app.post("/api/generate", status_code=status.HTTP_202_ACCEPTED)
 async def generate(
     req: GenerateRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
-    # _auth: bool = Depends(verify_api_key) # Authentication can be enabled here
 ):
     """Starts a content generation job in the background."""
     config_manager: ConfigManager = app.state.config_manager
@@ -759,56 +777,56 @@ async def generate(
         raise HTTPException(status_code=503, detail="Configuration Manager not available.")
 
     request_id = req.request_id or str(uuid.uuid4())
+    user_id = req.user_id or request.headers.get("X-User-ID", "anonymous")
 
     try:
-        # Get validated configurations from the ConfigManager
-        template_dict = config_manager.get_template(req.get_template()) #
-        style_profile_dict = config_manager.get_style_profile(req.get_style()) #
+        template_dict = config_manager.get_template(req.get_template())
+        style_profile_dict = config_manager.get_style_profile(req.get_style())
 
-        # --- FIX: Create ContentSpec from user input ---
-        # Extract topic, using 'topic' or 'title' key, defaulting if neither exists
-        topic = req.user_input.get("topic", req.user_input.get("title", "Unknown Topic")) #
-        # Extract optional subtopics and constraints, ensuring correct types
-        subtopics = req.user_input.get("subtopics", []) #
-        constraints = req.user_input.get("constraints", {}) #
+        topic = req.user_input.get("topic", req.user_input.get("title", "Unknown Topic"))
+        subtopics = req.user_input.get("subtopics", [])
+        constraints = req.user_input.get("constraints", {})
 
         content_spec = ContentSpec(
             topic=str(topic),
             subtopics=[str(s) for s in subtopics] if isinstance(subtopics, list) else [],
             constraints=constraints if isinstance(constraints, dict) else {},
-            target_audience=style_profile_dict.get('audience', ''),  # ADD
-            platform=style_profile_dict.get('platform', 'web')  # ADD
+            target_audience=style_profile_dict.get('audience', ''),
+            platform=style_profile_dict.get('platform', 'web')
         )
-        # --- END FIX ---
 
-        # Create the initial state object, including the newly created content_spec
+        # Merge generation_settings into dynamic_parameters
+        dynamic_params = {
+            **req.user_input,
+            'generation_settings': req.generation_settings or {
+                'max_tokens': 8000,
+                'temperature': 0.7,
+                'quality_mode': 'balanced'
+            }
+        }
+
         initial_state = EnrichedContentState(
             template_config=template_dict,       
             style_config=style_profile_dict,     
-            dynamic_parameters=req.user_input,   
+            dynamic_parameters=dynamic_params,
             content_spec=content_spec,
             current_date=datetime.now().isoformat()  
         )
 
-        # Add the generation task to run in the background
-        background_tasks.add_task(run_generation_workflow, request_id, initial_state) #
+        background_tasks.add_task(run_generation_workflow, request_id, initial_state)
 
-        # Return response indicating the task has started
         return {
             "request_id": request_id,
             "status": "pending",
             "message": "Content generation started.",
             "links": {"status": f"/api/generate/status/{request_id}"},
-        } #
+        }
     except KeyError as e:
-        # Handle cases where template_id or style_profile_id is not found
         logger.error(f"Configuration key error for request {request_id}: {e}")
         raise HTTPException(status_code=404, detail=f"Configuration not found: {e}")
     except Exception as e:
-        # Catch any other errors during setup
         logger.error(f"Failed to start generation for request {request_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
-
 @app.get("/api/generate/status/{request_id}")
 async def get_generation_status(request_id: str):
     """Retrieves the status or result of a content generation job."""
@@ -816,7 +834,10 @@ async def get_generation_status(request_id: str):
     if not task:
         raise HTTPException(status_code=404, detail="Generation request not found.")
     
-    # Return format that matches frontend expectations
+    # DEBUG: Log what we're returning
+    content_len = len(task.get("content", "")) if task.get("content") else 0
+    logger.info(f"[{request_id}] Status check: status={task.get('status')}, content_len={content_len}")
+    
     return {
         "success": True,
         "data": {
@@ -829,7 +850,6 @@ async def get_generation_status(request_id: str):
             "metadata": task.get("metadata", {}),
         }
     }
-
 
 # --- Templates & Style Profiles: LIST (enterprise format) ---
 

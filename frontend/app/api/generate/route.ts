@@ -3,8 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
+
 
 const API_BASE_URL =
   process.env.FASTAPI_BASE_URL ||
@@ -45,17 +44,6 @@ interface GenerationRequest {
   user_id?: string;
 }
 
-interface GenerationResponse {
-  success: boolean;
-  generation_id: string;
-  request_id: string;
-  status: string;
-  content?: string;
-  metadata?: Record<string, unknown>;
-  error?: string;
-  estimated_completion?: string;
-  progress?: number;
-}
 
 interface BackendResponse {
   data?: {
@@ -73,18 +61,6 @@ interface BackendResponse {
   content?: string;
 }
 
-function inferContentType(template: string): string {
-  const templateLower = template.toLowerCase();
-  
-  if (templateLower.includes('business_proposal') || templateLower.includes('business')) return 'Business Proposal';
-  if (templateLower.includes('technical_documentation') || templateLower.includes('technical_documents')) return 'Technical Documentation';
-  if (templateLower.includes('social_media_campaign') || templateLower.includes('social')) return 'Social Media Campaign';
-  if (templateLower.includes('email_newsletter') || templateLower.includes('newsletter')) return 'Email Newsletter';
-  if (templateLower.includes('press_release') || templateLower.includes('press')) return 'Press Release';
-  if (templateLower.includes('blog_article_generator') || templateLower.includes('blog')) return 'Blog Article';
-  
-  return 'Article';
-}
 
 function generateTopicFromTemplate(template: string, styleProfile: string, providedTopic?: string): string {
   if (providedTopic && providedTopic.trim().length > 0) {
@@ -106,96 +82,6 @@ function generateTopicFromTemplate(template: string, styleProfile: string, provi
     return `Newsletter content in ${styleName} format`;
   } else {
     return `${templateName} content using ${styleName} approach`;
-  }
-}
-
-async function saveGeneratedContent(content: string, metadata: {
-  request_id: string;
-  template: string;
-  style_profile: string;
-  topic: string;
-  audience?: string;
-}): Promise<{ saved_path: string; content_id: string }> {
-  try {
-    const timestamp = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    const topicSlug = metadata.topic
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .replace(/\s+/g, '_')
-      .substring(0, 50);
-    
-    const contentId = `${topicSlug}_${timestamp}_${metadata.request_id.substring(0, 8)}`;
-    const saveDir = path.join(process.cwd(), '../generated_content');
-    const now = new Date();
-    const currentWeek = `week_${now.getFullYear()}_${Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000))}`;
-    const weekDir = path.join(saveDir, currentWeek);
-    
-    await fs.mkdir(weekDir, { recursive: true });
-    
-    const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
-    const readingTime = Math.ceil(wordCount / 200);
-    
-    const contentMetadata = {
-      title: metadata.topic || 'Generated Content',
-      status: 'draft' as const,
-      type: inferContentType(metadata.template),
-      content,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      author: 'AI Assistant',
-      views: 0,
-      metadata: {
-        template: metadata.template,
-        styleProfile: metadata.style_profile,
-        request_id: metadata.request_id,
-        topic: metadata.topic,
-        audience: metadata.audience,
-        wordCount,
-        readingTime,
-        generatedAt: new Date().toISOString(),
-        generation_mode: 'enhanced'
-      }
-    };
-    
-    const jsonPath = path.join(weekDir, `${contentId}.json`);
-    await fs.writeFile(jsonPath, JSON.stringify(contentMetadata, null, 2));
-    
-    const mdPath = path.join(weekDir, `${contentId}.md`);
-    const frontmatter = [
-      '---',
-      `title: "${metadata.topic}"`,
-      `template: "${metadata.template}"`,
-      `styleProfile: "${metadata.style_profile}"`,
-      `status: "draft"`,
-      `type: "${inferContentType(metadata.template)}"`,
-      `createdAt: "${new Date().toISOString()}"`,
-      '---',
-      '',
-      content
-    ].join('\n');
-    
-    await fs.writeFile(mdPath, frontmatter);
-    
-    console.log(`✅ [AUTO-SAVE] Content saved successfully:`, {
-      contentId,
-      week: currentWeek,
-      jsonPath,
-      mdPath,
-      wordCount,
-      readingTime
-    });
-    
-    return {
-      saved_path: jsonPath,
-      content_id: contentId
-    };
-    
-  } catch (error) {
-    console.error('❌ [AUTO-SAVE] Failed to save content:', error);
-    return {
-      saved_path: '',
-      content_id: ''
-    };
   }
 }
 
@@ -288,7 +174,7 @@ const performFetchWithRetry = async (
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), payload.timeout_seconds * 1000);
+      const timeoutId = setTimeout(() => controller.abort(), payload.timeout_seconds * 500);
       
       const response = await fetch(url, {
         method: 'POST',
@@ -340,114 +226,6 @@ const performFetchWithRetry = async (
   throw new Error('Fetch failed after all attempts');
 };
 
-function extractContentFromBackendResponse(data: unknown): string {
-  console.log('🔍 [DEBUG] Full backend response:', JSON.stringify(data, null, 2));
-  const isObjectWithStringProps = (obj: unknown): obj is Record<string, unknown> => {
-    return typeof obj === 'object' && obj !== null;
-  };
-  
-  if (!isObjectWithStringProps(data)) {
-    console.warn('⚠️ [DEBUG] Response is not an object');
-    return '';
-  }
-  
-  const possibleContentFields = [
-    'content',
-    'formatted_content',
-    'edited_content',
-    'draft_content',
-    'draft',
-    'result',
-    'final_content',
-    'output',
-    'formatted_article',
-    'edited_draft'
-  ] as const;
-  
-  for (const field of possibleContentFields) {
-    const fieldValue = data[field];
-    if (fieldValue != null && typeof fieldValue === 'string') {
-      const trimmedValue = fieldValue.trim();
-      if (trimmedValue.length > 0) {
-        console.log(`✅ [DEBUG] Found content in field '${field}', length: ${trimmedValue.length}`);
-        return trimmedValue;
-      }
-    }
-  }
-  
-  const stateObj = data.state;
-  if (isObjectWithStringProps(stateObj)) {
-    console.log('🔍 [DEBUG] Checking nested AgentState:', Object.keys(stateObj));
-    for (const field of possibleContentFields) {
-      const fieldValue = stateObj[field];
-      if (fieldValue != null && typeof fieldValue === 'string') {
-        const trimmedValue = fieldValue.trim();
-        if (trimmedValue.length > 0) {
-          console.log(`✅ [DEBUG] Found content in state.${field}, length: ${trimmedValue.length}`);
-          return trimmedValue;
-        }
-      }
-    }
-  }
-  
-  const nestedObjects = ['agent_state', 'final_state', 'graph_state', 'result_state'] as const;
-  for (const nested of nestedObjects) {
-    const nestedObj = data[nested];
-    if (isObjectWithStringProps(nestedObj)) {
-      console.log(`🔍 [DEBUG] Checking nested ${nested}:`, Object.keys(nestedObj));
-      for (const field of possibleContentFields) {
-        const fieldValue = nestedObj[field];
-        if (fieldValue != null && typeof fieldValue === 'string') {
-          const trimmedValue = fieldValue.trim();
-          if (trimmedValue.length > 0) {
-            console.log(`✅ [DEBUG] Found content in ${nested}.${field}, length: ${trimmedValue.length}`);
-            return trimmedValue;
-          }
-        }
-      }
-    }
-  }
-  
-  if (typeof data === 'string') {
-    const trimmedData = (typeof data === 'string' && data !== null) ? (data as string).trim() : '';
-    if (trimmedData.length > 50) {
-      console.log(`✅ [DEBUG] Using entire response as content, length: ${trimmedData.length}`);
-      return trimmedData;
-    }
-  }
-  
-  console.warn('⚠️ [DEBUG] No content found in standard fields, searching recursively...');
-  const findAnyContent = (obj: unknown, path = '', depth = 0): string => {
-    if (depth > 3) return '';
-    
-    if (typeof obj === 'string') {
-      const trimmedObj = obj.trim();
-      if (trimmedObj.length > 100) {
-        console.log(`🔍 [DEBUG] Found potential content at ${path}: ${trimmedObj.length} chars`);
-        return trimmedObj;
-      }
-    }
-    
-    if (isObjectWithStringProps(obj)) {
-      for (const [key, value] of Object.entries(obj)) {
-        const result = findAnyContent(value, path ? `${path}.${key}` : key, depth + 1);
-        if (result) return result;
-      }
-    }
-    return '';
-  };
-  
-  const alternativeContent = findAnyContent(data);
-  if (alternativeContent) {
-    console.log('✅ [DEBUG] Found alternative content:', alternativeContent.length, 'chars');
-    return alternativeContent;
-  }
-  
-  const availableFields = Object.keys(data);
-  console.warn(`⚠️ [DEBUG] No content found anywhere. Available top-level fields: ${availableFields.join(', ')}`);
-  
-  return '';
-}
 
 export async function POST(request: NextRequest) {
   const frontend_request_id = randomUUID(); // For frontend tracking only
@@ -455,6 +233,16 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
+    // 🔍 DEBUG: Log incoming request
+  console.log('🔍 [GENERATE-API] Request body:', JSON.stringify({
+    has_template: !!body.template,
+    has_templateId: !!body.templateId,
+    has_style_profile: !!body.style_profile,
+    has_styleProfileId: !!body.styleProfileId,
+    has_generation_settings: !!body.generation_settings,
+    generation_settings: body.generation_settings,
+    keys: Object.keys(body)
+  }, null, 2));
     
     if (!body.template && !body.templateId) {
       return NextResponse.json(
@@ -567,7 +355,7 @@ export async function POST(request: NextRequest) {
       },
       
       priority: body.priority || 1,
-      timeout_seconds: body.timeout_seconds || 300,
+      timeout_seconds: body.timeout_seconds || 600,
       generation_mode: body.generation_mode || "enhanced",
       created_at: new Date().toISOString(),
       user_id: body.user_id
@@ -660,77 +448,16 @@ export async function POST(request: NextRequest) {
       }
       
       // ✅ FIX: Extract backend's actual request_id
-      const backendRequestId = data?.data?.request_id || data?.request_id || data?.generation_id || frontend_request_id;
-      
-      // Return immediately - let frontend poll via status endpoint
-      const finalData: BackendResponse = data;
-      
-      const processingTime = Date.now() - startTime;
-      
-      const extractedContent = extractContentFromBackendResponse(finalData);
-      
-      let saveResult = { saved_path: '', content_id: '' };
-      if (extractedContent && extractedContent.length > 50) {
-        saveResult = await saveGeneratedContent(extractedContent, {
-          request_id: backendRequestId,
-          template: enterprisePayload.template,
-          style_profile: enterprisePayload.style_profile,
-          topic: enterprisePayload.topic,
-          audience: enterprisePayload.audience
-        });
-      }
-      
-      const enterpriseResponse: GenerationResponse = {
+      const finalData = data; // Rename for compatibility with rest of code
+      const backendRequestId = finalData?.data?.request_id || finalData?.request_id || finalData?.generation_id || frontend_request_id;      
+      // Return 202 immediately - client polls via status endpoint
+      return NextResponse.json({
         success: true,
+        request_id: backendRequestId,
         generation_id: backendRequestId,
-        request_id: backendRequestId, // ✅ FIX: Use backend's request_id for status polling
-        status: finalData?.data?.status || finalData?.status || (extractedContent ? 'completed' : 'pending'),
-        content: extractedContent,
-        metadata: {
-          ...(finalData?.data?.metadata || {}),
-          ...(finalData?.metadata || {}),
-          frontend_request_id: frontend_request_id,
-          backend_request_id: backendRequestId, // ✅ FIX: Track both IDs
-          processing_time_ms: processingTime,
-          
-          template_used: enterprisePayload.template,
-          style_profile_used: enterprisePayload.style_profile,
-          topic_generated: enterprisePayload.topic,
-          generation_mode: enterprisePayload.generation_mode,
-          
-          content_type: inferContentType(enterprisePayload.template),
-          word_count: extractedContent ? extractedContent.split(' ').length : 0,
-          estimated_read_time: extractedContent ? Math.ceil(extractedContent.split(' ').length / 200) : 0,
-          
-          saved_path: saveResult.saved_path,
-          content_id: saveResult.content_id,
-          auto_saved: !!saveResult.content_id,
-          
-          content_extraction_method: extractedContent ? 'enhanced' : 'fallback',
-          template_style_combination: `${enterprisePayload.template}__${enterprisePayload.style_profile}`,
-          generation_success: !!extractedContent,
-          content_length_chars: extractedContent ? extractedContent.length : 0
-        },
-        estimated_completion: finalData?.estimated_completion,
-        progress: (finalData?.progress as number) || (finalData?.status === 'pending' ? 10 : 100)
-      };
-      
-      logSuccess('Generation Completed Successfully', {
-        generation_id: enterpriseResponse.generation_id,
-        backend_request_id: backendRequestId,
-        frontend_request_id: frontend_request_id,
-        processing_time_ms: processingTime,
-        template: enterprisePayload.template,
-        style_profile: enterprisePayload.style_profile,
-        topic: enterprisePayload.topic,
-        content_length: extractedContent ? extractedContent.length : 0,
-        content_found: !!extractedContent,
-        auto_saved: !!saveResult.content_id,
-        content_id: saveResult.content_id,
-        template_style_combo: `${enterprisePayload.template}__${enterprisePayload.style_profile}`
-      }, frontend_request_id);
-      
-      return NextResponse.json(enterpriseResponse);
+        status: 'pending',
+        message: 'Generation started in background'
+      }, { status: 202 });
       
     } catch (fetchError: unknown) {
       const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));

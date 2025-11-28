@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma.node';
 import { contentGenerationEngine } from '@/lib/content-generation-engine';
-
+import { auth } from '@/auth';
 interface Section {
   title: string;
   content: string;
@@ -31,6 +31,12 @@ interface GenerationResult {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     // ✅ FIXED: Accept both old and new field names
@@ -111,7 +117,7 @@ export async function POST(request: NextRequest) {
           // Foreign key relationships - Fixed parameter names
           templateId: template,
           styleProfileId: styleProfile,
-          userId: 'default-user', // You'll need to get this from auth context
+          userId: session.user.id, // You'll need to get this from auth context
           
           // Versioning
           version: 1,
