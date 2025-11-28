@@ -137,6 +137,11 @@ ENV/
 env.bak/
 venv.bak/
 writer/
+.env.*
+*.env
+*.key
+*.pem
+secrets.*
 
 # Spyder project settings
 .spyderproject

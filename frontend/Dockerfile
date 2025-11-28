@@ -1,7 +1,8 @@
 # frontend/Dockerfile
 
 # ---- base ----
-FROM node:22-bookworm-slim AS base
+FROM node:22-alpine AS base
+
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NODE_ENV=production
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends ca-certificates openssl \
@@ -25,7 +26,7 @@ COPY prisma ./prisma
 COPY . .
 
 # Force correct DATABASE_URL for Prisma generation
-ENV DATABASE_URL="postgresql://postgres:YSH$$^sqC7XdXpga#HQ@db:5432/ai_content_db"
+ENV DATABASE_URL="postgresql://postgres:LwfO+JkzB4v7cqDHbGb+5QOgWxsyGlu6@db:5432/ai_content_db"
 
 # Generate Prisma client before build
 RUN npx prisma generate --schema=./prisma/schema.prisma
@@ -39,8 +40,7 @@ WORKDIR /app
 ENV PORT=3000 \
     HOSTNAME=0.0.0.0 \
     NODE_ENV=production \
-    DATABASE_URL="postgresql://postgres:YSH$$^sqC7XdXpga#HQ@db:5432/ai_content_db"
-
+    DATABASE_URL="postgresql://postgres:LwfO+JkzB4v7cqDHbGb+5QOgWxsyGlu6@db:5432/ai_content_db"
 RUN useradd -m -u 1001 nextjs
 
 # Copy public assets
