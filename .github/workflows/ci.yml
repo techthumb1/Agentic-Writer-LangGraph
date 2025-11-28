@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -20,24 +20,29 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       
       - name: Install dependencies
-        working-directory: ./frontend
-        run: npm ci
+        run: |
+          cd frontend
+          npm ci
       
       - name: Lint
-        working-directory: ./frontend
-        run: npm run lint:check
+        run: |
+          cd frontend
+          npm run lint:check
       
       - name: Type check
-        working-directory: ./frontend
-        run: npm run type-check
+        run: |
+          cd frontend
+          npm run type-check
       
       - name: Test
-        working-directory: ./frontend
-        run: npm run test:coverage
+        run: |
+          cd frontend
+          npm run test:coverage
       
       - name: Build
-        working-directory: ./frontend
-        run: npm run build
+        run: |
+          cd frontend
+          npm run build
 
   test-backend:
     runs-on: ubuntu-latest
@@ -50,21 +55,24 @@ jobs:
           python-version: '3.11'
       
       - name: Install dependencies
-        working-directory: ./langgraph_app
         run: |
+          cd langgraph_app
           pip install -r requirements.txt
           pip install pytest
       
       - name: Test
-        working-directory: ./langgraph_app
         run: |
-          pytest -v || true  # backend has no tests yet
+          cd langgraph_app
+          python -m pytest tests/ -v
 
   security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Run npm audit (frontend)
-        working-directory: ./frontend
-        run: npm audit --audit-level moderate || true
+      - name: Run security audit
+        run: |
+          cd frontend
+          npm audit --audit-level moderate
+
+#
