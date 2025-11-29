@@ -42,4 +42,4 @@ jobs:
       
       - name: Deploy to Cloud Run
         run: |
-          gcloud builds submit --config cloudbuild-gcp.yaml
+          gcloud builds submit --config cloudbuild.yaml
