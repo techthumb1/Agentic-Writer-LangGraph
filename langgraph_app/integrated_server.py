@@ -42,7 +42,7 @@ from .graph.workflow import get_compiled_graph
 from .database.models import GenerationLog, get_db
 
 # Internal - Routers
-from .health_routes import router as health_router
+from .monitoring.health import router as health_router
 from .analytics_endpoints import router as analytics_router
 
 # Internal - Security & Monitoring
@@ -169,7 +169,8 @@ setup_security_middleware(app)
 app.include_router(health_router)
 app.include_router(analytics_router)
 app.include_router(debug_router, tags=["Debug"]) 
-app.include_router(health_monitoring_router)    
+app.include_router(health_monitoring_router)
+ 
 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats_direct():

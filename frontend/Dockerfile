@@ -1,70 +1,47 @@
 # frontend/Dockerfile
-
-# ---- base ----
 FROM node:22-alpine AS base
 
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NODE_ENV=production
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends ca-certificates openssl \
-    && rm -rf /var/lib/apt/lists/*
 
-# ---- deps ----
+# Alpine uses apk, not apt-get
+RUN apk add --no-cache ca-certificates openssl
+
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev
 
-# ---- builder ----
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-
-# Copy prisma schema and migrations BEFORE other files
 COPY prisma ./prisma
-
-# Copy entire source
 COPY . .
 
-# Force correct DATABASE_URL for Prisma generation
-ENV DATABASE_URL="postgresql://postgres:LwfO+JkzB4v7cqDHbGb+5QOgWxsyGlu6@db:5432/ai_content_db"
-
-# Generate Prisma client before build
+# Use build arg for Prisma generation (placeholder only)
+ARG DATABASE_URL=postgresql://placeholder@localhost:5432/ai_content_db
 RUN npx prisma generate --schema=./prisma/schema.prisma
 
-# Build Next.js app
+# Enable standalone output for production
+ENV NEXT_OUTPUT=standalone
 RUN npm run build
 
-# ---- runner ----
 FROM base AS runner
 WORKDIR /app
 ENV PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    NODE_ENV=production \
-    DATABASE_URL="postgresql://postgres:LwfO+JkzB4v7cqDHbGb+5QOgWxsyGlu6@db:5432/ai_content_db"
-RUN useradd -m -u 1001 nextjs
+    NODE_ENV=production
 
-# Copy public assets
-COPY --from=builder /app/public ./public
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Copy entire .next directory (includes all pages)
-COPY --from=builder /app/.next ./.next
-
-# Copy source app directory
-COPY --from=builder /app/app ./app
-
-# Copy node_modules
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copy Prisma files
-COPY --from=builder /app/prisma ./prisma
-
-# Copy package.json
-COPY --from=builder /app/package.json ./package.json
-
-# Ensure nextjs user owns all files
-RUN chown -R nextjs:nextjs /app
+# Copy standalone build
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 USER nextjs
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
