@@ -1,0 +1,153 @@
+# data/style_profiles/tv_comedy_writing.yaml
+# Professional Style Profile - TV Comedy Writing
+# Category: Screenwriting
+
+id: tv_comedy_writing
+name: TV Comedy Writing
+description: Professional sitcom and comedy series writing
+category: screenwriting
+subcategory: advanced
+platform: television
+tone: comedic
+voice: witty
+structure: setup → punchline → callback
+audience: comedy_writers
+
+system_prompt: >
+  Write in professional TV comedy style for sitcoms and comedy series.
+  Focus on character-based humor, comedic timing, and joke structure.
+  Build jokes through setup/punchline, use callbacks, create running gags.
+  Maintain advanced complexity with sophisticated wordplay and situational comedy.
+  CRITICAL: Write actual comedy script pages with jokes that land, not explanations
+  of comedy writing. Funny dialogue, comedic situations, character quirks that generate
+  humor. Every scene should have laughs. Format in standard TV comedy script style.
+
+writing_style:
+  tone: comedic
+  voice: witty
+  formality: medium
+  technical_level: advanced
+  objectivity: low                     # Comedy is subjective
+  evidence_based: false
+
+# Comedy-specific rules
+forbidden_patterns:
+  - "[insert joke here]"               # Actually write the jokes
+  - "[funny dialogue]"                 # Write actual funny dialogue
+  - "this is hilarious"                # Don't tell us it's funny, be funny
+  - "comedic beat"                     # Write the actual comedy
+
+required_elements:
+  - "setup_and_payoff"
+  - "character_consistent_humor"
+  - "joke_structure"
+  - "comedic_timing"
+  - "callbacks_when_appropriate"
+
+# Comedy structure
+content_structure:
+  opening_style: "cold_open_with_hook"
+  joke_density: "3_to_5_per_page"
+  timing: "rhythm_based"
+  callback_requirement: "at_least_one"
+  runner_potential: "plant_recurring_gags"
+  act_break: "on_laugh_or_cliffhanger"
+
+# Comedy language requirements
+language_requirements:
+  vocabulary_level: accessible         # Jokes need to land quickly
+  sentence_complexity: varied
+  wordplay: encouraged
+  technical_precision: medium
+  rule_of_three: "apply_liberally"    # Comedy rule of three
+  specificity: high                    # Specific is funnier than general
+
+length_limit:
+  words: 2500                          # Per episode
+  min: 1800
+  max: 3200
+  jokes_per_page: 3
+
+settings:
+  use_analogies: true                  # Great for comedy
+  avoid_jargon: false
+  include_examples: false
+  conversational_tone: true
+  encourage_questions: true
+  reading_level: "accessible"
+  timing_is_everything: true
+  character_over_joke: true            # Character-driven comedy
+  situation_over_gag: true             # Situational over cheap laughs
+
+formatting:
+  script_format: "multi_camera"        # or "single_camera"
+  stage_directions: "minimal"
+  parentheticals: "for_comedic_timing"
+  act_breaks: "two_acts_typical"
+  page_count: "25_to_35_pages"
+
+# Comedy quality thresholds
+quality_requirements:
+  laugh_frequency: 85                  # Jokes per page metric
+  character_consistency: 95
+  setup_payoff_ratio: 90
+  callback_execution: 80
+  timing_clarity: 90
+  funny_score: 85                      # Subjective but critical
+  originality: 80                      # Avoid hacky jokes
+
+# Comedy violations
+violation_detection:
+  hacky_jokes: ["take_my_wife_please", "thats_what_she_said"]
+  lazy_humor: ["sitcom_cliches", "obvious_punchlines"]
+  offensive_shortcuts: ["punching_down", "cheap_stereotypes"]
+  explaining_jokes: ["get_it?", "because..."]
+  forced_comedy: ["trying_too_hard_markers"]
+
+# Comedy techniques
+advanced_techniques:
+  - "misdirection_surprise"
+  - "escalation_absurdity"
+  - "callback_payoffs"
+  - "running_gags"
+  - "character_catch_phrases"
+  - "comedic_misunderstanding"
+  - "fish_out_of_water"
+  - "awkward_silence_beats"
+  - "physical_comedy_descriptions"
+  - "rapid_fire_banter"
+
+# Joke types
+joke_structures:
+  - "setup_punchline"
+  - "rule_of_three"
+  - "callback"
+  - "misdirection"
+  - "wordplay_pun"
+  - "character_quirk"
+  - "situational_irony"
+  - "running_gag"
+  - "topper" 
+  - "act_out"
+
+# Character archetypes for comedy
+character_types:
+  - "straight_man"                     # Grounded, reacts to absurdity
+  - "comic_relief"                     # Source of jokes
+  - "oddball"                          # Quirky worldview generates humor
+  - "authority_figure"                 # For conflict/subversion
+  - "wise_fool"                        # Accidentally wise through comedy
+
+metadata:
+  version: "1.0.0"
+  created_by: "screenwriting_system"
+  last_updated: "2025-11-17"
+  use_cases: ['sitcom scripts', 'comedy pilots', 'sketch comedy']
+  target_audience: "comedy_writers"
+  complexity_level: "advanced"
+  category: "Screenwriting"
+  subcategory: "Comedy"
+  enforcement_level: "moderate"       # Comedy needs some flexibility
+  professional_grade: true
+  industry_standard: true
+  laugh_track_era: "post_laugh_track" # Modern comedy style

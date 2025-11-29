@@ -1,0 +1,106 @@
+id: general_blog
+name: General Blog
+description: Human-grade narrative + analytical blog style for Medium/Substack publication
+category: content_marketing
+subcategory: general
+platform: blog
+tone: natural_informed
+voice: expert_relaxed
+structure: free_narrative_flow
+audience: general_readers
+
+system_prompt: >
+  Write with a natural narrative voice that blends observation, explanation, and analysis.
+  Avoid any marketing tone, punchy hooks, clickbait structures, or CTA language.
+  Do not use em dashes. Do not use template-like section labels.
+  Use smooth paragraphs, grounded reasoning, and cite evidence clearly when appropriate.
+  Avoid AI tells, avoid mechanical transitions, and avoid list-heavy formatting.
+  Maintain human pacing and varied sentence structure.
+
+writing_style:
+  tone: natural_informed
+  voice: expert_relaxed
+  formality: medium
+  technical_level: accessible
+  objectivity: moderate
+  evidence_based: true
+
+content_structure:
+  opening_style: "brief_orientation_paragraph"
+  paragraph_style: "smooth_multi_sentence"
+  transition_style: "organic"
+  conclusion_style: "synthesis"
+  evidence_requirement: "moderate"
+
+language_requirements:
+  vocabulary_level: accessible
+  sentence_complexity: varied
+  use_jargon: false
+  technical_precision: moderate
+  objectivity_level: moderate
+
+length_limit:
+  words: 1800
+  min: 500
+  max: 3000
+
+settings:
+  use_analogies: false
+  avoid_jargon: true
+  include_examples: true
+  conversational_tone: false
+  encourage_questions: false
+  reading_level: "intermediate"
+  eliminate_casual_language: true
+  enforce_professional_standards: true
+  require_evidence_support: true
+
+formatting:
+  use_headers: false
+  use_bullet_points: false
+  use_callouts: false
+  code_blocks: minimal
+  academic_structure: false
+  professional_layout: true
+
+forbidden_patterns:
+  - "hook →"
+  - "problem → solution"
+  - "In this article"
+  - "we will explore"
+  - "Let’s dive in"
+  - "any use of em dashes"
+  - "template-like sections such as Introduction, Conclusion"
+  - "marketing tone"
+  - "punchy hook"
+  - "why it matters"
+  - "call to action"
+
+required_elements:
+  - "natural paragraphs"
+  - "narrative + analytical blend"
+  - "evidence grounding"
+  - "clear reasoning"
+  - "synthesis ending"
+
+quality_requirements:
+  formality_score: 60
+  objectivity_score: 65
+  analytical_depth: 70
+  evidence_support: 75
+  style_consistency: 90
+  pattern_compliance: 100
+  audience_alignment: 90
+  complexity_match: 70
+
+metadata:
+  version: "2.0.0"
+  created_by: "writerzroom_system"
+  last_updated: "2025-11-19"
+  use_cases: ["medium", "substack", "long-form narrative analysis"]
+  target_audience: "general_readers"
+  complexity_level: "intermediate"
+  category: "Content Marketing"
+  enforcement_level: "strict"
+  anti_generic: true
+  professional_grade: true

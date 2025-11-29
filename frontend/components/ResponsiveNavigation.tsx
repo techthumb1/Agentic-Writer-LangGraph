@@ -1,47 +1,48 @@
-// frontend/components/ResponsiveNavigation.tsx
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { Menu, X } from "lucide-react";
-
-const navigationItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/generate", label: "Generate Content" },
-  { href: "/content", label: "My Content" },
-  { href: "/templates", label: "Templates" },
-  { href: "/settings", label: "Settings" },
-];
+import { useState } from 'react';
+import Link from 'next/link';
+import { Menu, X } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 export function ResponsiveNavigation() {
   const [isOpen, setIsOpen] = useState(false);
-  const pathname = usePathname();
+  const { data: session } = useSession();
 
-  // Close mobile menu when route changes
-  useEffect(() => {
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const closeMenu = () => {
     setIsOpen(false);
-  }, [pathname]);
+  };
 
-  // Close mobile menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isOpen && !(event.target as Element).closest('.mobile-menu-container')) {
-        setIsOpen(false);
-      }
-    };
+  // Define navigation items based on authentication status
+  const publicNavItems = [
+    { href: "/", label: "Home" },
+    { href: "/solutions", label: "Solutions" },
+    { href: "/pricing", label: "Pricing" },
+    { href: "/customers", label: "Customers" },
+  ];
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  const authenticatedNavItems = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/generate", label: "Generate" },
+    { href: "/content", label: "My Content" },
+    { href: "/templates", label: "Templates" },
+    { href: "/settings", label: "Settings" },
+  ];
+
+  const allNavItems = [...publicNavItems, ...(session?.user ? authenticatedNavItems : [])];
 
   return (
-    <div className="lg:hidden mobile-menu-container">
-      {/* Mobile menu button */}
+    <>
+      {/* Mobile Menu Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleMenu}
         className="inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-500 transition-colors duration-200"
         aria-expanded="false"
+        aria-label="Main menu"
       >
         <span className="sr-only">Open main menu</span>
         {isOpen ? (
@@ -51,42 +52,58 @@ export function ResponsiveNavigation() {
         )}
       </button>
 
-      {/* Mobile menu panel */}
+      {/* Mobile Menu Overlay */}
       {isOpen && (
         <>
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 z-40 bg-black bg-opacity-50 transition-opacity duration-300"
+            onClick={closeMenu}
           />
           
-          {/* Menu panel */}
-          <div className="absolute top-full right-0 mt-2 w-56 bg-gray-800 rounded-md shadow-lg border border-gray-700 z-50 lg:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {navigationItems.map(({ href, label }) => {
-                const isActive = pathname === href;
-                
-                return (
+          {/* Menu Panel */}
+          <div className="fixed inset-y-0 right-0 max-w-xs w-full bg-gray-800 shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-700">
+              <h2 className="text-lg font-semibold text-white">Menu</h2>
+              <button
+                onClick={closeMenu}
+                className="p-2 rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors duration-200"
+                aria-label="Close menu"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <nav className="px-4 py-6">
+              <div className="space-y-1">
+                {allNavItems.map(({ href, label }) => (
                   <Link
                     key={href}
                     href={href}
-                    className={`
-                      block px-3 py-2 rounded-md text-sm font-medium transition-all duration-200
-                      ${isActive 
-                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg" 
-                        : "text-gray-300 hover:text-white hover:bg-gray-700"
-                      }
-                    `}
-                    onClick={() => setIsOpen(false)}
+                    onClick={closeMenu}
+                    className="block px-3 py-3 text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors duration-200 border-l-4 border-transparent hover:border-purple-400"
                   >
                     {label}
                   </Link>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+              
+              {/* Additional actions in mobile menu */}
+              {!session?.user && (
+                <div className="mt-6 pt-6 border-t border-gray-700">
+                  <Link
+                    href="/auth/signin"
+                    onClick={closeMenu}
+                    className="block w-full text-center bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg text-base font-medium transition-colors duration-200"
+                  >
+                    Sign In
+                  </Link>
+                </div>
+              )}
+            </nav>
           </div>
         </>
       )}
-    </div>
+    </>
   );
 }

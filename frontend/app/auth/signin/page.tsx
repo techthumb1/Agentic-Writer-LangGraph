@@ -2,7 +2,7 @@
 // Create this new file in the app/auth/signin directory
 
 'use client';
-
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -26,6 +26,10 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get('registered');
+  const verificationEmail = searchParams.get('email');
+  const verified = searchParams.get('verified');
 
   const handleGoogleSignIn = async () => {
     try {
@@ -88,6 +92,30 @@ export default function SignInPage() {
           </div>
         </div>
 
+        {/* Registration Success Notice */}
+        {registered === 'true' && (
+          <Card className="border-green-200 bg-green-50 dark:bg-green-950">
+            <CardContent className="pt-6">
+              <div className="text-center space-y-3">
+                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <Mail className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-green-900 dark:text-green-100">
+                    Check Your Email
+                  </h3>
+                  <p className="text-sm text-green-700 dark:text-green-300 mt-2">
+                    We&apos;ve sent a verification link to <strong>{verificationEmail}</strong>
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    Click the link to verify your account before signing in.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Sign In Card */}
         <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg">
           <CardHeader className="space-y-1 pb-6">
@@ -99,11 +127,22 @@ export default function SignInPage() {
           <CardContent className="space-y-6">
             {/* Error Message */}
             {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800">
+              <div className="p-3 text-sm text-red-600...">
                 {error}
               </div>
             )}
-
+            {registered === 'true' && (
+              <div className="p-3 text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
+                <strong>Check your email!</strong> Verification link sent to {verificationEmail}
+              </div>
+            )}
+            
+            {verified === 'true' && (
+              <div className="p-3 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200">
+                <strong>Email verified!</strong> You can now sign in.
+              </div>
+            )}
+            
             {/* Google Sign In */}
             <Button
               onClick={handleGoogleSignIn}
@@ -193,15 +232,24 @@ export default function SignInPage() {
 
             {/* Footer Links */}
             <div className="text-center space-y-2">
-              <Button variant="link" className="text-sm text-gray-600 dark:text-gray-400">
+              <Button 
+                variant="link" 
+                className="text-sm text-gray-600 dark:text-gray-400"
+                onClick={() => router.push('/auth/reset-password')}
+              >
                 Forgot your password?
               </Button>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Don&apos;t have an account?{' '}
-                <Button variant="link" className="p-0 text-blue-600 dark:text-blue-400 font-medium">
+                <Button 
+                  variant="link" 
+                  className="p-0 text-blue-600 dark:text-blue-400 font-medium"
+                  onClick={() => router.push('/auth/signup')}
+                >
                   Sign up for free
                 </Button>
               </div>
+
             </div>
           </CardContent>
         </Card>

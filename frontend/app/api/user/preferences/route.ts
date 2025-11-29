@@ -68,11 +68,6 @@ export async function PUT(request: NextRequest) {
     //   }
     // });
 
-    console.log('User preferences update:', { 
-      userId: session.user.id, 
-      preferences: validPreferences 
-    });
-
     return NextResponse.json({ 
       success: true, 
       message: 'Preferences updated successfully',

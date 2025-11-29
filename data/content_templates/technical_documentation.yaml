@@ -1,0 +1,270 @@
+# File: data/content_templates/technical_documentation.yaml
+# Technical Documentation Generator - Developer-focused documentation
+# Creates comprehensive technical guides, API docs, and implementation manuals
+
+name: "Technical Documentation Generator"
+slug: "technical_documentation"
+id: "technical_documentation"
+version: "2.0"
+template_type: "technical_documentation"
+category: "technical"
+
+description: >
+  Technical documentation generator for developers and technical teams. Creates comprehensive 
+  documentation including API guides, implementation manuals, system architecture docs, 
+  and technical specifications. Optimized for developer experience and technical accuracy.
+
+# Core parameters for technical documentation
+parameters:
+  documentation_type:
+    type: "select"
+    required: true
+    options: ["api_documentation", "implementation_guide", "system_architecture", "user_manual", "troubleshooting_guide", "deployment_guide", "integration_manual"]
+    label: "Documentation Type"
+    description: "Type of technical documentation to generate"
+  
+  product_name:
+    type: "text"
+    required: true
+    label: "Product/System Name"
+    description: "Name of the software, API, or system being documented"
+    placeholder: "e.g., PaymentProcessor API v2.0"
+  
+  target_audience:
+    type: "select"
+    required: true
+    options: ["developers", "system_administrators", "devops_engineers", "technical_users", "integration_partners"]
+    label: "Target Audience"
+    description: "Primary users of this documentation"
+  
+  technical_level:
+    type: "select"
+    required: true
+    options: ["beginner", "intermediate", "advanced", "expert"]
+    default: "intermediate"
+    label: "Technical Level"
+    description: "Assumed technical expertise level"
+  
+  programming_languages:
+    type: "multiselect"
+    required: false
+    options: ["python", "javascript", "java", "csharp", "go", "rust", "php", "ruby", "swift", "kotlin"]
+    label: "Programming Languages"
+    description: "Relevant programming languages for examples"
+  
+  platforms:
+    type: "multiselect" 
+    required: false
+    options: ["web", "mobile", "desktop", "cloud", "on_premise", "hybrid"]
+    label: "Platforms"
+    description: "Target deployment platforms"
+  
+  include_code_examples:
+    type: "checkbox"
+    default: true
+    label: "Include Code Examples"
+    description: "Include technical code snippets and implementation examples"
+  
+  include_diagrams:
+    type: "checkbox"
+    default: true
+    label: "Include System Diagrams"
+    description: "Include architecture diagrams and flowcharts"
+  
+  authentication_methods:
+    type: "multiselect"
+    required: false
+    options: ["api_key", "oauth2", "jwt", "basic_auth", "bearer_token", "custom"]
+    label: "Authentication Methods"
+    description: "Supported authentication mechanisms (if applicable)"
+  
+  response_formats:
+    type: "multiselect"
+    required: false
+    options: ["json", "xml", "csv", "binary", "text"]
+    label: "Response Formats"
+    description: "Supported data formats (if applicable)"
+  
+  testing_requirements:
+    type: "checkbox"
+    default: true
+    label: "Include Testing Guidelines"
+    description: "Include testing procedures and examples"
+
+# Content structure requirements
+requirements:
+  min_words: 3000
+  max_words: 8000
+  optimal_words: 5000
+  technical_accuracy: true
+  code_examples: true
+  step_by_step_guides: true
+  troubleshooting_section: true
+
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "technical_documentation"
+  format: "developer_guide"
+  include_code_samples: true
+  provide_examples: true
+  maintain_technical_accuracy: true
+  follow_documentation_standards: true
+  include_error_handling: true
+
+# Content sections
+sections:
+  order:
+    - "overview"
+    - "getting_started"
+    - "authentication"
+    - "core_concepts"
+    - "implementation"
+    - "code_examples"
+    - "testing"
+    - "troubleshooting"
+    - "reference"
+
+suggested_sections:
+  - name: "overview"
+    description: "Introduction and high-level system overview"
+    required: true
+    content_type: "explanatory"
+    specifications: ["clear purpose", "key features", "prerequisites"]
+  - name: "getting_started"
+    description: "Quick start guide and initial setup"
+    required: true
+    content_type: "procedural"
+    specifications: ["step-by-step", "installation", "basic configuration"]
+  - name: "authentication"
+    description: "Security and authentication procedures"
+    required: false
+    content_type: "security"
+    specifications: ["auth methods", "token management", "security best practices"]
+  - name: "core_concepts"
+    description: "Fundamental concepts and architecture"
+    required: true
+    content_type: "conceptual"
+    specifications: ["system design", "data models", "workflows"]
+  - name: "implementation"
+    description: "Detailed implementation guidelines"
+    required: true
+    content_type: "procedural"
+    specifications: ["detailed steps", "configuration", "integration"]
+  - name: "code_examples"
+    description: "Working code samples and snippets"
+    required: true
+    content_type: "technical"
+    specifications: ["runnable examples", "multiple languages", "error handling"]
+  - name: "testing"
+    description: "Testing procedures and validation"
+    required: true
+    content_type: "procedural"
+    specifications: ["test cases", "validation", "debugging"]
+  - name: "troubleshooting"
+    description: "Common issues and solutions"
+    required: true
+    content_type: "problem_solving"
+    specifications: ["error scenarios", "solutions", "diagnostics"]
+
+# Recommended style profiles
+recommended_styles:
+  - "api_documentation"
+  - "deployment_guide"
+  - "implementation_guide"
+  - "technical_specification"
+  - "system_architecture"
+  - "integration_manual"
+
+# Prompt schema
+prompt_schema:
+  system_preamble: |
+    You are a senior technical writer and developer documentation specialist. Create comprehensive, 
+    accurate technical documentation that enables developers to successfully implement, integrate, 
+    and maintain technical systems. Focus on clarity, completeness, and practical usability.
+
+  content_template: |
+    # {{product_name}} - {{documentation_type}}
+
+    ## Overview
+    {{overview_section}}
+
+    ## Getting Started
+    {{getting_started_section}}
+
+    ## Authentication
+    {{authentication_section}}
+
+    ## Core Concepts
+    {{core_concepts_section}}
+
+    ## Implementation Guide
+    {{implementation_section}}
+
+    ## Code Examples
+    {{code_examples_section}}
+
+    ## Testing
+    {{testing_section}}
+
+    ## Troubleshooting
+    {{troubleshooting_section}}
+
+    ## API Reference
+    {{reference_section}}
+
+output:
+  format: "markdown"
+  require:
+    technical_accuracy: true
+    code_examples: true
+    step_by_step_guides: true
+    error_handling: true
+    practical_examples: true
+
+# Real-time technical support
+real_time_support:
+  enabled: true
+  max_age_hours: 12
+  verification_sources: 2
+  search_required: false
+  fail_if_unavailable: false
+  search_focus: "technical_updates"
+  content_types: ["documentation", "technical_guides", "api_changes", "best_practices"]
+
+# Quality targets
+quality_targets:
+  clarity: 95
+  completeness: 90
+  technical_accuracy: 95
+  usability: 90
+  code_quality: 95
+
+# Enterprise features
+difficulty: "intermediate"
+estimatedLength: "30-45 min"
+targetAudience: "Developers, technical teams, system integrators"
+icon: "⚙️"
+tags:
+  - technical
+  - documentation
+  - developer
+  - implementation
+  - guide
+
+# WriterzRoom output controls
+post_config:
+  enabled: false
+
+output_policy:
+  no_code: false
+  max_bullets: 8
+  min_paragraphs: 6
+  paragraph_first: true
+
+metadata:
+  version: "2.0.0"
+  created_by: "technical_team"
+  last_updated: "2025-09-28"
+  template_type: "technical_documentation"
+  category: "technical"
+  complexity_level: "intermediate"

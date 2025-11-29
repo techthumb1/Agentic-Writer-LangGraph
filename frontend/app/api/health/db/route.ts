@@ -1,28 +1,21 @@
 // frontend/app/api/health/db/route.ts
+
 import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma.node';
 
 export async function GET() {
   try {
-    // Check database connection
-    // If you're using Prisma, you can use: await prisma.$queryRaw`SELECT 1`
-    // For now, mock the database check
-    
+    const start = Date.now();
+    await prisma.$queryRaw`SELECT 1`;
+    const responseTime = Date.now() - start;
+
     const dbHealth = {
       status: 'healthy',
       database: 'postgresql',
       connection: 'active',
-      response_time: '15ms',
+      response_time: `${responseTime}ms`,
       last_check: new Date().toISOString()
     };
-
-    // You could add actual database ping here:
-    // try {
-    //   await prisma.$queryRaw`SELECT 1`;
-    //   dbHealth.status = 'healthy';
-    // } catch (error) {
-    //   dbHealth.status = 'unhealthy';
-    //   dbHealth.error = error.message;
-    // }
 
     return NextResponse.json({
       success: true,
@@ -38,11 +31,11 @@ export async function GET() {
         error: 'Database health check failed',
         health: {
           status: 'unhealthy',
-          error: typeof error === 'object' && error !== null && 'message' in error ? (error as { message: string }).message : String(error),
+          error: error instanceof Error ? error.message : String(error),
           timestamp: new Date().toISOString()
         }
       },
-      { status: 500 }
+      { status: 503 }
     );
   }
 }

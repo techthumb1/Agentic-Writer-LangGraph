@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.gitignore
+Dockerfile
+*.log
+.env*
+coverage
+dist
+tmp
+.cache
+**/__pycache__/

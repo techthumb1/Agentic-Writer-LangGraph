@@ -1,18 +1,22 @@
 // frontend/app/theme-provider.tsx
-"use client";
+"use client"
 
-import { ThemeProvider as NextThemeProvider, ThemeProviderProps } from "next-themes";
-import { ReactNode } from "react";
+import * as React from "react"
+import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { type ThemeProviderProps } from "next-themes"
 
-// Extend ThemeProviderProps to include `children`
-interface Props extends ThemeProviderProps {
-  children: ReactNode;
-}
-
-export function ThemeProvider({ children, ...rest }: Props) {
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return (
-    <NextThemeProvider {...rest}>
+    <NextThemesProvider 
+      {...props}
+      attribute="class"
+      defaultTheme="writerzroom"
+      enableSystem={true}
+      themes={['light', 'dark', 'writerzroom']}
+      disableTransitionOnChange={false}
+      storageKey="writerzroom-theme"
+    >
       {children}
-    </NextThemeProvider>
-  );
+    </NextThemesProvider>
+  )
 }

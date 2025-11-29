@@ -1,25 +1,80 @@
-# LangGraph & LangChain core
+# === Core Framework ===
+fastapi>=0.103.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.4.0
+
+# === LangGraph & LangChain ===
 langgraph
 langchain
 langchain-openai
 
-# Model APIs
-openai  # GPT-4o access
-anthropic  # Claude (optional)
-google-generativeai  # Gemini Pro (optional)
+# === Model APIs ===
+openai>=1.0.0
+anthropic>=0.8.0
+google-generativeai>=0.5.0
 
-# Image generation (optional)
-Pillow
-requests
+# === Web Search ===
+tavily-python>=0.3.0
 
-# Linting, Dev tools
-black
-flake8
-python-dotenv
-pyyaml
+# === Database & Persistence ===
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+redis>=5.0.0
 
-# Local code execution
+# === Background Tasks ===
+celery>=5.3.0
+
+# === Networking & HTTP ===
+requests>=2.31.0
+httpx>=0.25.0
+beautifulsoup4>=4.12.0
+
+# === Publishing Integrations ===
+linkedin-api==2.0.1
+tweepy>=4.14.0
+
+# === Content Processing ===
+Pillow>=10.0.0
+markdown>=3.4.0
+html2text>=2020.1.16
+python-magic>=0.4.27
+
+# === Config & Serialization ===
+python-dotenv>=1.0.0
+pyyaml>=6.0
+marshmallow>=3.20.0
+jsonschema>=4.0.0
+
+# === Quality & NLP ===
+textstat>=0.7.3
+pyspellchecker>=0.7.3
+language-tool-python>=2.7.0
+
+# === Validation ===
+python-multipart>=0.0.6
+
+# === Utilities ===
+python-dateutil>=2.8.0
+pytz>=2023.3
+click>=8.0.0
+rich>=13.0.0
+structlog>=23.0.0
+
+# === Security ===
+cryptography>=41.0.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# === File Exports ===
+sendgrid>=6.10.0
+openpyxl>=3.1.0
+python-docx>=0.8.11
+reportlab>=4.0.0
+
+# === Development ===
+black>=23.3.0
+flake8>=6.0.0
 ipython
-
-# Testing
 pytest
+pytest-asyncio
+pytest-mock

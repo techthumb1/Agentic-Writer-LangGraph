@@ -1,0 +1,36 @@
+# railway.toml
+# Railway.app deployment configuration
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "langgraph_app/Dockerfile"
+
+[deploy]
+numReplicas = 1
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[[services]]
+name = "backend"
+build.dockerfilePath = "langgraph_app/Dockerfile"
+domains = ["api.writerzroom.com"]
+
+[services.healthcheck]
+path = "/health"
+interval = 30
+timeout = 10
+startPeriod = 40
+
+[services.resources]
+memory = 2048
+cpu = 2
+
+[[services]]
+name = "frontend"
+build.context = "./frontend"
+build.dockerfilePath = "./frontend/Dockerfile"
+domains = ["writerzroom.com"]
+
+[services.resources]
+memory = 1024
+cpu = 1

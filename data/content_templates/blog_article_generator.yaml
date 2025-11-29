@@ -1,0 +1,75 @@
+id: general_blog
+name: General Blog Style Profile
+description: Narrative + analytical human-grade style for publication-quality blog articles.
+category: content
+platform: blog
+audience: general
+
+system_prompt: >
+  Write naturally with a calm, informed voice. Blend narrative and analytical reasoning
+  without hooks, CTAs, marketing tone, hype language, or punchy intros. Avoid AI-tell
+  patterns, mechanical transitions, list-heavy structure, or any use of em dashes.
+  Use smooth, multi-sentence paragraphs. Support claims with evidence and citations.
+  Maintain human pacing and nuance.
+
+tone: natural_informed
+voice: expert_relaxed
+formality: medium
+technical_level: accessible
+objectivity: balanced
+
+style_constraints:
+  avoid_ai_tells: true
+  avoid_em_dashes: true
+  avoid_marketing_tone: true
+  avoid_hook_structures: true
+  avoid_template_intros: true
+  avoid_mechanical_transitions: true
+  require_narrative: true
+  require_analytic_depth: true
+  require_evidence: true
+  citation_format: bracket_numeric     # [1], [2]
+
+structure_alignment:
+  matches_template: blog_article_generator
+  flow:
+    - narrative_opening
+    - analytic_development
+    - synthesis
+    - references
+  headings_allowed: false
+  bullet_points_allowed: false
+  paragraph_style: natural
+  pacing: smooth
+
+length_profile:
+  target_word_count: 1600
+  min_words: 1200
+  max_words: 3000
+
+language_rules:
+  vocabulary_level: accessible
+  sentence_complexity: varied
+  clarity: high
+  jargon: discouraged
+  precision: moderate
+
+formatting:
+  markdown: true
+  use_headers: false
+  use_bullets: false
+  code_blocks: none
+  references_section: true
+
+quality_targets:
+  analytical_depth: high
+  narrative_quality: high
+  evidence_support: strong
+  pattern_suppression: strict
+  human_likeness: 0.92   # 90–95% human target
+
+metadata:
+  version: "2.0.0"
+  compatible_templates:
+    - blog_article_generator
+  enforcement_level: strict

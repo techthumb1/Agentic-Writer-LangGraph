@@ -1,0 +1,261 @@
+name: "Social Media Campaign"
+slug: "social_media_campaign"
+template_type: "social_media_campaign"
+version: "7.0"
+category: "marketing"
+id: "social_media_campaign"
+
+description: >
+  Generates ready-to-publish social media posts and campaign content.
+  Creates platform-specific content with captions, hashtags, and engagement elements.
+  CRITICAL: Outputs individual social posts, NOT documentation about social media.
+
+# Core parameters - FREE TEXT for flexibility
+parameters:
+  campaign_goal:
+    type: "textarea"
+    required: true
+    label: "Campaign Goal"
+    description: "Describe your campaign objective (e.g., 'Increase brand awareness for Q4 product launch')"
+    placeholder: "What do you want to achieve with this campaign?"
+    
+  target_platforms:
+    type: "multiselect"
+    required: true
+    options: ["instagram", "linkedin", "twitter", "tiktok", "facebook", "youtube"]
+    label: "Target Platforms"
+    
+  brand_voice:
+    type: "select"
+    default: "professional"
+    options: ["professional", "playful", "inspirational", "educational", "conversational", "authentic", "bold"]
+    label: "Brand Voice"
+    
+  post_count:
+    type: "number"
+    default: 10
+    min: 5
+    max: 30
+    label: "Number of Posts"
+    
+  content_types:
+    type: "multiselect"
+    default: ["posts", "stories"]
+    options: ["posts", "stories", "reels", "carousels", "videos", "polls", "threads"]
+    label: "Content Types"
+    
+  campaign_duration:
+    type: "select"
+    default: "1-week"
+    options: ["3-days", "1-week", "2-weeks", "1-month"]
+    label: "Campaign Duration"
+    
+  target_audience:
+    type: "textarea"
+    required: false
+    label: "Target Audience"
+    description: "Describe your ideal audience demographics and interests"
+    placeholder: "e.g., Tech-savvy millennials interested in sustainable living"
+    
+  key_message:
+    type: "textarea"
+    required: false
+    label: "Key Campaign Message"
+    description: "Main message or theme for the campaign"
+    placeholder: "What's the core message you want to communicate?"
+
+# Intent and context (declarative approach)
+intent:
+  primary_goal: "{campaign_goal}"
+  desired_outcome: "measurable business impact"
+  audience_connection: "authentic engagement"
+  content_philosophy: "value-first, conversion-second"
+
+context:
+  domain: "social_media_marketing"
+  platform_ecosystem: ["{target_platforms}"]
+  brand_voice: "{brand_voice}"
+  competitive_landscape: "saturated, attention-scarce"
+  
+  platform_characteristics:
+    instagram: "visual-first, story-driven, hashtag-discovery, 2200 char limit"
+    linkedin: "professional, thought-leadership, B2B, 3000 char limit"
+    twitter: "concise, conversational, real-time, 280 char limit"
+    tiktok: "authentic, entertaining, trend-driven, 2200 char limit"
+    facebook: "community-focused, longer-form, diverse-age, 63206 char limit"
+    youtube: "video-first, searchable, evergreen, 5000 char description"
+
+# Quality boundaries
+quality_boundaries:
+  post_volume:
+    minimum: 5
+    maximum: 30
+    determination: "AI-optimized based on campaign complexity"
+  
+  authenticity:
+    threshold: 0.85
+    rationale: "brand voice must feel genuine, not corporate"
+  
+  engagement_potential:
+    priority: "high"
+    optimization_for: ["comments", "shares", "saves", "click-through"]
+  
+  content_diversity:
+    approach: "varied formats appropriate to platform"
+    avoid: "repetitive messaging or formulaic posts"
+
+# Content requirements
+requirements:
+  min_posts: 5
+  max_posts: 30
+  hashtags_per_post: 5
+  include_captions: true
+  include_hashtags: true
+  include_cta: true
+  platform_optimization: true
+  engagement_focused: true
+  character_limits: true
+
+# Template behavior - ENFORCED
+template_behavior:
+  content_type: "social_media_posts"
+  output_format: "individual_posts"
+  prevent_documentation: true
+  require_post_format: true
+
+# Style specifications
+style:
+  tone: "engaging"
+  formality: "casual_professional"
+  voice: "brand_aligned"
+  structure: "social_native"
+
+# Output format - ENFORCED
+output:
+  format: "structured_posts"
+  include_hashtags: true
+  include_captions: true
+  include_emojis: true
+  platform_specific: true
+  ready_to_publish: true
+  prevent_documentation_format: true
+
+# Real-time research support
+real_time_support:
+  enabled: true
+  max_age_hours: 6
+  verification_sources: 2
+  search_required: true
+  fail_if_unavailable: false
+  search_focus: "trending_topics"
+  content_types: ["trending_hashtags", "viral_content", "social_trends", "platform_updates", "competitor_analysis"]
+  velocity_tracking: true
+
+# Generation settings
+generation_settings:
+  model: "gpt-5"
+  temperature: 0.8
+  max_tokens: 4000
+  reasoning_mode: "creative"
+
+# Post structure template
+prompt_schema:
+  system_preamble: >
+    You are an expert social media content creator. Generate ready-to-publish posts.
+    Create ACTUAL social media posts with captions, hashtags, and CTAs.
+    Do NOT create documentation, guides, or instructions about social media.
+    Each post must be optimized for its specific platform with appropriate length and style.
+    Focus on {campaign_goal} for {target_platforms} with {brand_voice} voice.
+    
+  content_template: >
+    Generate {post_count} ready-to-publish social media posts:
+    
+    [POST 1 - {platform}]
+    Caption: [Engaging caption optimized for platform]
+    Hashtags: #tag1 #tag2 #tag3 #tag4 #tag5
+    CTA: [Clear call-to-action]
+    Best Time: [Optimal posting time]
+    
+    [Continue for all posts with platform-specific optimization...]
+
+# Output controls
+post_config:
+  enabled: true
+  min_posts: 5
+  max_posts: 30
+  paragraph_length: short
+  per_post_requirements:
+    min_words: 15
+    max_words: 80
+    respect_platform_limits: true
+  composition:
+    include_cta: true
+    include_hashtags: 5
+    include_emojis: true
+    include_posting_schedule: true
+
+output_policy:
+  no_code: true
+  max_bullets: 0
+  min_paragraphs: 1
+  paragraph_first: true
+  prevent_documentation: true
+  require_social_format: true
+
+# Format enforcement
+format_enforcement:
+  forbidden_formats:
+    - "technical_guide"
+    - "implementation_guide"
+    - "step_by_step_tutorial"
+    - "documentation"
+    - "appendix"
+  required_formats:
+    - "social_media_post"
+    - "caption_format"
+    - "hashtag_format"
+    - "cta_format"
+    - "platform_optimized"
+
+# Anti-patterns to avoid
+anti_patterns:
+  - "generic corporate speak"
+  - "salesy or pushy tone"
+  - "identical posts across platforms"
+  - "hashtag stuffing"
+  - "fake engagement bait"
+  - "excessive emojis"
+  - "clickbait without value"
+
+# Evaluation criteria
+evaluation_criteria:
+  - "Does this achieve the stated campaign goal?"
+  - "Would the target audience engage authentically?"
+  - "Is each post optimized for its specific platform?"
+  - "Does the campaign feel cohesive yet diverse?"
+  - "Are character limits respected?"
+  - "Are hashtags relevant and trending?"
+
+# Coordination rules
+coordination_rules:
+  style_override: "social_posts_only"
+  ignore_academic_formatting: true
+  ignore_technical_structure: true
+  force_casual_tone: true
+  require_engagement_elements: true
+
+# Template metadata
+metadata:
+  version: "7.0.0"
+  created_by: "content_team"
+  last_updated: "2025-10-30"
+  difficulty: "intermediate"
+  estimated_time: "20-30 min"
+  target_audience: "marketers"
+  complexity_level: "intermediate"
+  use_cases:
+    - "product_launches"
+    - "brand_awareness"
+    - "lead_generation"
+    - "community_building"
+    - "seasonal_campaigns"

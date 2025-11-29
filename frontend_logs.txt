@@ -1,0 +1,100 @@
+writerzroom-frontend  | prisma:error 
+writerzroom-frontend  | Invalid `prisma.session.findUnique()` invocation:
+writerzroom-frontend  | 
+writerzroom-frontend  | 
+writerzroom-frontend  | The table `public.Session` does not exist in the current database.
+writerzroom-frontend  | [31m[auth][error][0m SessionTokenError: Read more at https://errors.authjs.dev#sessiontokenerror
+writerzroom-frontend  | [31m[auth][cause][0m: PrismaClientKnownRequestError: 
+writerzroom-frontend  | Invalid `prisma.session.findUnique()` invocation:
+writerzroom-frontend  | 
+writerzroom-frontend  | 
+writerzroom-frontend  | The table `public.Session` does not exist in the current database.
+writerzroom-frontend  |     at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)
+writerzroom-frontend  |     at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)
+writerzroom-frontend  |     at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)
+writerzroom-frontend  |     at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)
+writerzroom-frontend  |     at async getSessionAndUser (/app/.next/server/chunks/9115.js:1:2099)
+writerzroom-frontend  |     at async r.<computed> (/app/.next/server/chunks/9115.js:1:65095)
+writerzroom-frontend  |     at async i0 (/app/.next/server/chunks/9115.js:404:49598)
+writerzroom-frontend  |     at async i4 (/app/.next/server/chunks/9115.js:404:55582)
+writerzroom-frontend  |     at async i7 (/app/.next/server/chunks/9115.js:404:60119)
+writerzroom-frontend  |     at async c (/app/.next/server/app/api/internal/session-check/route.js:1:1392)
+writerzroom-frontend  | [31m[auth][details][0m: {}
+writerzroom-frontend  | [31m[auth][error][0m AdapterError: Read more at https://errors.authjs.dev#adaptererror
+writerzroom-frontend  | prisma:error 
+writerzroom-frontend  | Invalid `prisma.session.findUnique()` invocation:
+writerzroom-frontend  | 
+writerzroom-frontend  | 
+writerzroom-frontend  | The table `public.Session` does not exist in the current database.
+writerzroom-frontend  | [31m[auth][cause][0m: PrismaClientKnownRequestError: 
+writerzroom-frontend  | Invalid `prisma.session.findUnique()` invocation:
+writerzroom-frontend  | 
+writerzroom-frontend  | 
+writerzroom-frontend  | The table `public.Session` does not exist in the current database.
+writerzroom-frontend  |     at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)
+writerzroom-frontend  |     at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)
+writerzroom-frontend  |     at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)
+writerzroom-frontend  |     at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)
+writerzroom-frontend  |     at async getSessionAndUser (/app/.next/server/chunks/9115.js:1:2099)
+writerzroom-frontend  |     at async r.<computed> (/app/.next/server/chunks/9115.js:1:65095)
+writerzroom-frontend  |     at async i0 (/app/.next/server/chunks/9115.js:404:49598)
+writerzroom-frontend  |     at async i4 (/app/.next/server/chunks/9115.js:404:55582)
+writerzroom-frontend  |     at async i7 (/app/.next/server/chunks/9115.js:404:60119)
+writerzroom-frontend  |     at async c (/app/.next/server/app/api/internal/session-check/route.js:1:1392)
+writerzroom-frontend  | [31m[auth][details][0m: {}
+writerzroom-frontend  | [31m[auth][error][0m SessionTokenError: Read more at https://errors.authjs.dev#sessiontokenerror
+writerzroom-frontend  | [31m[auth][cause][0m: PrismaClientKnownRequestError: 
+writerzroom-frontend  | Invalid `prisma.session.findUnique()` invocation:
+writerzroom-frontend  | 
+writerzroom-frontend  | 
+writerzroom-frontend  | The table `public.Session` does not exist in the current database.
+writerzroom-frontend  |     at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)
+writerzroom-frontend  |     at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)
+writerzroom-frontend  |     at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)
+writerzroom-frontend  |     at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)
+writerzroom-frontend  |     at async getSessionAndUser (/app/.next/server/chunks/9115.js:1:2099)
+writerzroom-frontend  |     at async r.<computed> (/app/.next/server/chunks/9115.js:1:65095)
+writerzroom-frontend  |     at async i0 (/app/.next/server/chunks/9115.js:404:49598)
+writerzroom-frontend  |     at async i4 (/app/.next/server/chunks/9115.js:404:55582)
+writerzroom-frontend  |     at async i7 (/app/.next/server/chunks/9115.js:404:60119)
+writerzroom-frontend  |     at async c (/app/.next/server/app/api/internal/session-check/route.js:1:1392)
+writerzroom-frontend  | [31m[auth][details][0m: {}
+writerzroom-frontend  | prisma:error 
+writerzroom-frontend  | Invalid `prisma.session.findUnique()` invocation:
+writerzroom-frontend  | 
+writerzroom-frontend  | 
+writerzroom-frontend  | The table `public.Session` does not exist in the current database.
+writerzroom-frontend  | [31m[auth][error][0m AdapterError: Read more at https://errors.authjs.dev#adaptererror
+writerzroom-frontend  | [31m[auth][cause][0m: PrismaClientKnownRequestError: 
+writerzroom-frontend  | Invalid `prisma.session.findUnique()` invocation:
+writerzroom-frontend  | 
+writerzroom-frontend  | 
+writerzroom-frontend  | The table `public.Session` does not exist in the current database.
+writerzroom-frontend  |     at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)
+writerzroom-frontend  |     at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)
+writerzroom-frontend  |     at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)
+writerzroom-frontend  |     at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)
+writerzroom-frontend  |     at async getSessionAndUser (/app/.next/server/chunks/9115.js:1:2099)
+writerzroom-frontend  |     at async r.<computed> (/app/.next/server/chunks/9115.js:1:65095)
+writerzroom-frontend  |     at async i0 (/app/.next/server/chunks/9115.js:404:49598)
+writerzroom-frontend  |     at async i4 (/app/.next/server/chunks/9115.js:404:55582)
+writerzroom-frontend  |     at async i7 (/app/.next/server/chunks/9115.js:404:60119)
+writerzroom-frontend  |     at async c (/app/.next/server/app/api/internal/session-check/route.js:1:1392)
+writerzroom-frontend  | [31m[auth][details][0m: {}
+writerzroom-frontend  | [31m[auth][error][0m SessionTokenError: Read more at https://errors.authjs.dev#sessiontokenerror
+writerzroom-frontend  | [31m[auth][cause][0m: PrismaClientKnownRequestError: 
+writerzroom-frontend  | Invalid `prisma.session.findUnique()` invocation:
+writerzroom-frontend  | 
+writerzroom-frontend  | 
+writerzroom-frontend  | The table `public.Session` does not exist in the current database.
+writerzroom-frontend  |     at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)
+writerzroom-frontend  |     at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)
+writerzroom-frontend  |     at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)
+writerzroom-frontend  |     at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)
+writerzroom-frontend  |     at async getSessionAndUser (/app/.next/server/chunks/9115.js:1:2099)
+writerzroom-frontend  |     at async r.<computed> (/app/.next/server/chunks/9115.js:1:65095)
+writerzroom-frontend  |     at async i0 (/app/.next/server/chunks/9115.js:404:49598)
+writerzroom-frontend  |     at async i4 (/app/.next/server/chunks/9115.js:404:55582)
+writerzroom-frontend  |     at async i7 (/app/.next/server/chunks/9115.js:404:60119)
+writerzroom-frontend  |     at async c (/app/.next/server/app/api/internal/session-check/route.js:1:1392)
+writerzroom-frontend  | [31m[auth][details][0m: {}

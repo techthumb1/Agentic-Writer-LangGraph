@@ -1,0 +1,124 @@
+# data/style_profiles/literature_review.yaml
+# Professional Style Profile - Literature Review
+# Category: Academic & Research
+
+id: literature_review
+name: Literature Review
+description: Comprehensive review of existing research
+category: academic_and_research
+subcategory: advanced
+platform: professional
+tone: scholarly
+voice: confident
+structure: introduction → main_content → conclusion
+audience: academics
+
+system_prompt: >
+  Write in the literature review style for academics audience. 
+        Focus on scholarly writing for academic institutions, research papers, and peer-reviewed publications. 
+        Maintain advanced complexity level throughout. 
+        Ensure content aligns with professional academic & research standards.
+        CRITICAL: Avoid casual language and maintain strict professional tone.
+
+writing_style:
+  tone: scholarly
+  voice: confident
+  formality: high
+  technical_level: advanced
+  objectivity: high
+  evidence_based: True
+
+# Strict enforcement rules
+forbidden_patterns:
+  - "hey there"
+  - "hi there"
+  - "awesome"
+  - "cool"
+  - "greetings"
+  - "let's dive in"
+  - "amazing"
+  - "totally"
+  - "trust me"
+
+required_opening_patterns:
+  - "This analysis examines"
+  - "This research investigates"
+  - "This study explores"
+  - "Contemporary literature suggests"
+
+required_elements:
+  - "clear thesis"
+  - "evidence-based arguments"
+  - "scholarly citations"
+  - "methodological rigor"
+  - "analytical depth"
+
+# Content structure requirements
+content_structure:
+  opening_style: "thesis_statement"
+  paragraph_style: "analytical"
+  transition_style: "formal_logical"
+  conclusion_style: "synthesis"
+  evidence_requirement: "mandatory"
+
+# Language precision requirements
+language_requirements:
+  vocabulary_level: advanced
+  sentence_complexity: mixed
+  use_jargon: True
+  technical_precision: high
+  objectivity_level: high
+
+length_limit:
+  words: 2500
+  min: 2000
+  max: 3000
+
+settings:
+  use_analogies: False
+  avoid_jargon: False
+  include_examples: true
+  conversational_tone: False
+  encourage_questions: False
+  reading_level: "advanced"
+  eliminate_casual_language: True
+  enforce_professional_standards: true
+  require_evidence_support: True
+
+formatting:
+  use_headers: true
+  use_bullet_points: False
+  use_callouts: False
+  code_blocks: moderate
+  academic_structure: True
+  professional_layout: true
+
+# Quality thresholds
+quality_requirements:
+  formality_score: 95
+  objectivity_score: 90
+  analytical_depth: 85
+  evidence_support: 95
+  style_consistency: 95
+  pattern_compliance: 100
+  audience_alignment: 90
+  complexity_match: 85
+
+# Violation detection patterns
+violation_detection:
+  casual_greetings: ["hey", "hi", "hello", "greetings", "what's up"]
+  weak_transitions: ["so,", "well,", "now,", "anyway,"]
+  opinion_markers: ['i think', 'i believe', 'in my opinion', 'personally', 'i feel']
+  casual_intensifiers: ["really", "super", "totally", "absolutely amazing"]
+
+metadata:
+  version: "2.0.0"
+  created_by: "professional_category_system"
+  last_updated: "2025-07-18"
+  use_cases: ['literature review content', 'academic papers', 'research articles', 'scholarly publications']
+  target_audience: "academics"
+  complexity_level: "advanced"
+  category: "Academic & Research"
+  enforcement_level: "strict"
+  anti_generic: true
+  professional_grade: true

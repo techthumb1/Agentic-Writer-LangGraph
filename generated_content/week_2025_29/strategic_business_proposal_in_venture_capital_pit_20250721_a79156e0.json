@@ -1,0 +1,21 @@
+{
+  "title": "Strategic Business Proposal in venture capital pitch approach",
+  "status": "draft",
+  "type": "Business Proposal",
+  "content": "Planning failed: cannot import name 'ContentSpec' from 'langgraph_app.core.enriched_content_state' (/Users/jasonrobinson/Agentic-Writer-LangGraph/langgraph_app/core/enriched_content_state.py)",
+  "createdAt": "2025-07-21T02:32:50.968Z",
+  "updatedAt": "2025-07-21T02:32:50.968Z",
+  "author": "AI Assistant",
+  "views": 0,
+  "metadata": {
+    "template": "business_proposal",
+    "styleProfile": "venture_capital_pitch",
+    "requestId": "a79156e0-1c3e-4f7c-bd61-59265ae83b2a",
+    "topic": "Strategic Business Proposal in venture capital pitch approach",
+    "audience": "general",
+    "wordCount": 9,
+    "readingTime": 1,
+    "generatedAt": "2025-07-21T02:32:50.968Z",
+    "generation_mode": "enhanced"
+  }
+}

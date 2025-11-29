@@ -1,0 +1,199 @@
+# data/style_profiles/tv_premium_horror.yaml
+# Professional Style Profile - TV Premium Horror
+# Category: Screenwriting
+
+id: tv_premium_horror
+name: TV Premium Horror
+description: Premium cable/streaming horror series writing
+category: screenwriting
+subcategory: expert
+platform: television_premium
+tone: atmospheric_dread
+voice: unsettling
+structure: slow_burn → escalation → terror
+audience: horror_series_writers
+
+system_prompt: >
+  Write in premium TV horror style for cable/streaming horror series.
+  Focus on atmospheric dread, psychological tension, and visceral horror.
+  Build slow-burn terror through environment, character trauma, and mounting unease.
+  Maintain expert-level craft in horror storytelling techniques.
+  CRITICAL: Write actual horror screenplay pages with terrifying scenes, not explanations
+  of horror writing. Create dread through specific visual details, unsettling dialogue,
+  and escalating supernatural/psychological threats. Show the horror unfold on screen.
+  Use silence, darkness, and the unseen as effectively as explicit terror.
+  This is premium content - sophisticated, character-driven horror with thematic depth.
+
+writing_style:
+  tone: atmospheric_dread
+  voice: unsettling
+  formality: high
+  technical_level: expert
+  objectivity: medium                  # Balance subjective fear with objective events
+  evidence_based: false                # Horror is creative fiction
+  mature_content: true                 # Premium TV allows graphic content
+
+# Horror-specific rules
+forbidden_patterns:
+  - "scary music plays"                # Don't direct the music, create visual terror
+  - "something scary happens"          # Be specific about the horror
+  - "the monster appears"              # Describe the actual terrifying visual
+  - "it was just a dream"              # Cheap horror cop-out
+  - "false scare"                      # Jump scares should be earned, not cheap
+
+required_elements:
+  - "mounting_dread"
+  - "specific_visual_horror"
+  - "psychological_depth"
+  - "atmospheric_tension"
+  - "character_vulnerability"
+  - "thematic_darkness"
+
+# Horror structure requirements
+content_structure:
+  opening_style: "uneasy_normalcy"     # Start with normalcy tinged with wrongness
+  tension_building: "progressive"      # Escalate methodically
+  horror_reveals: "earned_payoffs"     # Build to horror beats
+  pacing: "slow_burn_with_peaks"       # Tension/release/higher_tension
+  act_outs: "maximum_dread"            # Commercial breaks on terror peaks
+  ending_style: "unresolved_menace"    # Premium horror rarely ends cleanly
+
+# Horror language requirements
+language_requirements:
+  vocabulary_level: sophisticated
+  sentence_complexity: varied
+  descriptive_precision: maximum       # Horror lives in specific details
+  sensory_language: emphasized         # Sight, sound, smell, touch
+  atmosphere_building: critical
+  subtext: "pervasive_dread"
+  silence: "weaponized"                # Use white space and pauses
+
+length_limit:
+  words: 4000                          # Per episode
+  min: 3000
+  max: 5000
+  pages: "50_to_60"                    # Hour-long format
+
+settings:
+  use_analogies: false                 # Horror is literal and visceral
+  avoid_jargon: true
+  include_examples: false
+  conversational_tone: false           # Dialogue should feel wrong/uneasy
+  encourage_questions: false
+  reading_level: "sophisticated"
+  slow_burn_required: true
+  gore_when_earned: true               # Premium allows it, but use purposefully
+  psychological_over_gore: true        # Mind horror > body horror
+  thematic_depth_required: true        # Premium horror has themes
+
+formatting:
+  scene_headings: "emphasize_isolation" # Locations feel remote/trapped
+  action_blocks: "atmospheric_detail"
+  sound_design: "critical"             # SOUND EFFECTS in CAPS
+  lighting_notes: "darkness_emphasized"
+  gore_descriptions: "visceral_specific" # When shown, be unflinching
+  character_trauma: "visible_physical"  # Show psychological damage physically
+
+# Quality thresholds for horror
+quality_requirements:
+  dread_building: 95
+  atmospheric_tension: 90
+  visual_specificity: 95
+  character_depth: 85                  # Premium requires real characters
+  thematic_resonance: 80
+  sustained_unease: 90
+  payoff_satisfaction: 85
+  originality: 90                      # Avoid clichéd horror tropes
+
+# Horror violations to avoid
+violation_detection:
+  cheap_scares: ["cat_scare", "dream_fake_out", "thunder_timing"]
+  clichés: ["dark_stormy_night", "dont_split_up", "ill_be_right_back"]
+  explaining_horror: ["exposition_dumps", "scientist_explains_monster"]
+  unearned_gore: ["gore_for_shock_value"]
+  inconsistent_rules: ["supernatural_logic_breaks"]
+  stupid_victims: ["obviously_bad_decisions"]
+
+# Premium horror techniques
+advanced_techniques:
+  - "wrongness_in_mundane_details"
+  - "escalating_body_horror"
+  - "gaslighting_unreliable_reality"
+  - "inherited_trauma_manifestation"
+  - "environment_as_antagonist"
+  - "silence_and_negative_space"
+  - "the_unseen_more_terrifying"
+  - "dread_through_anticipation"
+  - "corruption_and_transformation"
+  - "cyclical_horror_patterns"
+
+# Horror subgenres applicable
+subgenre_techniques:
+  supernatural: "rules_based_scares"
+  psychological: "sanity_deterioration"
+  body_horror: "visceral_transformation"
+  cosmic_horror: "incomprehensible_dread"
+  folk_horror: "ritualistic_wrongness"
+  slasher: "methodical_stalking"
+  haunting: "past_bleeding_present"
+  creature: "predator_behavior_patterns"
+
+# Atmosphere building tools
+atmosphere_elements:
+  - "oppressive_silence"
+  - "unnatural_sounds"
+  - "wrongness_in_lighting"
+  - "decay_and_corruption"
+  - "isolation_emphasized"
+  - "time_becoming_fluid"
+  - "religious_iconography_corrupted"
+  - "children_singing_offscreen"
+  - "technology_malfunctioning"
+  - "animals_sensing_evil"
+
+# Character horror responses
+character_reactions:
+  - "denial_then_acceptance"
+  - "rational_mind_breaking"
+  - "trauma_manifestation"
+  - "sacrifice_for_survival"
+  - "corruption_by_evil"
+  - "physical_deterioration"
+  - "paranoia_justified"
+  - "guilt_externalized"
+
+# Premium content guidelines
+mature_content_handling:
+  violence: "purposeful_not_gratuitous"
+  gore: "visceral_when_earned"
+  sexuality: "vulnerable_disturbing"
+  language: "authentic_to_terror"
+  themes: "dark_adult_complex"
+  psychological_damage: "unflinching"
+
+# Pacing structure
+pacing_framework:
+  episode_open: "cold_open_horror_beat"
+  act_one: "establish_wrongness"
+  act_two: "escalating_dread"
+  act_three: "revelation_or_attack"
+  act_four: "survival_and_cost"
+  episode_close: "unresolved_menace"
+  season_arc: "mounting_cosmic_dread"
+
+metadata:
+  version: "1.0.0"
+  created_by: "screenwriting_system"
+  last_updated: "2025-11-17"
+  use_cases: ['horror series', 'supernatural drama', 'psychological thriller']
+  target_audience: "horror_writers"
+  complexity_level: "expert"
+  category: "Screenwriting"
+  subcategory: "Horror"
+  enforcement_level: "strict"
+  professional_grade: true
+  industry_standard: true
+  content_rating: "TV-MA"
+  comparable_series: ["The Haunting of Hill House", "Midnight Mass", "True Detective S1", "The Terror"]
+  thematic_depth: "required"
+  cheap_horror: "forbidden"

@@ -129,6 +129,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env,example
 .venv
 env/
 venv/
@@ -136,6 +137,11 @@ ENV/
 env.bak/
 venv.bak/
 writer/
+.env.*
+*.env
+*.key
+*.pem
+secrets.*
 
 # Spyder project settings
 .spyderproject
@@ -178,3 +184,15 @@ cython_debug/
 .DS_Store
 node_modules
 .next
+storage/.gitignore
+"""
+content_fingerprints.json
+"""
+
+archive/
+generated_content/
+*.copy.tsx
+*.copy.ts
+debug_templates.py
+fix_template_config.py
+fix_templates_now.py

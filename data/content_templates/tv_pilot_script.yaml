@@ -1,0 +1,165 @@
+name: "TV Pilot Script Generator"
+slug: "tv_pilot_script"
+version: "1.0"
+template_type: "tv_pilot"
+id: "tv_pilot_script"
+
+description: >
+  Professional television pilot script generator. Creates industry-standard TV pilot scripts
+  for hour-long dramas or 30-minute comedies in proper format. Generates actual scenes with
+  teaser, acts, and proper commercial breaks.
+
+# Inputs
+inputs:
+  series_title: { required: true }
+  episode_title: { required: true }
+  format: { required: true }                      # "one_hour_drama", "half_hour_comedy", "limited_series"
+  genre: { required: true }                       # "crime_procedural", "workplace_comedy", "family_drama", "thriller"
+  lead_character: { required: true }
+  ensemble_size: { default: "medium" }            # "small_cast", "medium", "large_ensemble"
+  tone: { default: "dramatic" }
+  setting: { required: true }
+  pilot_type: { default: "series_premiere" }     # "series_premiere", "backdoor_pilot", "presentation"
+  act_structure: { default: "four_act" }         # "four_act", "five_act", "two_act" (for comedy)
+  include_teaser: { default: true }
+  include_tag: { default: false }                # End tag scene after final act
+  network_style: { default: "cable" }            # "broadcast", "cable", "streaming"
+
+requirements:
+  min_words:
+    priority:
+      - dynamic.min_words
+      - 4500                                      # ~22 pages for half-hour, ~50-60 for hour
+  min_scenes:
+    priority:
+      - dynamic.min_scenes
+      - 12
+  proper_tv_format: true
+  act_breaks_required: true
+  series_potential: true
+
+writer_instructions:
+  content_type: "tv_pilot"
+  format: "standard_tv_script_format"
+  include_teaser: true
+  act_structure: "multi_act_with_breaks"
+  establish_series_premise: true
+  introduce_recurring_characters: true
+  plant_series_arcs: true
+  commercial_break_awareness: true
+  episodic_and_serialized_elements: true
+
+mcp:
+  tool_sequence:
+    priority:
+      - dynamic.tool_sequence
+      - [series_architect, character_ensemble_builder, pilot_optimizer, act_break_analyzer]
+
+sections:
+  order:
+    priority:
+      - dynamic.section_order
+      - ["cold_open", "act_one", "act_two", "act_three", "act_four", "tag"]
+
+prompt_schema:
+  system_preamble: |
+    You are a showrunner and professional TV writer with produced pilot credits. Write in
+    standard television script format with proper scene headings, act breaks, and commercial
+    considerations. Generate ACTUAL pilot script pages - not explanatory content about TV writing.
+    
+    TV PILOT REQUIREMENTS:
+    - Establish the world and premise in the first 5 pages
+    - Introduce main characters with distinct voices
+    - Set up the series engine (what makes this show run week-to-week)
+    - Plant long-term story arcs while telling a complete pilot story
+    - Write compelling act-out moments before commercial breaks
+    - Balance episodic resolution with serialized cliffhangers
+    
+    FORMATTING:
+    - Teaser/Cold Open: Hook before main titles
+    - Act breaks: END OF ACT ONE, END OF ACT TWO, etc.
+    - Scene headings: INT./EXT. LOCATION - TIME
+    - Action: Visual, present tense
+    - Dialogue: Character-specific voices
+    
+    Page count targets:
+    - Half-hour comedy: 25-35 pages
+    - One-hour drama: 50-65 pages
+
+  content_template: |
+    {{series_title}}
+    "{{episode_title}}"
+    {{format}} Pilot
+
+    COLD OPEN
+
+    {{teaser_scene}}
+
+    END OF COLD OPEN
+
+    ACT ONE
+
+    {{act_one_scenes}}
+
+    END OF ACT ONE
+
+    ACT TWO
+
+    {{act_two_scenes}}
+
+    END OF ACT TWO
+
+    ACT THREE
+
+    {{act_three_scenes}}
+
+    END OF ACT THREE
+
+    ACT FOUR
+
+    {{act_four_scenes}}
+
+    END OF ACT FOUR
+
+    {{tag_scene}}
+
+    END OF PILOT
+
+  placeholders:
+    - series_title
+    - episode_title
+    - format
+    - teaser_scene
+    - act_one_scenes
+    - act_two_scenes
+    - act_three_scenes
+    - act_four_scenes
+    - tag_scene
+
+output:
+  format: "markdown"
+  require:
+    series_premise_established: true
+    compelling_characters: true
+    act_break_cliffhangers: true
+    pilot_story_complete: true
+    series_potential_clear: true
+
+post_config:
+  enabled: false
+
+output_policy:
+  no_code: true
+  max_bullets: 0
+  min_paragraphs: 20
+  paragraph_first: false
+
+metadata:
+  strategy: "series_launch"
+  positioning: "pilot_presentation_ready"
+  complexity: 9
+  domain: "television"
+  format_strict: true
+
+real_time_support:
+  enabled: false

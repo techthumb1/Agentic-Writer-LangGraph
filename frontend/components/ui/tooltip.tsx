@@ -216,13 +216,13 @@ export const TooltipContent = React.forwardRef<
   return (
     <>
       {/* Backdrop for mobile */}
-      <div className="fixed inset-0 z-[60] sm:hidden" />
+      <div className="fixed inset-0 z-60 sm:hidden" />
       
       {/* Tooltip content */}
       <div
         ref={ref || contentRef}
         className={cn(
-          "fixed z-[70] px-3 py-1.5 text-sm text-white bg-gray-900 rounded-md shadow-lg pointer-events-none",
+          "fixed z-70 px-3 py-1.5 text-sm text-white bg-gray-900 rounded-md shadow-lg pointer-events-none",
           "animate-in fade-in-0 zoom-in-95 duration-200",
           "dark:bg-gray-800 dark:text-gray-200",
           // Arrow styles based on side

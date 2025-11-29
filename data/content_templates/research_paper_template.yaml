@@ -1,0 +1,533 @@
+#name: "Research Paper Generator"
+#slug: "research_paper_template"
+#id: "research_paper_template"
+#version: "3.0"
+#template_type: "research_paper"
+#category: "academic_research"
+#
+#description: >
+#  Enterprise dynamic research paper generator. Creates publication-quality manuscripts with 
+#  ORIGINAL research topics, novel methodologies, and unique findings across any academic field. 
+#  Never repeats content - generates fresh research contributions every time.
+#
+#
+## Inputs (resolved at runtime from request payload or style profile)
+#inputs:
+#  research_topic: { required: true }
+#  academic_field: { required: true }             # "psychology", "computer_science", "medicine", "business"
+#  research_type: { default: "empirical" }        # "empirical", "theoretical", "literature_review", "case_study"
+#  methodology: { default: "quantitative" }       # "quantitative", "qualitative", "mixed_methods"
+#  target_audience: { default: "academic" }       # "academic", "practitioners", "general_scholarly"
+#  publication_target: { default: "peer_reviewed" } # "peer_reviewed", "conference", "thesis", "report"
+#  citation_style: { default: "apa" }            # "apa", "mla", "chicago", "ieee", "harvard"
+#  sample_size: { optional: true }
+#  # Optional user overrides
+#  theoretical_framework: { optional: true }
+#  research_questions: { optional: true }
+#  statistical_methods: { optional: true }
+#  ethical_considerations: { optional: true }
+#
+## Priority-based requirement resolution
+#requirements:
+#  min_words:
+#    priority:
+#      - dynamic.min_words
+#      - style.length_limit.target
+#      - 8000
+#  min_citations:
+#    priority:
+#      - dynamic.min_citations
+#      - style.requirements.min_citations
+#      - 25
+#  min_sections:
+#    priority:
+#      - dynamic.min_sections
+#      - 8
+#
+## Template-specific writer instructions
+#writer_instructions:
+#  content_type: "research_paper"                  # CRITICAL: Actual academic research paper!
+#  format: "academic_manuscript"
+#  include_methodology: true
+#  generate_realistic_findings: true
+#  follow_academic_standards: true
+#  enforce_citation_requirements:
+#    priority:
+#      - dynamic.enforce_citation_requirements
+#      - true
+#
+#mcp:
+#  tool_sequence:
+#    priority:
+#      - dynamic.tool_sequence
+#      - [academic_search, statistical_analyzer, citation_generator, peer_review_checker]
+#
+#sections:
+#  order:
+#    priority:
+#      - dynamic.section_order
+#      - ["title_abstract", "introduction", "literature_review", "methodology", "results", "discussion", "conclusion", "references"]
+#
+#prompt_schema:
+#  system_preamble: |
+#    You are a distinguished academic researcher and scholarly writer. Create rigorous, publication-quality
+#    research papers that advance knowledge in the field. Generate actual research manuscripts with
+#    methodology, findings, and academic rigor - not explanatory content about research topics.
+#
+#  content_template: |
+#    # {{research_title}}
+#
+#    ## Abstract
+#    {{abstract_section}}
+#
+#    ## Introduction
+#    {{introduction_section}}
+#
+#    ## Literature Review
+#    {{literature_review}}
+#
+#    ## Methodology
+#    {{methodology_section}}
+#
+#    ## Results
+#    {{results_section}}
+#
+#    ## Discussion
+#    {{discussion_section}}
+#
+#    ## Conclusion
+#    {{conclusion_section}}
+#
+#    ## Limitations and Future Research
+#    {{limitations_section}}
+#
+#    ## References
+#    {{references_section}}
+#
+#  placeholders:
+#    - research_title
+#    - abstract_section
+#    - introduction_section
+#    - literature_review
+#    - methodology_section
+#    - results_section
+#    - discussion_section
+#    - conclusion_section
+#    - limitations_section
+#    - references_section
+#
+#output:
+#  format: "markdown"
+#  require:
+#    academic_rigor: true
+#    proper_citations: true
+#    methodology_section: true
+#    peer_reviewable: true
+#
+## === WriterzRoom enterprise output controls ===
+#post_config:
+#  enabled: false        # set to true in social_media_campaign.yaml
+#  min_posts: 3          # used only when enabled
+#  max_posts: 5          # used only when enabled
+#  paragraph_length: short   # short | medium | long
+#  per_post_requirements:
+#    min_words: 60
+#    max_words: 120
+#  composition:
+#    include_cta: true
+#    include_hashtags: 3      # 0 = none
+#    include_links: optional  # optional | required | none
+#
+#output_policy:
+#  no_code: true          # enforce: remove code blocks/inlines
+#  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
+#  min_paragraphs: 3      # minimum paragraphs after sanitation
+#  paragraph_first: true  # prefer paragraphs over lists
+#
+## Optional: planner override keys (validated upstream; no fallbacks here)
+#planner_overrides:
+#  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided
+#
+#include_code_examples:
+#  type: "checkbox"
+#  default: true  # Default TRUE for technical docs
+#  label: "Include Code Examples"
+#  description: "Include technical code snippets and implementation examples"
+
+# File: data/content_templates/research_paper_template.yaml
+# Enterprise Dynamic Research Paper Generator with Priority-Based Resolution
+# Generates unique, field-adaptive research with novel contributions every time
+
+name: "Research Paper Generator"
+slug: "research_paper_template"
+id: "research_paper_template"
+version: "3.0"
+template_type: "research_paper"
+category: "academic_research"
+
+description: >
+  Enterprise dynamic research paper generator. Creates publication-quality research papers with
+  original methodology and findings across any academic field. Uses priority-based resolution
+  for maximum adaptability and generates unique contributions every time.
+
+# Enterprise dynamic parameters - minimal input, maximum inference
+parameters:
+  research_topic:
+    type: "text"
+    required: true
+    label: "Research Topic"
+    description: "Research focus or domain (system will generate novel angles)"
+    placeholder: "AI ethics, sustainable energy, behavioral economics..."
+  
+  academic_field:
+    type: "select"
+    required: true
+    options: ["computer_science", "psychology", "medicine", "business", "engineering", "physics", "biology", "economics", "sociology", "let_system_decide"]
+    label: "Academic Field"
+    description: "Primary discipline (or let system optimize)"
+  
+  research_type:
+    type: "select"
+    required: false
+    options: ["let_system_decide", "empirical", "theoretical", "literature_review", "case_study", "mixed_methods"]
+    default: "let_system_decide"
+    label: "Research Type"
+    description: "System will select optimal approach if not specified"
+  
+  methodology:
+    type: "select"
+    required: false
+    options: ["let_system_decide", "quantitative", "qualitative", "mixed_methods", "computational", "experimental"]
+    default: "let_system_decide"
+    label: "Methodology"
+    description: "System will choose appropriate methods"
+  
+  innovation_level:
+    type: "select"
+    required: false
+    options: ["breakthrough", "significant_advance", "incremental_improvement", "novel_application"]
+    default: "significant_advance"
+    label: "Innovation Level"
+    description: "Desired level of research contribution"
+  
+  target_audience:
+    type: "select"
+    required: false
+    options: ["academic_peers", "practitioners", "interdisciplinary", "general_scholarly"]
+    default: "academic_peers"
+    label: "Target Audience"
+    description: "Primary readership"
+  
+  publication_target:
+    type: "select"
+    required: false
+    options: ["peer_reviewed", "conference", "thesis", "report", "preprint"]
+    default: "peer_reviewed"
+    label: "Publication Target"
+    description: "Intended venue"
+  
+  citation_style:
+    type: "select"
+    required: false
+    options: ["apa", "ieee", "mla", "chicago", "harvard", "vancouver"]
+    default: "apa"
+    label: "Citation Style"
+    description: "Academic citation format"
+  
+  # Enterprise dynamic overrides - system infers if not provided
+  sample_size:
+    type: "text"
+    required: false
+    label: "Sample Size (Optional)"
+    description: "System will generate appropriate size if not specified"
+  
+  theoretical_framework:
+    type: "textarea"
+    required: false
+    label: "Theoretical Framework (Optional)"
+    description: "System will develop relevant framework if not provided"
+  
+  research_questions:
+    type: "textarea"
+    required: false
+    label: "Research Questions (Optional)"
+    description: "System will generate novel questions if not specified"
+  
+  statistical_methods:
+    type: "text"
+    required: false
+    label: "Statistical Methods (Optional)"
+    description: "System will select appropriate methods"
+  
+  ethical_considerations:
+    type: "textarea"
+    required: false
+    label: "Ethical Considerations (Optional)"
+    description: "System will address relevant ethical aspects"
+
+# Priority-based requirement resolution - enterprise adaptability
+requirements:
+  min_words:
+    priority:
+      - dynamic.min_words
+      - style.length_limit.target
+      - field_adaptive.optimal_length
+      - 8000
+  max_words:
+    priority:
+      - dynamic.max_words
+      - style.length_limit.max
+      - field_adaptive.max_length
+      - 15000
+  min_citations:
+    priority:
+      - dynamic.min_citations
+      - style.requirements.min_citations
+      - field_adaptive.citation_density
+      - 25
+  min_sections:
+    priority:
+      - dynamic.min_sections
+      - field_adaptive.section_count
+      - 8
+  originality_requirement:
+    priority:
+      - dynamic.originality_requirement
+      - 100  # Enterprise: Always 100% original
+
+# Enterprise dynamic writer instructions
+writer_instructions:
+  content_type: "research_paper"
+  generation_mode: "enterprise_dynamic"
+  format: "academic_manuscript"
+  include_methodology: true
+  generate_realistic_findings: true
+  follow_academic_standards: true
+  enforce_citation_requirements:
+    priority:
+      - dynamic.enforce_citation_requirements
+      - true
+  
+  # ENTERPRISE DYNAMISM CORE
+  dynamic_generation_rules:
+    priority:
+      - dynamic.generation_rules
+      - |
+        ENTERPRISE REQUIREMENT: Generate completely unique research every time.
+        
+        1. NOVEL TOPIC DEVELOPMENT:
+           - Take user topic and identify unexplored angles
+           - Generate original research questions that advance the field
+           - Create unique problem statements and hypotheses
+           - Develop fresh theoretical perspectives
+        
+        2. FIELD-ADAPTIVE METHODOLOGY:
+           - Select methodology appropriate for field and research type
+           - Generate realistic sample characteristics for the domain
+           - Create novel experimental designs or analytical approaches
+           - Adapt statistical methods to research questions
+        
+        3. ORIGINAL FINDINGS GENERATION:
+           - Create statistically plausible, meaningful results
+           - Generate unique data patterns and discoveries
+           - Develop original insights and theoretical contributions
+           - Produce field-advancing implications
+        
+        4. INTELLIGENT STRUCTURE ADAPTATION:
+           - Adjust sections based on field conventions (STEM vs humanities)
+           - Include methodology types appropriate to discipline
+           - Generate field-specific terminology and standards
+           - Adapt citation patterns to academic conventions
+        
+        5. ENTERPRISE QUALITY ASSURANCE:
+           - Ensure methodological rigor appropriate to field
+           - Generate realistic but meaningful effect sizes
+           - Create coherent theoretical frameworks
+           - Maintain publication-quality academic tone
+
+# Dynamic MCP tool integration
+mcp:
+  tool_sequence:
+    priority:
+      - dynamic.tool_sequence
+      - field_adaptive.tool_sequence
+      - [academic_search, methodology_optimizer, statistical_analyzer, originality_checker, citation_generator, peer_review_simulator]
+  
+  adaptive_tools:
+    computer_science: [code_analyzer, algorithm_validator, benchmark_generator]
+    medicine: [clinical_data_analyzer, biostatistics_validator, ethics_checker]
+    psychology: [survey_designer, statistical_power_calculator, effect_size_estimator]
+    business: [market_analyzer, financial_modeler, case_study_generator]
+
+# Dynamic section ordering - adapts to research type and field
+sections:
+  order:
+    priority:
+      - dynamic.section_order
+      - field_adaptive.section_order
+      - research_type_adaptive.section_order
+      - ["title_abstract", "introduction", "literature_review", "methodology", "results", "discussion", "conclusion", "references"]
+  
+  adaptive_sections:
+    empirical: ["abstract", "introduction", "literature_review", "methodology", "results", "discussion", "conclusion", "limitations", "references"]
+    theoretical: ["abstract", "introduction", "theoretical_framework", "analysis", "implications", "conclusion", "references"]
+    literature_review: ["abstract", "introduction", "methodology", "synthesis", "gaps_identification", "conclusion", "references"]
+    case_study: ["abstract", "introduction", "case_background", "methodology", "analysis", "discussion", "implications", "references"]
+
+# Enterprise prompt schema with full dynamism
+prompt_schema:
+  system_preamble: |
+    You are a world-class academic researcher capable of generating groundbreaking research across any discipline.
+    Create completely original, publication-quality research papers that advance knowledge in the field.
+    
+    ENTERPRISE CRITICAL: Never repeat existing research. Generate unique contributions every time.
+    Adapt methodology, structure, findings, and implications to the specific field and research context.
+    
+    Your research must be:
+    - Methodologically sound for the specific field
+    - Statistically rigorous (when applicable)
+    - Theoretically grounded and innovative
+    - Practically significant and actionable
+    - 100% original with novel contributions
+
+  content_template: |
+    # {{dynamic_research_title}}
+
+    ## Abstract
+    {{dynamic_abstract_section}}
+
+    ## Introduction
+    {{dynamic_introduction_section}}
+
+    {{#if_empirical}}
+    ## Literature Review
+    {{dynamic_literature_review}}
+
+    ## Methodology
+    {{dynamic_methodology_section}}
+
+    ## Results
+    {{dynamic_results_section}}
+    {{/if_empirical}}
+
+    {{#if_theoretical}}
+    ## Theoretical Framework
+    {{dynamic_theoretical_framework}}
+
+    ## Analysis
+    {{dynamic_analysis_section}}
+    {{/if_theoretical}}
+
+    ## Discussion
+    {{dynamic_discussion_section}}
+
+    ## Conclusion
+    {{dynamic_conclusion_section}}
+
+    ## Limitations and Future Research
+    {{dynamic_limitations_section}}
+
+    ## References
+    {{dynamic_references_section}}
+
+  placeholders:
+    dynamic_generation: true
+    field_adaptive: true
+    research_type_responsive: true
+
+# Enterprise output specifications
+output:
+  format: "markdown"
+  require:
+    academic_rigor: true
+    proper_citations: true
+    methodology_section: true
+    peer_reviewable: true
+    original_contribution: true
+    field_appropriate: true
+  
+  adaptive_requirements:
+    priority:
+      - dynamic.output_requirements
+      - field_adaptive.output_standards
+      - research_type_adaptive.requirements
+
+# Real-time research intelligence
+real_time_support:
+  enabled: true
+  max_age_hours: 720
+  verification_sources: 3
+  search_required: true
+  fail_if_unavailable: false
+  search_focus:
+    priority:
+      - dynamic.search_focus
+      - "emerging_research_trends"
+  gap_identification: true
+  novelty_verification: true
+
+# Enterprise output controls
+post_config:
+  enabled: false
+  
+output_policy:
+  no_code:
+    priority:
+      - dynamic.no_code
+      - field_adaptive.code_policy
+      - false  # Allow code for CS/engineering fields
+  max_bullets:
+    priority:
+      - dynamic.max_bullets
+      - field_adaptive.bullet_allowance
+      - 6
+  min_paragraphs:
+    priority:
+      - dynamic.min_paragraphs
+      - field_adaptive.paragraph_requirement
+      - 8
+  paragraph_first: true
+
+# Dynamic quality targets
+quality_targets:
+  originality:
+    priority:
+      - dynamic.originality_target
+      - 100  # Enterprise: Always 100%
+  methodological_rigor:
+    priority:
+      - dynamic.rigor_target
+      - field_adaptive.rigor_standard
+      - 95
+  statistical_soundness:
+    priority:
+      - dynamic.statistical_target
+      - field_adaptive.statistical_standard
+      - 95
+  theoretical_contribution:
+    priority:
+      - dynamic.theory_target
+      - field_adaptive.theory_standard
+      - 90
+  practical_significance:
+    priority:
+      - dynamic.practical_target
+      - 85
+
+# Enterprise metadata
+metadata:
+  version: "3.0.0"
+  generation_type: "enterprise_dynamic"
+  originality_guaranteed: true
+  field_adaptive: true
+  enterprise_grade: true
+  
+difficulty: "expert"
+estimatedLength: "Dynamic based on field and research type"
+targetAudience: "Academic researchers, peer reviewers, journal editors"
+icon: "🔬"
+tags:
+  - enterprise_dynamic
+  - field_adaptive
+  - original_research
+  - priority_based

@@ -1,0 +1,152 @@
+# File: data/content_templates/press_release.yaml
+# Fixed version ensuring proper YAML structure for template loader
+# CRITICAL: All required fields present and properly formatted
+
+name: "Press Release Generator"
+slug: "press_release"
+id: "press_release"
+version: "2.0"
+template_type: "press_release"
+category: "business"
+
+description: >
+  Enterprise press release generator for media distribution and corporate communications.
+  Creates newsworthy announcements formatted for journalists, wire services, and media outlets.
+  Generates actual press releases with proper structure, quotes, and media contact information -
+  not marketing copy or blog content about announcements. Optimized for media pickup and 
+  distribution through PR channels.
+
+# Core parameters for press releases
+parameters:
+  announcement_type:
+    type: "select"
+    required: true
+    options: ["product_launch", "company_news", "partnership", "funding", "executive_hire", "awards", "research_findings", "event_announcement"]
+    label: "Announcement Type"
+    description: "Type of news being announced"
+  
+  company_name:
+    type: "text"
+    required: true
+    label: "Company Name"
+    description: "Organization issuing the press release"
+  
+  headline_focus:
+    type: "text"
+    required: true
+    label: "Key News Point"
+    description: "Main newsworthy element"
+    placeholder: "New product launch, major partnership, etc."
+  
+  target_media:
+    type: "multiselect"
+    required: true
+    options: ["tech_media", "business_press", "trade_publications", "local_news", "national_media", "industry_specific"]
+    label: "Target Media"
+    description: "Media outlets to target"
+  
+  geographic_scope:
+    type: "select"
+    required: true
+    options: ["local", "regional", "national", "international"]
+    default: "national"
+    label: "Geographic Scope"
+  
+  urgency_level:
+    type: "select"
+    required: true
+    options: ["immediate", "scheduled", "embargo"]
+    default: "immediate"
+    label: "Release Timing"
+  
+  include_quotes:
+    type: "checkbox"
+    default: true
+    label: "Include Executive Quotes"
+    description: "Include quotes from company leadership"
+
+# Content structure requirements
+requirements:
+  min_words: 400
+  max_words: 800
+  include_contact_info: true
+  include_boilerplate: true
+  media_ready_format: true
+  ap_style_compliance: true
+
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "press_release"
+  format: "media_announcement"
+  include_newsworthiness: true
+  follow_ap_style: true
+  include_media_contacts: true
+  generate_realistic_quotes: true
+
+# Content sections
+sections:
+  order:
+    - "headline"
+    - "dateline"
+    - "lead_paragraph"
+    - "body_content"
+    - "quotes"
+    - "company_boilerplate"
+    - "media_contact"
+
+# Prompt schema
+prompt_schema:
+  system_preamble: |
+    You are a professional PR writer and corporate communications specialist. Create
+    newsworthy press releases formatted for media distribution. Generate actual press
+    releases with proper journalism structure, executive quotes, and media contact
+    information - not marketing content about announcements.
+
+  content_template: |
+    # {{headline}}
+    
+    {{dateline}}
+    
+    {{lead_paragraph}}
+    
+    {{body_content}}
+    
+    {{quotes_section}}
+    
+    ## About {{company_name}}
+    {{company_boilerplate}}
+    
+    ## Media Contact
+    {{media_contact_info}}
+    
+    ###
+
+output:
+  format: "markdown"
+  require:
+    newsworthy_angle: true
+    executive_quotes: true
+    media_contacts: true
+    ap_style_format: true
+
+real_time_support:
+  enabled: true
+  max_age_hours: 6
+  verification_sources: 2
+  search_required: false
+  fail_if_unavailable: false
+
+post_config:
+  enabled: false
+
+output_policy:
+  no_code: true
+  max_bullets: 3
+  min_paragraphs: 4
+  paragraph_first: true
+
+# Enterprise features
+image_agent_enabled: false
+estimated_length: "400-800 words"
+difficulty: "intermediate"
+target_audience: "Media professionals, journalists, corporate communications"

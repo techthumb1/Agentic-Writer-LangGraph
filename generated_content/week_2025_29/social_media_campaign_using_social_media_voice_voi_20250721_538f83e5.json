@@ -1,0 +1,21 @@
+{
+  "title": "Social Media Campaign using social media voice voice",
+  "status": "draft",
+  "type": "Social Media Campaign",
+  "content": "Planning failed: 'ContentIntelligenceOrchestrator' object has no attribute '_extract_planning_requirements'",
+  "createdAt": "2025-07-21T03:04:59.117Z",
+  "updatedAt": "2025-07-21T03:04:59.117Z",
+  "author": "AI Assistant",
+  "views": 0,
+  "metadata": {
+    "template": "social_media_campaign",
+    "styleProfile": "social_media_voice",
+    "requestId": "538f83e5-9c33-4f15-aef7-422b57b52a60",
+    "topic": "Social Media Campaign using social media voice voice",
+    "audience": "general",
+    "wordCount": 8,
+    "readingTime": 1,
+    "generatedAt": "2025-07-21T03:04:59.117Z",
+    "generation_mode": "enhanced"
+  }
+}

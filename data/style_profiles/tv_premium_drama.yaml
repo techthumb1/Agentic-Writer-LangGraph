@@ -1,0 +1,199 @@
+# data/style_profiles/tv_premium_drama.yaml
+# Professional Style Profile - TV Premium Drama
+# Category: Screenwriting
+
+id: tv_premium_drama
+name: TV Premium Drama
+description: Prestige television drama writing for HBO/Netflix/premium platforms
+category: screenwriting
+subcategory: expert
+platform: premium_television
+tone: sophisticated
+voice: literary
+structure: serialized_arcs → character_depth → thematic_resonance
+audience: prestige_tv_writers
+
+system_prompt: >
+  Write in premium television drama style for prestige platforms like HBO, Netflix, FX.
+  Focus on complex character psychology, morally ambiguous situations, and layered storytelling.
+  Maintain expert-level sophisticated writing with literary quality dialogue and visual poetry.
+  CRITICAL: Write actual premium drama script pages - not basic procedural or soap opera.
+  This is The Sopranos, Breaking Bad, Succession level writing. Subtext over text. Character
+  complexity over plot mechanics. Thematic depth over surface story. Uncomfortable truths.
+  Elevated television that respects audience intelligence. Show the darkness and the light.
+
+writing_style:
+  tone: sophisticated
+  voice: literary
+  formality: high
+  technical_level: expert
+  objectivity: low                     # Drama is subjective character experience
+  evidence_based: false                # Character-driven fiction
+  psychological_depth: maximum
+  moral_complexity: high
+
+# Premium drama rules
+forbidden_patterns:
+  - "good guy"                         # Moral complexity, not simple heroes
+  - "bad guy"                          # Nuanced antagonists
+  - "hero saves the day"               # Subvert tropes
+  - "happily ever after"               # Earned, complex resolutions
+  - "explained motivation"             # Show through behavior
+
+required_elements:
+  - "moral_ambiguity"
+  - "psychological_complexity"
+  - "thematic_layering"
+  - "subtext_heavy_dialogue"
+  - "character_contradiction"
+  - "uncomfortable_truths"
+  - "earned_emotional_beats"
+
+# Premium drama structure
+content_structure:
+  opening_style: "in_medias_res_or_atmospheric_establishment"
+  story_engine: "character_over_plot"
+  pacing: "deliberate_breathing_room"
+  dialogue_style: "subtext_and_silence"
+  visual_storytelling: "cinematic_language"
+  theme_integration: "woven_throughout"
+  emotional_honesty: "brutal_when_necessary"
+
+# Literary television language
+language_requirements:
+  vocabulary_level: sophisticated
+  sentence_complexity: varied_literary
+  use_jargon: character_appropriate
+  technical_precision: high
+  metaphor_use: elevated
+  silence_value: high                  # What's not said matters
+  profanity: "authentic_when_needed"   # Not gratuitous, but real
+  poetry_in_prose: encouraged
+
+length_limit:
+  words: 5000                          # Per episode
+  min: 3500
+  max: 7000
+  scene_length: "varied_for_rhythm"
+
+settings:
+  use_analogies: true                  # Sophisticated metaphors
+  avoid_jargon: false
+  include_examples: false
+  conversational_tone: false           # Elevated but natural
+  encourage_questions: false
+  reading_level: "sophisticated_adult"
+  eliminate_exposition: true
+  embrace_ambiguity: true
+  respect_audience_intelligence: true
+  dark_complexity: allowed
+
+formatting:
+  script_format: "single_camera_cinematic"
+  scene_length: "variable_for_impact"
+  action_blocks: "literary_visual_prose"
+  white_space: "strategic"
+  cold_opens: "atmospheric_hooks"
+  act_breaks: "emotional_gut_punches"
+
+# Premium drama quality thresholds
+quality_requirements:
+  character_depth: 95
+  psychological_authenticity: 95
+  thematic_coherence: 90
+  dialogue_subtext: 95
+  visual_storytelling: 90
+  moral_complexity: 95
+  emotional_honesty: 95
+  craft_sophistication: 95
+  originality: 90
+  prestige_factor: 90
+
+# Premium drama violations
+violation_detection:
+  lazy_exposition: ["as_you_know", "remember_when"]
+  simple_morality: ["hero_villain_binary"]
+  melodrama: ["overwrought_emotion", "manufactured_stakes"]
+  tidy_resolutions: ["wrapped_in_bow", "everyone_learns_lesson"]
+  surface_psychology: ["obvious_motivation"]
+  basic_dialogue: ["on_the_nose_exchanges"]
+
+# Advanced premium drama techniques
+advanced_techniques:
+  - "unreliable_narrator"
+  - "fractured_timeline"
+  - "parallel_character_journeys"
+  - "thematic_visual_motifs"
+  - "silence_as_dialogue"
+  - "uncomfortable_family_dynamics"
+  - "institutional_critique"
+  - "moral_descent_arcs"
+  - "psychological_unraveling"
+  - "class_commentary"
+  - "power_dynamics_exploration"
+  - "generational_trauma"
+  - "addiction_authenticity"
+  - "death_without_melodrama"
+  - "sex_with_purpose"
+  - "violence_with_consequence"
+
+# Character complexity layers
+character_development:
+  - "contradictory_desires"
+  - "blind_spots_and_delusions"
+  - "past_trauma_informing_present"
+  - "rationalization_and_denial"
+  - "capacity_for_change_and_resistance"
+  - "love_and_destruction_intertwined"
+  - "intelligence_and_foolishness"
+  - "power_corrupting_subtly"
+
+# Thematic territories
+premium_themes:
+  - "american_dream_decay"
+  - "family_as_prison_and_sanctuary"
+  - "power_and_corruption"
+  - "masculinity_in_crisis"
+  - "capitalism_critique"
+  - "identity_and_performance"
+  - "mortality_and_legacy"
+  - "love_as_destruction"
+  - "institutional_failure"
+  - "complicity_and_guilt"
+
+# Dialogue characteristics
+dialogue_style:
+  rhythm: "naturalistic_with_music"
+  subtext_ratio: "80_percent"          # More unsaid than said
+  character_voice: "deeply_specific"
+  profanity: "authentic_character_dependent"
+  humor: "dark_uncomfortable_truth"
+  poetry: "occasional_earned_moments"
+  silence: "powerful_beats"
+  interruption: "overlapping_reality"
+
+# Visual storytelling emphasis
+visual_language:
+  cinematography_awareness: high
+  composition_in_writing: emphasized
+  symbolic_imagery: layered
+  color_palette_suggestion: subtle
+  environment_as_character: true
+  objects_with_meaning: emphasized
+
+metadata:
+  version: "1.0.0"
+  created_by: "screenwriting_system"
+  last_updated: "2025-11-17"
+  use_cases: ['prestige drama', 'limited series', 'premium cable', 'streaming originals']
+  target_audience: "prestige_television_writers"
+  complexity_level: "expert"
+  category: "Screenwriting"
+  subcategory: "Premium Drama"
+  enforcement_level: "strict"
+  professional_grade: true
+  industry_standard: true
+  emmy_worthy: true
+  comparable_series: ["The Sopranos", "Breaking Bad", "Mad Men", "The Wire", "Succession"]
+  budget_tier: "premium"               # High production values expected
+  episode_runtime: "50_to_70_minutes"

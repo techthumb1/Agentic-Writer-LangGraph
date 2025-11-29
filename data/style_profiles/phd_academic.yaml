@@ -1,7 +1,8 @@
 # data/style_profiles/phd_academic.yaml
+# ENHANCED VERSION - Prevents generic content with strict enforcement
 id: phd_academic
 name: PhD Academic
-description: Scholarly writing style for academic and research contexts
+description: Scholarly writing style for academic and research contexts with strict anti-generic enforcement
 category: academic
 platform: medium
 tone: scholarly
@@ -10,11 +11,91 @@ structure: literature review → methodology → findings → discussion → con
 audience: academics, researchers, graduate students
 
 system_prompt: >
-  Write in an academic style appropriate for scholarly discourse. Include
-  proper citations, rigorous methodology, and thorough literature review.
-  Present findings objectively and discuss implications thoroughly. Use
-  formal academic language while maintaining clarity. Follow academic
-  writing conventions.
+  Write in a formal academic style appropriate for scholarly discourse. 
+  CRITICAL: Never use casual greetings or conversational openings. Begin with 
+  a clear thesis statement or research context. Include proper citations, 
+  rigorous methodology, and thorough literature review. Present findings 
+  objectively and discuss implications thoroughly. Use formal academic 
+  language while maintaining clarity. Follow academic writing conventions.
+  FORBIDDEN: Any casual, conversational, or blog-style language.
+
+# CRITICAL ADDITION: Explicit enforcement rules
+writing_style:
+  tone: formal
+  voice: authoritative
+  formality: high
+  technical_level: advanced
+  objectivity: high
+  evidence_based: true
+
+# CRITICAL: Patterns that MUST be avoided
+forbidden_patterns:
+  - "hey there"
+  - "hi there"
+  - "hello there"
+  - "greetings"
+  - "what's up"
+  - "howdy"
+  - "let's dive in"
+  - "let's explore"
+  - "buckle up"
+  - "hang tight"
+  - "awesome"
+  - "cool"
+  - "neat"
+  - "sweet"
+  - "amazing"
+  - "incredible"
+  - "mind-blowing"
+  - "trust me"
+  - "believe me"
+  - "take my word"
+  - "you know"
+  - "basically"
+  - "so,"
+  - "well,"
+  - "now,"
+  - "anyway,"
+
+# CRITICAL: Required opening patterns
+required_opening_patterns:
+  - "This analysis examines"
+  - "This study investigates"
+  - "This research explores"
+  - "The present investigation"
+  - "Contemporary literature suggests"
+  - "Recent developments in"
+  - "The purpose of this analysis"
+  - "This paper argues that"
+  - "The following examination"
+
+# CRITICAL: Required academic elements
+required_elements:
+  - "clear thesis statement"
+  - "evidence-based arguments"
+  - "logical progression"
+  - "scholarly tone throughout"
+  - "analytical depth"
+  - "objective presentation"
+  - "methodological rigor"
+  - "critical evaluation"
+
+# Academic structure requirements
+content_structure:
+  opening_style: "thesis_statement"
+  paragraph_style: "analytical"
+  transition_style: "formal_logical"
+  conclusion_style: "synthesis"
+  evidence_requirement: "mandatory"
+
+# Language precision requirements
+language_requirements:
+  vocabulary_level: "advanced"
+  sentence_complexity: "complex"
+  use_jargon: true
+  technical_precision: "high"
+  objectivity_level: "strict"
+  citation_style: "academic"
 
 length_limit:
   words: 2500
@@ -28,17 +109,36 @@ settings:
   conversational_tone: false
   encourage_questions: false
   reading_level: "graduate"
+  eliminate_casual_language: true
+  enforce_academic_rigor: true
+  require_evidence_support: true
 
 formatting:
   use_headers: true
   use_bullet_points: false
   use_callouts: false
   code_blocks: extensive
+  academic_structure: true
+
+# Quality thresholds
+quality_requirements:
+  formality_score: 90
+  objectivity_score: 85
+  analytical_depth: 85
+  evidence_support: 90
+  style_consistency: 95
+
+# Violation detection patterns
+violation_detection:
+  casual_greetings: ["hey", "hi", "hello", "greetings", "what's up"]
+  weak_transitions: ["so,", "well,", "now,", "anyway,"]
+  opinion_markers: ["i think", "i believe", "in my opinion", "personally"]
+  casual_intensifiers: ["really", "super", "totally", "absolutely amazing"]
 
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   created_by: "content_team"
-  last_updated: "2025-06-20"
+  last_updated: "2025-07-18"
   use_cases: ["academic papers", "research articles", "scholarly analysis"]
-
----
+  enforcement_level: "strict"
+  anti_generic: true

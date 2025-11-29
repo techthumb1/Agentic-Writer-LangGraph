@@ -1,3 +1,4 @@
+/* File: frontend/app/globals.css */
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -112,17 +113,160 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+/* WriterzRoom Theme Variables */
+.writerzroom {
+  --background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  --foreground: oklch(0.984 0.003 247.858);
+  --card: oklch(1 0 0 / 10%);
+  --card-foreground: oklch(0.984 0.003 247.858);
+  --popover: oklch(0.129 0.042 264.695 / 95%);
+  --popover-foreground: oklch(0.984 0.003 247.858);
+  --primary: oklch(0.629 0.224 302.71);
+  --primary-foreground: oklch(0.984 0.003 247.858);
+  --secondary: oklch(1 0 0 / 10%);
+  --secondary-foreground: oklch(0.984 0.003 247.858);
+  --muted: oklch(1 0 0 / 5%);
+  --muted-foreground: oklch(0.704 0.04 256.788);
+  --accent: oklch(0.629 0.224 302.71 / 20%);
+  --accent-foreground: oklch(0.984 0.003 247.858);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.984 0.003 247.858);
+  --border: oklch(0.629 0.224 302.71 / 20%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.629 0.224 302.71);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
   }
 }
 
-/* Add to your globals.css - Toast animations */
+/* Theme-aware background utility */
+.theme-background {
+  /* Default (WriterzRoom) - Bright Purple Gradient Background */
+  background: linear-gradient(135deg, #111827 0%, #7c3aed 50%, #111827 100%);
+  background-attachment: fixed;
+  transition: background 0.3s ease;
+}
 
+/* Light theme - White background */
+.light .theme-background {
+  background: #ffffff;
+  background-attachment: initial;
+}
+
+/* Dark theme - Dark background */
+.dark .theme-background {
+  background: #030712;
+  background-attachment: initial;
+}
+
+/* WriterzRoom theme - Bright Purple gradient (explicit for clarity) */
+.writerzroom .theme-background {
+  background: linear-gradient(135deg, #111827 0%, #7c3aed 50%, #111827 100%);
+  background-attachment: fixed;
+}
+
+/* Enhanced theme-specific overrides */
+.writerzroom {
+  background: linear-gradient(135deg, #111827 0%, #7c3aed 50%, #111827 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.writerzroom .backdrop-blur-sm {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.writerzroom .glass-card {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Enhanced animations and transitions */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.writerzroom .animate-gradient {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+/* Improved focus states */
+.writerzroom *:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+/* Enhanced button styles */
+.writerzroom .btn-primary {
+  background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  transition: all 0.2s ease;
+}
+
+.writerzroom .btn-primary:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(147, 51, 234, 0.3);
+}
+
+/* Scrollbar customization for WriterzRoom theme */
+.writerzroom ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.writerzroom ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.writerzroom ::-webkit-scrollbar-thumb {
+  background: rgba(147, 51, 234, 0.5);
+  border-radius: 4px;
+}
+
+.writerzroom ::-webkit-scrollbar-thumb:hover {
+  background: rgba(147, 51, 234, 0.7);
+}
+
+/* Utility classes for enhanced styling */
+.text-gradient {
+  background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.border-gradient {
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.2), rgba(124, 58, 237, 0.2)) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: exclude;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
+/* Toast animations */
 @keyframes toastSlideIn {
   from {
     transform: translateX(100%);
@@ -196,8 +340,6 @@
 .toast-info {
   border-left: 4px solid rgb(59, 130, 246);
 }
-
-/* Add to your globals.css - Tooltip animations and styles */
 
 /* Tooltip animations */
 @keyframes tooltip-in {
@@ -325,5 +467,350 @@
   
   .tooltip-content {
     transition: none;
+  }
+  
+  * {
+    transition: none !important;
+  }
+  
+  .writerzroom .animate-gradient {
+    animation: none;
+  }
+  
+  .theme-background {
+    transition: none;
+  }
+}
+
+/* Toast auto-dismiss styles */
+[data-sonner-toast] {
+  position: relative;
+}
+
+[data-sonner-toast]::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #8b5cf6, #ec4899);
+  animation: toast-progress 5s linear forwards;
+}
+
+@keyframes toast-progress {
+  0% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}
+
+/* Print styles */
+@media print {
+  .writerzroom {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .writerzroom * {
+    background: transparent !important;
+    color: black !important;
+  }
+  
+  .backdrop-blur-sm {
+    backdrop-filter: none !important;
+  }
+  
+  .theme-background {
+    background: white !important;
+  }
+}
+
+/* Theme transition improvements */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Enhanced card styling for WriterzRoom */
+.writerzroom .card {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Enhanced button styling for WriterzRoom */
+.writerzroom .btn-gradient {
+  background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+  border: none;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.writerzroom .btn-gradient:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(147, 51, 234, 0.3);
+}
+
+/* Enhanced input styling for WriterzRoom */
+.writerzroom input,
+.writerzroom textarea,
+.writerzroom select {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.writerzroom input:focus,
+.writerzroom textarea:focus,
+.writerzroom select:focus {
+  border-color: rgba(147, 51, 234, 0.5);
+  box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
+}
+
+.writerzroom input::placeholder,
+.writerzroom textarea::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Loading states */
+.loading-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Enhanced focus indicators */
+.focus\:ring-purple-500:focus {
+  --ring-color: rgba(147, 51, 234, 0.5);
+  box-shadow: 0 0 0 3px var(--ring-color);
+}
+
+/* Custom range slider styling for WriterzRoom */
+.writerzroom input[type="range"] {
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+}
+
+.writerzroom input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #9333ea, #7c3aed);
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.writerzroom input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #9333ea, #7c3aed);
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Sonner toast container styles */
+[data-sonner-toaster] {
+  --normal-bg: hsl(var(--background));
+  --normal-border: hsl(var(--border));
+  --normal-text: hsl(var(--foreground));
+  --success-bg: hsl(var(--background));
+  --success-border: hsl(120 100% 25%);
+  --success-text: hsl(var(--foreground));
+  --error-bg: hsl(var(--background));
+  --error-border: hsl(0 100% 50%);
+  --error-text: hsl(var(--foreground));
+  --warning-bg: hsl(var(--background));
+  --warning-border: hsl(38 100% 50%);
+  --warning-text: hsl(var(--foreground));
+  --info-bg: hsl(var(--background));
+  --info-border: hsl(210 100% 50%);
+  --info-text: hsl(var(--foreground));
+}
+
+/* Individual toast styling */
+[data-sonner-toast] {
+  background: var(--normal-bg) !important;
+  border: 1px solid var(--normal-border) !important;
+  color: var(--normal-text) !important;
+  border-radius: 8px !important;
+  padding: 16px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Toast close button styling */
+[data-sonner-toast] button[data-close-button] {
+  background: transparent !important;
+  border: none !important;
+  color: hsl(var(--muted-foreground)) !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  border-radius: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+[data-sonner-toast] button[data-close-button]:hover {
+  opacity: 1 !important;
+  background: hsl(var(--muted)) !important;
+}
+
+[data-sonner-toast] button[data-close-button]:focus {
+  outline: 2px solid hsl(var(--ring)) !important;
+  outline-offset: 2px !important;
+}
+
+/* Toast type styling */
+[data-sonner-toast][data-type="success"] {
+  border-left: 4px solid var(--success-border) !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  border-left: 4px solid var(--error-border) !important;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  border-left: 4px solid var(--warning-border) !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  border-left: 4px solid var(--info-border) !important;
+}
+
+/* Toast content styling */
+[data-sonner-toast] [data-title] {
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+  padding-right: 24px !important; /* Make room for close button */
+}
+
+[data-sonner-toast] [data-description] {
+  font-size: 13px !important;
+  opacity: 0.8 !important;
+  margin-top: 4px !important;
+  margin: 0 !important;
+  padding-right: 24px !important; /* Make room for close button */
+}
+
+/* WriterzRoom toast overrides */
+.writerzroom [data-sonner-toaster] {
+  --normal-bg: rgba(255, 255, 255, 0.1);
+  --normal-border: rgba(255, 255, 255, 0.2);
+  --normal-text: white;
+  --success-bg: rgba(34, 197, 94, 0.1);
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --info-bg: rgba(59, 130, 246, 0.1);
+}
+
+.writerzroom [data-sonner-toast] {
+  background: var(--normal-bg) !important;
+  border: 1px solid var(--normal-border) !important;
+  color: var(--normal-text) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.writerzroom [data-sonner-toast] button[data-close-button] {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.writerzroom [data-sonner-toast] button[data-close-button]:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Toast animations */
+@keyframes toast-enter {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-exit {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+[data-sonner-toast][data-mounted] {
+  animation: toast-enter 0.3s ease-out;
+}
+
+[data-sonner-toast][data-removing] {
+  animation: toast-exit 0.2s ease-in forwards;
+}
+
+/* Ensure proper z-index */
+[data-sonner-toaster] {
+  z-index: 999999 !important;
+}
+
+/* Handle multiple toasts spacing */
+[data-sonner-toaster] [data-sonner-toast]:not(:last-child) {
+  margin-bottom: 8px !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  [data-sonner-toaster] {
+    left: 8px !important;
+    right: 8px !important;
+    max-width: none !important;
+  }
+  
+  [data-sonner-toast] {
+    padding: 12px !important;
+  }
+  
+  [data-sonner-toast] [data-title] {
+    font-size: 13px !important;
+  }
+  
+  [data-sonner-toast] [data-description] {
+    font-size: 12px !important;
   }
 }

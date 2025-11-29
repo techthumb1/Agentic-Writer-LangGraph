@@ -33,7 +33,7 @@ export function Toaster() {
             >
               <Toast variant={variant} {...props}>
                 <div className="flex items-start space-x-3 flex-1">
-                  <div className="flex-shrink-0 mt-0.5">
+                  <div className="shrink-0 mt-0.5">
                     <ToastIcon variant={variant} />
                   </div>
                   <div className="flex-1 grid gap-1">

@@ -1,0 +1,280 @@
+# data/content_templates/market_analysis_template.yaml
+
+name: "Market Analysis Generator"
+slug: "market_analysis_template"
+version: "1.0"
+category: "business"
+template_type: "market_analysis"
+id: "market_analysis_template"
+
+description: >
+  Professional market analysis generator. Creates data-driven market assessments,
+  trend analysis, and strategic market insights compatible with analytical style profiles.
+
+# Core parameters aligned with analytical content requirements
+parameters:
+  market_sector:
+    type: "select"
+    required: true
+    options: ["technology", "healthcare", "finance", "retail", "energy", "manufacturing", "real_estate", "automotive"]
+    label: "Market Sector"
+    description: "Primary market sector for analysis"
+  
+  analysis_timeframe:
+    type: "select"
+    required: true
+    options: ["quarterly", "annual", "3_year", "5_year"]
+    default: "quarterly"
+    label: "Analysis Timeframe"
+    description: "Time period for market analysis"
+  
+  key_metrics:
+    type: "multiselect"
+    required: true
+    options: ["market_size", "growth_rate", "market_share", "competitive_landscape", "pricing_trends", "consumer_behavior"]
+    label: "Key Metrics"
+    description: "Primary metrics to analyze"
+  
+  geographic_scope:
+    type: "select"
+    required: true
+    options: ["global", "north_america", "europe", "asia_pacific", "emerging_markets"]
+    default: "global"
+    label: "Geographic Scope"
+  
+  analysis_depth:
+    type: "select"
+    default: "standard"
+    options: ["overview", "standard", "deep_dive"]
+    label: "Analysis Depth"
+    description: "Level of analytical detail"
+  
+  data_sources:
+    type: "multiselect"
+    default: ["industry_reports", "financial_data"]
+    options: ["industry_reports", "financial_data", "survey_data", "government_statistics", "company_filings"]
+    label: "Data Sources"
+  
+  competitor_focus:
+    type: "text"
+    optional: true
+    label: "Competitor Focus"
+    description: "Specific competitors to analyze"
+    placeholder: "Company A, Company B, Company C"
+  
+  regulatory_factors:
+    type: "checkbox"
+    default: true
+    label: "Include Regulatory Analysis"
+    description: "Include regulatory environment impact"
+
+# Content structure requirements
+requirements:
+  min_words: 1500
+  min_sections: 5
+  include_data_analysis: true
+  include_trend_identification: true
+  include_strategic_implications: true
+  data_driven_approach: true
+  executive_summary: true
+
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "market_analysis"
+  format: "analytical_report"
+  focus_on_metrics: true
+  include_data_visualization_suggestions: true
+  analytical_approach: "quantitative_and_qualitative"
+  conclusion_type: "strategic_recommendations"
+
+# Style profile compatibility
+style_compatibility:
+  highly_compatible:
+    - "market_flash"
+    - "market_research_report" 
+    - "business_case_analysis"
+    - "competitive_analysis"
+  moderately_compatible:
+    - "executive_summary"
+    - "strategic_planning"
+    - "roi_analysis"
+  incompatible:
+    - "social_media_voice"
+    - "beginner_tutorial"
+    - "creative_writing"
+
+# Content sections with analytical structure
+sections:
+  order:
+    - "executive_summary"
+    - "market_overview"
+    - "key_metrics_analysis"
+    - "competitive_landscape"
+    - "trend_analysis"
+    - "strategic_implications"
+    - "recommendations"
+  
+  executive_summary:
+    required: true
+    max_words: 300
+    focus: "key_findings_and_implications"
+  
+  market_overview:
+    required: true
+    includes: ["market_size", "growth_trajectory", "key_drivers"]
+  
+  key_metrics_analysis:
+    required: true
+    data_focused: true
+    includes: ["quantitative_analysis", "trend_identification"]
+  
+  competitive_landscape:
+    required: true
+    includes: ["market_leaders", "competitive_positioning", "market_share_analysis"]
+  
+  trend_analysis:
+    required: true
+    forward_looking: true
+    includes: ["emerging_trends", "disruptive_forces", "future_outlook"]
+  
+  strategic_implications:
+    required: true
+    actionable: true
+    includes: ["business_impact", "opportunities", "risks"]
+  
+  recommendations:
+    required: true
+    actionable: true
+    includes: ["strategic_recommendations", "next_steps"]
+
+# MCP tool integration for data analysis
+mcp:
+  tool_sequence:
+    - "market_data_analyzer"
+    - "trend_identifier" 
+    - "competitive_intelligence"
+    - "strategic_synthesizer"
+  
+  data_requirements:
+    - "market_size_data"
+    - "growth_metrics"
+    - "competitive_data"
+    - "industry_trends"
+
+# Prompt schema optimized for analytical content
+prompt_schema:
+  system_preamble: |
+    You are a senior market research analyst and strategic business intelligence expert. 
+    Create comprehensive, data-driven market analysis that provides actionable insights 
+    for business decision-makers. Focus on quantitative analysis, trend identification, 
+    and strategic implications. Generate analytical content that is fact-based, objective, 
+    and professionally structured.
+
+  content_template: |
+    # Market Analysis: {{market_sector}}
+    **{{analysis_timeframe}} Analysis | {{geographic_scope}}**
+
+    ## Executive Summary
+    {{executive_summary}}
+
+    ## Market Overview
+    {{market_overview}}
+
+    ## Key Metrics Analysis
+    {{key_metrics_analysis}}
+
+    ## Competitive Landscape
+    {{competitive_landscape}}
+
+    ## Trend Analysis
+    {{trend_analysis}}
+
+    ## Strategic Implications
+    {{strategic_implications}}
+
+    ## Recommendations
+    {{recommendations}}
+
+    ---
+    *Analysis based on: {{data_sources}} | Timeframe: {{analysis_timeframe}}*
+
+  placeholders:
+    - market_sector
+    - analysis_timeframe
+    - geographic_scope
+    - executive_summary
+    - market_overview
+    - key_metrics_analysis
+    - competitive_landscape
+    - trend_analysis
+    - strategic_implications
+    - recommendations
+    - data_sources
+
+# Output specifications
+output:
+  format: "markdown"
+  structure: "analytical_report"
+  require:
+    data_driven_insights: true
+    quantitative_analysis: true
+    strategic_recommendations: true
+    executive_summary: true
+    trend_identification: true
+  
+  style_requirements:
+    tone: "professional_analytical"
+    objectivity: "high" 
+    evidence_based: true
+    actionable: true
+
+# Quality assurance
+quality_requirements:
+  analytical_depth: 85
+  data_integration: 90
+  strategic_value: 80
+  professional_standard: 95
+  objectivity_score: 90
+
+# Template metadata
+metadata:
+  version: "1.0.0"
+  created_by: "content_template_system"
+  last_updated: "2025-09-17"
+  difficulty: "intermediate"
+  estimated_time: "25-35 min"
+  target_audience: "business_analysts"
+  complexity_level: "intermediate"
+  enterprise_grade: true
+  template_classification: "market_analysis"
+
+real_time_support:
+  enabled: true
+  max_age_hours: 48  # Market data can be slightly older
+  verification_sources: 2
+  search_required: true
+  fail_if_unavailable: true
+
+# === WriterzRoom enterprise output controls ===
+post_config:
+  enabled: false        # set to true in social_media_campaign.yaml
+  min_posts: 3          # used only when enabled
+  max_posts: 5          # used only when enabled
+  paragraph_length: short   # short | medium | long
+  per_post_requirements:
+    min_words: 60
+    max_words: 120
+  composition:
+    include_cta: true
+    include_hashtags: 3      # 0 = none
+    include_links: optional  # optional | required | none
+
+output_policy:
+  no_code: true          # enforce: remove code blocks/inlines
+  max_bullets: 0         # 0 for social; you can set 6+ on longform templates
+  min_paragraphs: 3      # minimum paragraphs after sanitation
+  paragraph_first: true  # prefer paragraphs over lists
+
+# Optional: planner override keys (validated upstream; no fallbacks here)
+planner_overrides:
+  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided

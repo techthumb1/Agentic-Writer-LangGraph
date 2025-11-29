@@ -1,0 +1,119 @@
+# data/style_profiles/market_research_report.yaml
+# Professional Style Profile - Market Research Report
+# Category: Business Strategy
+
+id: market_research_report
+name: Market Research Report
+description: Data-driven market analysis
+category: business_strategy
+subcategory: intermediate
+platform: professional
+tone: professional
+voice: confident
+structure: introduction → methodology → findings → discussion → conclusion
+audience: business_analysts
+
+system_prompt: >
+  Write in the market research report style for business analysts audience. 
+        Focus on strategic business communication for executives, stakeholders, and decision-makers. 
+        Maintain intermediate complexity level throughout. 
+        Ensure content aligns with professional business strategy standards.
+        CRITICAL: Avoid casual language and maintain strict professional tone.
+
+writing_style:
+  tone: professional
+  voice: confident
+  formality: high
+  technical_level: intermediate
+  objectivity: high
+  evidence_based: False
+
+# Strict enforcement rules
+forbidden_patterns:
+  - "hey there"
+  - "hi there"
+  - "awesome"
+  - "cool"
+
+required_opening_patterns:
+  - "This strategic analysis"
+  - "Business implications"
+  - "Market research indicates"
+  - "The competitive landscape"
+
+required_elements:
+  - "strategic insights"
+  - "actionable recommendations"
+  - "market analysis"
+  - "ROI considerations"
+  - "competitive positioning"
+
+# Content structure requirements
+content_structure:
+  opening_style: "executive_summary"
+  paragraph_style: "structured"
+  transition_style: "clear_connectors"
+  conclusion_style: "actionable_recommendations"
+  evidence_requirement: "recommended"
+
+# Language precision requirements
+language_requirements:
+  vocabulary_level: intermediate
+  sentence_complexity: mixed
+  use_jargon: True
+  technical_precision: moderate
+  objectivity_level: high
+
+length_limit:
+  words: 2000
+  min: 1600
+  max: 2400
+
+settings:
+  use_analogies: True
+  avoid_jargon: False
+  include_examples: true
+  conversational_tone: False
+  encourage_questions: False
+  reading_level: "intermediate"
+  eliminate_casual_language: True
+  enforce_professional_standards: true
+  require_evidence_support: False
+
+formatting:
+  use_headers: true
+  use_bullet_points: True
+  use_callouts: False
+  code_blocks: minimal
+  academic_structure: False
+  professional_layout: true
+
+# Quality thresholds
+quality_requirements:
+  formality_score: 85
+  objectivity_score: 80
+  analytical_depth: 75
+  evidence_support: 85
+  style_consistency: 95
+  pattern_compliance: 100
+  audience_alignment: 90
+  complexity_match: 85
+
+# Violation detection patterns
+violation_detection:
+  casual_greetings: ["hey", "hi", "hello", "greetings", "what's up"]
+  weak_transitions: ["so,", "well,", "now,", "anyway,"]
+  opinion_markers: ['i think', 'i believe']
+  casual_intensifiers: ["really", "super", "totally", "absolutely amazing"]
+
+metadata:
+  version: "2.0.0"
+  created_by: "professional_category_system"
+  last_updated: "2025-07-18"
+  use_cases: ['market research report content', 'business proposals', 'strategic documents', 'executive reports']
+  target_audience: "business_analysts"
+  complexity_level: "intermediate"
+  category: "Business Strategy"
+  enforcement_level: "strict"
+  anti_generic: true
+  professional_grade: true

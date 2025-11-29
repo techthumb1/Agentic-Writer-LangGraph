@@ -23,7 +23,7 @@ export default function APIAccessPage() {
           <div className="text-center text-gray-300">
             <h2 className="text-2xl font-semibold mb-4">Coming Soon</h2>
             <p className="mb-6">
-              We&#39;re working hard to bring you this feature. Check back soon for updates!
+              We are working hard to bring you this feature. Check back soon for updates!
             </p>
               <Link
                 href="/"

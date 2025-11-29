@@ -1,0 +1,145 @@
+name: "Email Newsletter Generator"
+slug: "email_newsletter"
+version: "2.0"
+template_type: "email_newsletter"
+id: "email_newsletter"
+
+description: >
+  Email newsletter content generator. Creates actual newsletter content with subject lines and CTAs,
+  not blog posts about email marketing.
+
+# Inputs (resolved at runtime from request payload or style profile)
+inputs:
+  newsletter_type: { required: true }   # "weekly_roundup", "product_updates", "industry_news"
+  primary_cta: { required: true }      # Main call-to-action for the newsletter
+  target_audience: { required: true }  # 'tech professionals', 'small business owners')"
+  tone: { default: "professional" }    # "friendly", "casual", "authoritative", "conversational"
+  company_name: { default: "Your Company" }
+  send_frequency: { default: "weekly" }          # "daily", "weekly", "bi_weekly", "monthly"
+  personalization_level: { default: "medium" }   # "high", "medium", "low"
+  content_focus: { default: "general", optional: true }    # "Specific content focus or theme for the newsletter"
+  include_images: { default: true }
+  # Optional user overrides
+  subject_line_style: { optional: true }
+  unsubscribe_reason: { optional: true }
+  social_links: { optional: true }
+  footer_content: { optional: true }
+
+# Priority-based requirement resolution
+requirements:
+  min_words:
+    priority:
+      - dynamic.min_words
+      - style.length_limit.target
+      - 1800
+  subject_line_variants:
+    priority:
+      - dynamic.subject_line_variants
+      - 3
+  cta_count:
+    priority:
+      - dynamic.cta_count
+      - 2
+
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "email_newsletter"                # CRITICAL: Actual newsletter content!
+  format: "email_format"
+  include_subject_lines: true
+  optimize_for_engagement: true
+  create_scannable_content: true
+  focus_on_subscriber_value:
+    priority:
+      - dynamic.focus_on_subscriber_value
+      - true
+
+mcp:
+  tool_sequence:
+    priority:
+      - dynamic.tool_sequence
+      - [subject_line_optimizer, email_analyzer, engagement_tracker]
+
+sections:
+  order:
+    priority:
+      - dynamic.section_order
+      - ["subject_lines", "opening", "main_content", "call_to_action", "closing", "footer"]
+
+prompt_schema:
+  system_preamble: |
+    You are an email marketing specialist and newsletter writer. Create engaging newsletter content that
+    drives opens, clicks, and conversions. Generate actual newsletter copy with subject lines, body content,
+    and CTAs - not explanatory content about email marketing.
+
+  content_template: |
+    # {{newsletter_type}} Newsletter
+
+    ## Subject Line Options
+    {{subject_lines}}
+
+    ## Newsletter Content
+
+    ### Opening
+    {{opening_section}}
+
+    ### Main Content
+    {{main_content}}
+
+    ### Call-to-Action
+    {{cta_section}}
+
+    ### Closing & Footer
+    {{closing_footer}}
+
+    ## Performance Notes
+    {{performance_notes}}
+
+  placeholders:
+    - newsletter_type: "Type of newsletter (weekly roundup, product updates, etc.)"
+    - subject_lines: "Multiple subject line options optimized for opens"
+    - opening_section: "Engaging opening that hooks the reader"
+    - main_content: "Core newsletter content with value for subscribers"
+    - cta_section: "Clear, compelling call-to-action"
+    - closing_footer: "Professional closing with unsubscribe and company info"
+    - performance_notes: "Brief notes on optimization and engagement strategy"
+
+output:
+  format: "markdown"
+  require:
+    subject_line_options: true
+    scannable_format: true
+    clear_ctas: true
+    email_optimized: true
+
+real_time_support:
+  enabled: true
+  max_age_hours: 168  # 7 days - newsletters can aggregate weekly developments
+  verification_sources: 2
+  search_required: true
+  fail_if_unavailable: true
+  search_focus: "industry_updates"  # Focus on industry news and trends
+  content_types: ["industry_news", "product_updates", "market_trends"]
+
+# === WriterzRoom enterprise output controls ===
+post_config:
+  enabled: false        # set to true in social_media_campaign.yaml
+  min_posts: 3          # used only when enabled
+  max_posts: 5          # used only when enabled
+  paragraph_length: short   # short | medium | long
+  per_post_requirements:
+    min_words: 60
+    max_words: 2500
+  composition:
+    include_cta: true
+    include_hashtags: 3      # 0 = none
+    include_links: optional  # optional | required | none
+
+output_policy:
+  no_code: true          # enforce: remove code blocks/inlines
+  max_bullets: 3         # 0 for social; you can set 6+ on longform templates
+  min_paragraphs: 3      # minimum paragraphs after sanitation
+  paragraph_first: true  # prefer paragraphs over lists
+
+# Optional: planner override keys (validated upstream; no fallbacks here)
+planner_overrides:
+  planned_posts: null    # integer; must be within [min_posts, max_posts] when provided

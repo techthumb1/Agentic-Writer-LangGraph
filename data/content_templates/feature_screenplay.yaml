@@ -1,0 +1,140 @@
+name: "Feature Screenplay Generator"
+slug: "feature_screenplay"
+version: "1.0"
+template_type: "feature_screenplay"
+id: "feature_screenplay"
+
+description: >
+  Professional feature film screenplay generator. Creates industry-standard screenplay pages
+  in proper format, not blog posts about screenwriting. Generates actual scenes with dialogue,
+  action lines, and proper screenplay structure.
+
+# Inputs (resolved at runtime)
+inputs:
+  logline: { required: true }
+  genre: { required: true }                        # "drama", "thriller", "comedy", "action", "horror", "sci-fi"
+  protagonist_name: { required: true }
+  protagonist_trait: { default: "determined" }
+  antagonist_name: { optional: true }
+  setting_primary: { required: true }             # "modern_city", "rural_town", "future_world", "historical_period"
+  act_focus: { default: "act_one" }               # "act_one", "act_two_a", "act_two_b", "act_three", "full_outline"
+  tone: { default: "dramatic" }                   # "dark", "lighthearted", "gritty", "whimsical", "intense"
+  target_runtime: { default: "110_minutes" }      # "90_minutes", "110_minutes", "120_minutes", "150_minutes"
+  include_subplots: { default: true }
+  character_arc_type: { default: "transformation" } # "transformation", "growth", "fall", "testing"
+  page_count_target: { default: "15" }            # Typical: 1 page = 1 minute screen time
+
+# Priority-based requirement resolution
+requirements:
+  min_words:
+    priority:
+      - dynamic.min_words
+      - 3500                                      # ~15 pages of screenplay
+  min_scenes:
+    priority:
+      - dynamic.min_scenes
+      - 8
+  proper_format:
+    priority:
+      - dynamic.proper_format
+      - true
+  include_dialogue: true
+  include_action_lines: true
+  scene_headings_required: true
+
+# Template-specific writer instructions
+writer_instructions:
+  content_type: "feature_screenplay"              # CRITICAL: Actual screenplay pages!
+  format: "standard_screenplay_format"
+  scene_structure: "slug_line_action_dialogue"
+  dialogue_format: "character_name_centered"
+  action_lines: "present_tense_visual"
+  page_breaks: "natural_scene_transitions"
+  generate_realistic_scenes: true
+  cinematic_writing: true
+  show_dont_tell: true
+
+mcp:
+  tool_sequence:
+    priority:
+      - dynamic.tool_sequence
+      - [character_developer, plot_analyzer, scene_builder, dialogue_optimizer]
+
+sections:
+  order:
+    priority:
+      - dynamic.section_order
+      - ["title_page", "scene_sequence", "character_moments", "plot_beats", "dialogue_scenes"]
+
+prompt_schema:
+  system_preamble: |
+    You are a professional screenwriter with produced feature film credits. Write in standard
+    screenplay format with proper scene headings (INT./EXT., LOCATION, TIME), action lines in
+    present tense, character names centered above dialogue, and parentheticals where needed.
+    
+    Generate ACTUAL screenplay pages with scenes, dialogue, and visual storytelling - not
+    explanatory content about screenwriting. Follow industry-standard formatting. Show, don't tell.
+    Write visually. Every line should be filmable.
+    
+    CRITICAL FORMATTING RULES:
+    - Scene headings: ALL CAPS, format as "INT./EXT. LOCATION - TIME"
+    - Action lines: Present tense, visual descriptions, what we SEE and HEAR
+    - Character names: ALL CAPS and CENTERED above dialogue
+    - Dialogue: Regular case, character-specific voice
+    - Parentheticals: (quietly), (to himself), etc. - use sparingly
+    - Transitions: CUT TO:, FADE TO:, etc. - use when necessary
+    
+    Each page equals approximately one minute of screen time. Write tight, cinematic prose.
+
+  content_template: |
+    {{title_page}}
+
+    FADE IN:
+
+    {{scene_sequence}}
+
+    FADE OUT.
+
+    THE END
+
+  placeholders:
+    - title_page
+    - scene_sequence
+
+output:
+  format: "markdown"
+  require:
+    proper_scene_headings: true
+    cinematic_action_lines: true
+    character_dialogue: true
+    visual_storytelling: true
+    industry_format: true
+
+# WriterzRoom enterprise output controls
+post_config:
+  enabled: false
+  min_posts: 1
+  max_posts: 1
+
+output_policy:
+  no_code: true
+  max_bullets: 0
+  min_paragraphs: 15              # Screenplay is dialogue/action, not prose paragraphs
+  paragraph_first: false          # Screenplay format is specialized
+
+planner_overrides:
+  planned_posts: null
+
+# Screenplay-specific metadata
+metadata:
+  strategy: "visual_storytelling"
+  positioning: "industry_standard_screenplay"
+  complexity: 9
+  domain: "entertainment"
+  format_strict: true
+  requires_format_knowledge: true
+
+real_time_support:
+  enabled: false                   # Screenplays are creative fiction, not news-dependent
+  max_age_hours: 0
+  verification_sources: 0
