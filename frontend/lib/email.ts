@@ -1,17 +1,19 @@
 // frontend/lib/email.ts
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
 export async function sendConfirmationEmail(
   email: string,
   token: string
 ): Promise<void> {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error('Missing RESEND_API_KEY environment variable');
+  const apiKey = process.env.RESEND_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY not configured');
   }
-
+  
+  const resend = new Resend(apiKey);
   const verifyUrl = `${process.env.NEXTAUTH_URL}/auth/verify?token=${token}`;
 
   await resend.emails.send({

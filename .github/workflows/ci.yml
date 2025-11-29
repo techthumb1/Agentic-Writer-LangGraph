@@ -41,7 +41,10 @@ jobs:
       
       - name: Build
         env:
-          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/ai_content_db
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DATABASE_URL: postgresql://placeholder@localhost:5432/ai_content_db
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }} 
         run: |
           cd frontend
           npm run build

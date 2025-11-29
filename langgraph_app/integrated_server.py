@@ -1,56 +1,79 @@
 """
-WriterzRoom API — Refactored Enterprise Edition
-This server uses the new core modules for configuration, state, and graph management,
-ensuring a deterministic, asynchronous, and "fail-fast" enterprise architecture.
+WriterzRoom API - Enterprise Edition
+Multi-agent content generation platform with LangGraph orchestration.
+Fail-fast architecture with real-time monitoring and security hardening.
 """
 
-import uuid
-import time
-import logging
-import yaml
-import requests
-from datetime import datetime
-from typing import Dict, Any, Optional
-from contextlib import asynccontextmanager
-from pathlib import Path
+# Standard library
 import os
 import json
-import frontmatter
+import time
+import uuid
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Any, Optional
+from contextlib import asynccontextmanager
 from collections import defaultdict
-from fastapi import APIRouter
-from langgraph_app.core.circuit_breaker import get_circuit_breaker
-from langgraph_app.core.provider_pool import get_provider_pool
 
-
-# In-memory metrics tracking
-content_metrics = defaultdict(lambda: {"views": 0, "unique_sessions": set(), "last_viewed": None})
+# Third-party
+import yaml
 import uvicorn
-from fastapi import FastAPI, Request, BackgroundTasks, Depends, HTTPException, status
+import frontmatter
+from fastapi import FastAPI, Request, BackgroundTasks, Depends, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
-from .analytics_endpoints import router as analytics_router
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from langgraph_app.database.models import GenerationLog, get_db
-# --- Core Refactored Imports ---
-from .core.config_manager import ConfigManager, ConfigManagerError
-from .graph.workflow import get_compiled_graph
-from langgraph_app.core.provider_pool import initialize_provider_pool_from_env
 
+# Internal - Core
+from .core.config_manager import ConfigManager, ConfigManagerError
 from .core.state import EnrichedContentState
 from .core.schemas import Template, StyleProfile
 from .core.types import ContentSpec
+from .core.circuit_breaker import get_circuit_breaker
+from .core.provider_pool import get_provider_pool, initialize_provider_pool_from_env
 
-# --- Existing Integrations ---
+# Internal - Graph
+from .graph.workflow import get_compiled_graph
+
+# Internal - Database
+from .database.models import GenerationLog, get_db
+
+# Internal - Routers
 from .health_routes import router as health_router
-#from .content_routes import register_content_routes
+from .analytics_endpoints import router as analytics_router
 
+# Internal - Security & Monitoring
+from .middleware.security import setup_security_middleware
+from .monitoring.health import router as health_monitoring_router
+
+# ====== Configuration ======
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("writerzroom.server")
+
+# Enterprise API authentication
+API_KEY = os.getenv("LANGGRAPH_API_KEY", "your_default_dev_key")
+security = HTTPBearer()
+
+# In-memory metrics (temporary, migrate to Redis for production scale)
+content_metrics = defaultdict(lambda: {
+    "views": 0,
+    "unique_sessions": set(),
+    "last_viewed": None
+})
+
+# Debug router
 debug_router = APIRouter(prefix="/api/debug", tags=["debug"])
 
 
+# ====== Helper Functions ======
 def _normalize_parameters(yaml_obj: Dict[str, Any]) -> Dict[str, Any]:
-    """Transform YAML inputs into frontend parameters format"""
+    """Transform YAML template parameters into frontend-compatible format"""
     params_data = yaml_obj.get("parameters") or yaml_obj.get("inputs") or {}
     out = {}
 
@@ -61,13 +84,14 @@ def _normalize_parameters(yaml_obj: Dict[str, Any]) -> Dict[str, Any]:
             
             default_val = spec.get("default")
             inferred_type = "string"
+            
             if isinstance(default_val, bool):
                 inferred_type = "boolean"
             elif isinstance(default_val, (int, float)):
                 inferred_type = "number"
             elif spec.get("options"):
                 inferred_type = "select"
-            elif key.endswith("_description") or key.endswith("_text"):
+            elif key.endswith(("_description", "_text")):
                 inferred_type = "textarea"
 
             out[key] = {
@@ -80,20 +104,17 @@ def _normalize_parameters(yaml_obj: Dict[str, Any]) -> Dict[str, Any]:
                 "placeholder": spec.get("placeholder", ""),
                 "options": spec.get("options") if spec.get("options") else None,
             }
+    
     return out
 
-# ====== Logging ======
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("writerzroom.server")
-
-# ====== Enterprise Configuration & Auth ======
-API_KEY = os.getenv("LANGGRAPH_API_KEY", "your_default_dev_key")
-security = HTTPBearer()
 
 async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Enterprise API key validation"""
     if credentials.scheme != "Bearer" or credentials.credentials != API_KEY:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API Key")
-
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API Key"
+        )
 # ====== Pydantic Models for API Layer ======
 class GenerateRequest(BaseModel):
     template_id: Optional[str] = Field(None, min_length=1)
@@ -114,28 +135,41 @@ class GenerateRequest(BaseModel):
 # ====== Application Lifespan (Startup/Shutdown) ======
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting WriterzRoom API — Refactored Enterprise Mode")
+    """Application startup/shutdown with fail-fast validation"""
+    logger.info("Starting WriterzRoom API - Enterprise Mode")
+    
     try:
         data_path = Path(__file__).resolve().parents[2] / "data"
         app.state.config_manager = ConfigManager(base_dir=data_path)
-        logger.info("✅ ConfigManager initialized and all configurations validated.")
+        logger.info("✅ ConfigManager initialized - all configurations validated")
     except ConfigManagerError as e:
-        logger.error(f"❌ CRITICAL: Failed to initialize ConfigManager. {e}")
-        # In a real scenario, this would prevent the app from starting.
-        # For this example, we'll allow it but log a critical error.
-        raise RuntimeError(f"Could not start server: {e}") from e
-
+        logger.error(f"❌ CRITICAL: ConfigManager initialization failed - {e}")
+        raise RuntimeError(f"Cannot start server: {e}") from e
+    
+    # Initialize generation task registry
     app.state.generation_tasks = {}
+    
+    # Initialize provider pool for AI models
+    try:
+        initialize_provider_pool_from_env()
+        logger.info("✅ Provider pool initialized")
+    except Exception as e:
+        logger.error(f"❌ Provider pool initialization failed - {e}")
+        raise RuntimeError(f"Cannot start server: {e}") from e
+    
     yield
-    logger.info("Shutting down WriterzRoom API.")
+    
+    logger.info("Shutting down WriterzRoom API")
 
 # ====== FastAPI App Initialization ======
 app = FastAPI(title="WriterzRoom Orchestrator", version="2.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+setup_security_middleware(app)
+# Old CORS setup (replaced by security middleware) 
+#app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(health_router)
 app.include_router(analytics_router)
-app.include_router(debug_router, tags=["Debug"])  # ← Add this before "return app"
-    
+app.include_router(debug_router, tags=["Debug"]) 
+app.include_router(health_monitoring_router)    
 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats_direct():
