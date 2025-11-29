@@ -9,7 +9,7 @@ steps:
   # === Build backend ===
   - name: 'gcr.io/cloud-builders/docker'
     args:
-      ['build','-t','us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$COMMIT_SHA','-t','us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:latest','-f','Dockerfile','.']
+      ['build','-t','us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$COMMIT_SHA','-t','us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:latest','-f','langgraph_app/Dockerfile','.']
     id: build-backend
 
   - name: 'gcr.io/cloud-builders/docker'
@@ -29,7 +29,7 @@ steps:
        '--region=us-central1',
        '--platform=managed',
        '--allow-unauthenticated',
-       '--port=8080',
+       '--port=8000',
        '--vpc-connector=writerzroom-connector',
        '--vpc-egress=all-traffic',
        '--cpu=2',
@@ -38,9 +38,8 @@ steps:
        '--concurrency=12',
        '--min-instances=1',
        '--max-instances=50',
-       '--set-env-vars=PORT=8080,APP_ENV=production,LOG_LEVEL=INFO',
-       '--set-secrets=OPENAI_API_KEY=openai-key:latest,ANTHROPIC_API_KEY=anthropic-key:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,SECRET_KEY=secret-key:latest',
-       '--set-secrets=SECRET_KEY=backend-secret-key:latest']    
+       '--set-env-vars=PORT=8000,APP_ENV=production,LOG_LEVEL=INFO',
+       '--set-secrets=OPENAI_API_KEY=openai-key:latest,ANTHROPIC_API_KEY=anthropic-key:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,TAVILY_API_KEY=tavily-key:latest,FASTAPI_API_KEY=fastapi-key:latest,SECRET_KEY=backend-secret-key:latest']    
     id: deploy-backend
 
   # === Build frontend ===
@@ -66,8 +65,8 @@ steps:
        '--region=us-central1',
        '--platform=managed',
        '--allow-unauthenticated',
-       '--port=8080',
+       '--port=3000',
        '--cpu=1',
        '--memory=1Gi',
-       '--set-env-vars=PORT=8080,NODE_ENV=production']
+       '--set-env-vars=PORT=3000,NODE_ENV=production']
     id: deploy-frontend

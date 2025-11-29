@@ -26,6 +26,7 @@ resource "google_project_service" "services" {
     "vpcaccess.googleapis.com",
     "secretmanager.googleapis.com",
     "artifactregistry.googleapis.com",
+    "servicenetworking.googleapis.com",
   ])
   service = each.key
   disable_on_destroy = false
@@ -44,6 +45,24 @@ resource "google_compute_subnetwork" "subnet" {
   network       = google_compute_network.vpc.id
 }
 
+# Private IP for Cloud SQL
+resource "google_compute_global_address" "private_ip" {
+  name          = "writerzroom-private-ip"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = google_compute_network.vpc.id
+}
+
+# Private Service Connection
+resource "google_service_networking_connection" "private_vpc" {
+  network                 = google_compute_network.vpc.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip.name]
+  
+  depends_on = [google_project_service.services]
+}
+
 # VPC Connector for Cloud Run
 resource "google_vpc_access_connector" "connector" {
   name          = "writerzroom-connector"
@@ -54,10 +73,10 @@ resource "google_vpc_access_connector" "connector" {
   depends_on = [google_project_service.services]
 }
 
-# Cloud SQL (PostgreSQL)
+# Cloud SQL (PostgreSQL 16)
 resource "google_sql_database_instance" "postgres" {
   name             = "writerzroom-db"
-  database_version = "POSTGRES_15"
+  database_version = "POSTGRES_16"
   region           = var.region
 
   settings {
@@ -82,11 +101,14 @@ resource "google_sql_database_instance" "postgres" {
 
   deletion_protection = true
   
-  depends_on = [google_project_service.services]
+  depends_on = [
+    google_project_service.services,
+    google_service_networking_connection.private_vpc
+  ]
 }
 
 resource "google_sql_database" "database" {
-  name     = "writerzroom"
+  name     = "ai_content_db"
   instance = google_sql_database_instance.postgres.name
 }
 
@@ -118,7 +140,7 @@ resource "google_redis_instance" "cache" {
 
 # Artifact Registry
 resource "google_artifact_registry_repository" "repo" {
-  location      = var.region
+  location      = "us-central1"
   repository_id = "writerzroom"
   format        = "DOCKER"
   
@@ -131,6 +153,14 @@ resource "google_secret_manager_secret" "secrets" {
     "openai-key",
     "anthropic-key",
     "secret-key",
+    "database-url",
+    "redis-url",
+    "tavily-key",
+    "auth-secret",
+    "google-oauth-id",
+    "google-oauth-secret",
+    "fastapi-key",
+    "backend-secret-key",
   ])
   
   secret_id = each.key
@@ -148,7 +178,12 @@ resource "google_service_account" "backend" {
   display_name = "WriterzRoom Backend Service Account"
 }
 
-# IAM - Secret Manager access
+resource "google_service_account" "frontend" {
+  account_id   = "writerzroom-frontend"
+  display_name = "WriterzRoom Frontend Service Account"
+}
+
+# IAM - Secret Manager access (Backend)
 resource "google_secret_manager_secret_iam_member" "backend_secrets" {
   for_each = google_secret_manager_secret.secrets
   
@@ -157,11 +192,32 @@ resource "google_secret_manager_secret_iam_member" "backend_secrets" {
   member    = "serviceAccount:${google_service_account.backend.email}"
 }
 
-# IAM - Cloud SQL client
+# IAM - Secret Manager access (Frontend)
+resource "google_secret_manager_secret_iam_member" "frontend_secrets" {
+  for_each = toset([
+    "auth-secret",
+    "google-oauth-id",
+    "google-oauth-secret",
+    "database-url",
+  ])
+  
+  secret_id = google_secret_manager_secret.secrets[each.key].id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.frontend.email}"
+}
+
+# IAM - Cloud SQL client (Backend)
 resource "google_project_iam_member" "backend_sql" {
   project = var.project_id
   role    = "roles/cloudsql.client"
   member  = "serviceAccount:${google_service_account.backend.email}"
+}
+
+# IAM - Cloud SQL client (Frontend)
+resource "google_project_iam_member" "frontend_sql" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.frontend.email}"
 }
 
 # Outputs
@@ -174,10 +230,27 @@ output "database_connection" {
   sensitive = true
 }
 
+output "database_private_ip" {
+  value     = google_sql_database_instance.postgres.private_ip_address
+  sensitive = true
+}
+
 output "redis_host" {
   value = google_redis_instance.cache.host
 }
 
-output "service_account_email" {
+output "redis_port" {
+  value = google_redis_instance.cache.port
+}
+
+output "backend_service_account_email" {
   value = google_service_account.backend.email
+}
+
+output "frontend_service_account_email" {
+  value = google_service_account.frontend.email
+}
+
+output "artifact_registry_url" {
+  value = "${google_artifact_registry_repository.repo.location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.repo.repository_id}"
 }
