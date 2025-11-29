@@ -40,6 +40,8 @@ jobs:
           npm run test:coverage
       
       - name: Build
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/ai_content_db
         run: |
           cd frontend
           npm run build
