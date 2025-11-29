@@ -48,6 +48,7 @@ from .analytics_endpoints import router as analytics_router
 # Internal - Security & Monitoring
 from .middleware.security import setup_security_middleware
 from .monitoring.health import router as health_monitoring_router
+from .health_routes import router as health_routes_router
 
 # ====== Configuration ======
 logging.basicConfig(
@@ -169,7 +170,8 @@ setup_security_middleware(app)
 app.include_router(health_router)
 app.include_router(analytics_router)
 app.include_router(debug_router, tags=["Debug"]) 
-app.include_router(health_monitoring_router)    
+app.include_router(health_monitoring_router)
+app.include_router(health_routes_router)   
 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats_direct():
