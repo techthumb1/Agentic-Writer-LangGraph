@@ -51,7 +51,7 @@ steps:
           --concurrency=12 \
           --min-instances=1 \
           --max-instances=50 \
-          --set-env-vars=PORT=8000,APP_ENV=production,LOG_LEVEL=INFO \
+          --set-env-vars=APP_ENV=production,LOG_LEVEL=INFO \
           --set-secrets=OPENAI_API_KEY=openai-key:latest,ANTHROPIC_API_KEY=anthropic-key:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,TAVILY_API_KEY=tavily-key:latest,FASTAPI_API_KEY=fastapi-key:latest,SECRET_KEY=backend-secret-key:latest
 
   # === Build frontend ===
@@ -93,6 +93,7 @@ steps:
           --port=3000 \
           --cpu=1 \
           --memory=1Gi \
-          --set-env-vars=PORT=3000,NODE_ENV=production
+          --set-env-vars=NODE_ENV=production
+
     id: deploy-frontend
 
