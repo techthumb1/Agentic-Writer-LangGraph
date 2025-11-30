@@ -10,6 +10,7 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
   REGION: us-central1
+  COMMIT_SHA: ${{ github.sha }}
 
 jobs:
   test:
