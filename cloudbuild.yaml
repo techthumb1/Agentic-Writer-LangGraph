@@ -37,6 +37,7 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         gcloud run deploy writerzroom-backend-api \
           --image=us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$BUILD_ID \
           --region=us-central1 \
@@ -51,8 +52,10 @@ steps:
           --concurrency=12 \
           --min-instances=1 \
           --max-instances=50 \
+          --service-account=writerzroom-backend@agentic-writer.iam.gserviceaccount.com \
           --set-env-vars=APP_ENV=production,LOG_LEVEL=INFO \
           --set-secrets=OPENAI_API_KEY=openai-key:latest,ANTHROPIC_API_KEY=anthropic-key:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,TAVILY_API_KEY=tavily-key:latest,FASTAPI_API_KEY=fastapi-key:latest,SECRET_KEY=backend-secret-key:latest
+        secrets=OPENAI_API_KEY=openai-key:latest,ANTHROPIC_API_KEY=anthropic-key:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,TAVILY_API_KEY=tavily-key:latest,FASTAPI_API_KEY=fastapi-key:latest,SECRET_KEY=backend-secret-key:latest
 
   # === Build frontend ===
   - name: 'gcr.io/cloud-builders/docker'
