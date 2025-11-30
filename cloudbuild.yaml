@@ -5,13 +5,16 @@ options:
   logging: CLOUD_LOGGING_ONLY
   diskSizeGb: 100
 
+substitutions:
+  _TAG: ${BUILD_ID}
+
 steps:
   # === Build backend ===
   - name: 'gcr.io/cloud-builders/docker'
     args:
       [
         'build',
-        '-t','us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$BUILD_ID',
+        '-t','us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:${_TAG}',
         '-t','us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:latest',
         '-f','langgraph_app/Dockerfile',
         '.'
@@ -19,8 +22,8 @@ steps:
     id: build-backend
 
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push','us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$BUILD_ID']
-    id: push-backend-id
+    args: ['push','us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:${_TAG}']
+    id: push-backend-sha
 
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push','us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:latest']
@@ -32,7 +35,7 @@ steps:
     args:
       [
         'run','deploy','writerzroom-backend-api',
-        '--image=us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$BUILD_ID',
+        '--image=us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:${_TAG}',
         '--region=us-central1',
         '--platform=managed',
         '--allow-unauthenticated',
@@ -55,7 +58,7 @@ steps:
     args:
       [
         'build',
-        '-t','us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:$BUILD_ID',
+        '-t','us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:${_TAG}',
         '-t','us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:latest',
         '-f','frontend/Dockerfile',
         './frontend'
@@ -63,8 +66,8 @@ steps:
     id: build-frontend
 
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push','us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:$BUILD_ID']
-    id: push-frontend-id
+    args: ['push','us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:${_TAG}']
+    id: push-frontend-sha
 
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push','us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:latest']
@@ -76,7 +79,7 @@ steps:
     args:
       [
         'run','deploy','writerzroom-frontend-web',
-        '--image=us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:$BUILD_ID',
+        '--image=us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:${_TAG}',
         '--region=us-central1',
         '--platform=managed',
         '--allow-unauthenticated',
