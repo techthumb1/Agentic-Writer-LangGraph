@@ -19,7 +19,8 @@ COPY prisma ./prisma
 COPY . .
 
 # Use build arg for Prisma generation (placeholder only)
-ARG DATABASE_URL=postgresql://placeholder@localhost:5432/ai_content_db
+ARG DATABASE_URL=postgresql://user:password@db:5432/ai_content_db
+
 RUN npx prisma generate --schema=./prisma/schema.prisma
 
 # Enable standalone output for production
