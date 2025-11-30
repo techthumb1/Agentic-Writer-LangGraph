@@ -44,8 +44,6 @@ steps:
           --platform=managed \
           --allow-unauthenticated \
           --port=8000 \
-          --vpc-connector=writerzroom-connector \
-          --vpc-egress=all-traffic \
           --cpu=2 \
           --memory=8Gi \
           --timeout=900s \
