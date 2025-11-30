@@ -37,6 +37,7 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         gcloud run deploy writerzroom-backend-api \
           --image=us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$BUILD_ID \
           --region=us-central1 \
