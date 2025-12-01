@@ -16,13 +16,8 @@ from enum import Enum
 import time
 import traceback
 
-try:
-    import redis.asyncio as redis
-    REDIS_AVAILABLE = True
-except ImportError:
-    REDIS_AVAILABLE = False
-    logging.warning("Redis not available. Install with: pip install redis")
-
+# Replace import/references to redis with this:
+REDIS_AVAILABLE = False
 logger = logging.getLogger(__name__)
 
 class JobStatus(Enum):
@@ -114,240 +109,29 @@ class Job:
         
         return job
 
+
 class JobQueue:
-    """Enterprise Redis-based job queue"""
-    
-    def __init__(self, redis_url: str = "redis://localhost:6379/1", 
-                 queue_name: str = "ai_content_jobs"):
-        self.redis_url = redis_url
-        self.queue_name = queue_name
-        self.redis_client: Optional[redis.Redis] = None
-        
-        # Queue keys
-        self.pending_queue = f"{queue_name}:pending"
-        self.running_queue = f"{queue_name}:running"
-        self.completed_queue = f"{queue_name}:completed"
-        self.failed_queue = f"{queue_name}:failed"
-        self.job_data_key = f"{queue_name}:jobs"
-        self.progress_key = f"{queue_name}:progress"
-    
-    async def initialize(self) -> bool:
-        """Initialize Redis connection"""
-        if not REDIS_AVAILABLE:
-            logger.error("Redis not available for job queue")
-            return False
-        
-        try:
-            self.redis_client = redis.from_url(self.redis_url)
-            await self.redis_client.ping()
-            logger.info("Job queue initialized successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to initialize job queue: {e}")
-            return False
-    
-    async def enqueue(self, job: Job) -> str:
-        """Add job to queue"""
-        if not self.redis_client:
-            raise Exception("Job queue not initialized")
-        
-        try:
-            # Store job data
-            await self.redis_client.hset(
-                self.job_data_key, 
-                job.id, 
-                json.dumps(job.to_dict())
-            )
-            
-            # Add to pending queue with priority scoring
-            priority_score = job.priority.value * 1000 + int(time.time())
-            await self.redis_client.zadd(
-                self.pending_queue, 
-                {job.id: priority_score}
-            )
-            
-            logger.info(f"Enqueued job {job.id} with priority {job.priority.name}")
-            return job.id
-            
-        except Exception as e:
-            logger.error(f"Failed to enqueue job {job.id}: {e}")
-            raise
-    
-    async def dequeue(self, worker_id: str) -> Optional[Job]:
-        """Get next job from queue"""
-        if not self.redis_client:
-            return None
-        
-        try:
-            # Get highest priority job
-            result = await self.redis_client.zpopmax(self.pending_queue)
-            if not result:
-                return None
-            
-            job_id = result[0][0].decode('utf-8')
-            
-            # Get job data
-            job_data = await self.redis_client.hget(self.job_data_key, job_id)
-            if not job_data:
-                logger.error(f"Job data not found for {job_id}")
-                return None
-            
-            job = Job.from_dict(json.loads(job_data.decode('utf-8')))
-            
-            # Mark as running
-            job.status = JobStatus.RUNNING
-            job.started_at = datetime.now()
-            job.worker_id = worker_id
-            
-            # Update job data
-            await self.redis_client.hset(
-                self.job_data_key,
-                job.id,
-                json.dumps(job.to_dict())
-            )
-            
-            # Move to running queue
-            await self.redis_client.zadd(
-                self.running_queue,
-                {job.id: time.time()}
-            )
-            
-            logger.info(f"Dequeued job {job.id} for worker {worker_id}")
-            return job
-            
-        except Exception as e:
-            logger.error(f"Failed to dequeue job: {e}")
-            return None
-    
-    async def update_job_progress(self, generation_id: str, progress: float, 
-                                 current_agent: str = "", metadata: Optional[Dict[str, Any]] = None):
-        """Update job progress with detailed tracking"""
-        if not self.redis_client:
-            return
-        
-        try:
-            # Update job data
-            job_data = await self.redis_client.hget(self.job_data_key, generation_id)
-            if job_data:
-                job = Job.from_dict(json.loads(job_data.decode('utf-8')))
-                job.progress = progress
-                
-                if metadata:
-                    job.metadata.update(metadata)
-                
-                if current_agent:
-                    job.metadata["current_agent"] = current_agent
-                
-                await self.redis_client.hset(
-                    self.job_data_key,
-                    generation_id,
-                    json.dumps(job.to_dict())
-                )
-            
-            # Store detailed progress info
-            progress_data = {
-                "progress": progress,
-                "current_agent": current_agent,
-                "updated_at": datetime.now().isoformat(),
-                "metadata": metadata or {}
-            }
-            
-            await self.redis_client.hset(
-                self.progress_key,
-                generation_id,
-                json.dumps(progress_data)
-            )
-            
-        except Exception as e:
-            logger.error(f"Failed to update job progress {generation_id}: {e}")
-    
-    async def get_job_status(self, generation_id: str) -> Optional[Dict[str, Any]]:
-        """Get detailed job status"""
-        if not self.redis_client:
-            return None
-        
-        try:
-            # Get job data
-            job_data = await self.redis_client.hget(self.job_data_key, generation_id)
-            if not job_data:
-                return None
-            
-            job = Job.from_dict(json.loads(job_data.decode('utf-8')))
-            
-            # Get progress data
-            progress_data = await self.redis_client.hget(self.progress_key, generation_id)
-            progress_info = {}
-            if progress_data:
-                progress_info = json.loads(progress_data.decode('utf-8'))
-            
-            return {
-                "generation_id": generation_id,
-                "status": job.status.value,
-                "progress": job.progress,
-                "current_agent": progress_info.get("current_agent", ""),
-                "created_at": job.created_at.isoformat(),
-                "started_at": job.started_at.isoformat() if job.started_at else None,
-                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-                "estimated_completion": None,  # Could calculate based on progress
-                "content": job.result.data.get("content") if job.result and job.result.data else None,
-                "error": job.result.error if job.result else None,
-                "metadata": job.metadata,
-                "retry_count": job.retry_count,
-                "worker_id": job.worker_id
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to get job status {generation_id}: {e}")
-            return None
-    
-    async def complete_job(self, job_id: str, result: JobResult):
-        """Mark job as completed"""
-        if not self.redis_client:
-            return
-        
-        try:
-            # Get job data
-            job_data = await self.redis_client.hget(self.job_data_key, job_id)
-            if not job_data:
-                logger.error(f"Job data not found for {job_id}")
-                return
-            
-            job = Job.from_dict(json.loads(job_data.decode('utf-8')))
-            
-            # Update job
-            job.status = JobStatus.COMPLETED if result.success else JobStatus.FAILED
-            job.completed_at = datetime.now()
-            job.result = result
-            job.progress = 100.0
-            
-            # Update job data
-            await self.redis_client.hset(
-                self.job_data_key,
-                job_id,
-                json.dumps(job.to_dict())
-            )
-            
-            # Remove from running queue
-            await self.redis_client.zrem(self.running_queue, job_id)
-            
-            # Add to appropriate completion queue
-            target_queue = self.completed_queue if result.success else self.failed_queue
-            await self.redis_client.zadd(target_queue, {job_id: time.time()})
-            
-            logger.info(f"Job {job_id} completed with status: {job.status.value}")
-            
-        except Exception as e:
-            logger.error(f"Failed to complete job {job_id}: {e}")
-    
-    def get_active_count(self) -> int:
-        """Get count of active/running jobs"""
-        # This would be implemented with Redis operations
-        return 0  # Placeholder
-    
-    def get_queue_size(self) -> int:
-        """Get pending queue size"""
-        # This would be implemented with Redis operations
-        return 0  # Placeholder
+    """Disabled job queue (Redis removed)"""
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def initialize(self):
+        return True
+
+    async def enqueue(self, job):
+        return job.id
+
+    async def dequeue(self, worker_id):
+        return None
+
+    async def update_job_progress(self, *args, **kwargs):
+        pass
+
+    async def get_job_status(self, generation_id):
+        return None
+
+    async def complete_job(self, job_id, result):
+        pass
 
 class RealWorkflowTaskRegistry:
     """Task registry integrated with real workflow orchestrator"""
