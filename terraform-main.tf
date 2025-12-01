@@ -22,7 +22,6 @@ resource "google_project_service" "services" {
   for_each = toset([
     "run.googleapis.com",
     "sqladmin.googleapis.com",
-    "redis.googleapis.com",
     "vpcaccess.googleapis.com",
     "secretmanager.googleapis.com",
     "artifactregistry.googleapis.com",
@@ -123,20 +122,6 @@ resource "random_password" "db_password" {
   special = true
 }
 
-# Memorystore (Redis)
-resource "google_redis_instance" "cache" {
-  name           = "writerzroom-redis"
-  tier           = "STANDARD_HA"
-  memory_size_gb = 2
-  region         = var.region
-  
-  authorized_network = google_compute_network.vpc.id
-  
-  redis_version = "REDIS_7_0"
-  display_name  = "WriterzRoom Cache"
-  
-  depends_on = [google_project_service.services]
-}
 
 # Artifact Registry
 resource "google_artifact_registry_repository" "repo" {
@@ -154,7 +139,6 @@ resource "google_secret_manager_secret" "secrets" {
     "anthropic-key",
     "secret-key",
     "database-url",
-    "redis-url",
     "tavily-key",
     "auth-secret",
     "google-oauth-id",
@@ -233,14 +217,6 @@ output "database_connection" {
 output "database_private_ip" {
   value     = google_sql_database_instance.postgres.private_ip_address
   sensitive = true
-}
-
-output "redis_host" {
-  value = google_redis_instance.cache.host
-}
-
-output "redis_port" {
-  value = google_redis_instance.cache.port
 }
 
 output "backend_service_account_email" {

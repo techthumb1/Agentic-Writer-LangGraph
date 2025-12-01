@@ -151,7 +151,6 @@ python-multipart==0.0.17
 pytz==2025.2
 PyYAML==6.0.2
 pyzmq==26.3.0
-redis==5.2.1
 regex==2024.11.6
 reportlab==4.2.5
 requests==2.32.3
