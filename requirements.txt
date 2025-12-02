@@ -19,7 +19,6 @@ tavily-python>=0.3.0
 # === Database & Persistence ===
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.9
-redis>=5.0.0
 
 # === Background Tasks ===
 celery>=5.3.0

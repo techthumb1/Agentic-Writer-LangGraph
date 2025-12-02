@@ -6,7 +6,7 @@ options:
   diskSizeGb: 100
 
 steps:
-  # === Build backend ===
+  # === Build backend (CORRECT CONTEXT) ===
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
@@ -15,17 +15,15 @@ steps:
         docker build \
           -t us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$BUILD_ID \
           -t us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:latest \
-          -f langgraph_app/Dockerfile .
+          -f langgraph_app/Dockerfile \
+          ./langgraph_app
 
-  # Push backend (SHA-tagged)
+  # Push backend
   - name: 'gcr.io/cloud-builders/docker'
-    entrypoint: 'bash'
     args:
-      - '-c'
-      - |
-        docker push us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$BUILD_ID
+      - 'push'
+      - 'us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$BUILD_ID'
 
-  # Push backend (latest)
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
@@ -54,8 +52,7 @@ steps:
           --max-instances=50 \
           --service-account=writerzroom-backend@agentic-writer.iam.gserviceaccount.com \
           --set-env-vars=APP_ENV=production,LOG_LEVEL=INFO \
-          --set-secrets=OPENAI_API_KEY=openai-key:latest,ANTHROPIC_API_KEY=anthropic-key:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,TAVILY_API_KEY=tavily-key:latest,FASTAPI_API_KEY=fastapi-key:latest,SECRET_KEY=backend-secret-key:latest
-        secrets=OPENAI_API_KEY=openai-key:latest,ANTHROPIC_API_KEY=anthropic-key:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,TAVILY_API_KEY=tavily-key:latest,FASTAPI_API_KEY=fastapi-key:latest,SECRET_KEY=backend-secret-key:latest
+          --set-secrets=OPENAI_API_KEY=openai-key:latest,ANTHROPIC_API_KEY=anthropic-key:latest,DATABASE_URL=database-url:latest,TAVILY_API_KEY=tavily-key:latest,FASTAPI_API_KEY=fastapi-key:latest,SECRET_KEY=backend-secret-key:latest
 
   # === Build frontend ===
   - name: 'gcr.io/cloud-builders/docker'
@@ -66,17 +63,15 @@ steps:
         docker build \
           -t us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:$BUILD_ID \
           -t us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:latest \
-          -f frontend/Dockerfile ./frontend
+          -f frontend/Dockerfile \
+          ./frontend
 
-  # Push frontend (SHA-tagged)
+  # Push frontend
   - name: 'gcr.io/cloud-builders/docker'
-    entrypoint: 'bash'
     args:
-      - '-c'
-      - |
-        docker push us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:$BUILD_ID
+      - 'push'
+      - 'us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:$BUILD_ID'
 
-  # Push frontend (latest)
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
@@ -97,6 +92,4 @@ steps:
           --cpu=1 \
           --memory=1Gi \
           --set-env-vars=NODE_ENV=production
-
-    id: deploy-frontend
 
