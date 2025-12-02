@@ -245,6 +245,11 @@ async def get_dashboard_stats_direct():
         "recent_content": recent_content,
         "recent_activity": recent_activity
     }
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+
 @app.get("/api/dashboard/activity")
 async def get_dashboard_activity():
     """Recent activity with proper MD parsing"""
