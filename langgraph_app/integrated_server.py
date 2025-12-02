@@ -60,7 +60,6 @@ logger = logging.getLogger("writerzroom.server")
 API_KEY = os.getenv("LANGGRAPH_API_KEY", "your_default_dev_key")
 security = HTTPBearer()
 
-# In-memory metrics (temporary, migrate to Redis for production scale)
 content_metrics = defaultdict(lambda: {
     "views": 0,
     "unique_sessions": set(),

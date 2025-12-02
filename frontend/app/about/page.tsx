@@ -202,7 +202,7 @@ export default function AboutPage() {
 
         {/* Mission Statement */}
         <section className="mb-16">
-          <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/20 rounded-xl p-8">
+          <div className="bg-linear-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/20 rounded-xl p-8">
             <div className="text-center mb-8">
               <Target className="w-16 h-16 text-purple-400 mx-auto mb-4" />
               <h2 className="text-3xl font-bold text-white mb-4">Our Mission</h2>
@@ -234,18 +234,18 @@ export default function AboutPage() {
           <h2 className="text-3xl font-bold text-white mb-8 text-center">Our Journey</h2>
           <div className="relative">
             {/* Timeline line */}
-            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-500 to-pink-500"></div>
+            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-linear-to-b from-purple-500 to-pink-500"></div>
             
             <div className="space-y-8">
               {timeline.map((item, index) => (
                 <div key={index} className="relative flex items-start">
                   {/* Timeline dot */}
-                  <div className="absolute left-2 w-4 h-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full border-2 border-gray-900"></div>
+                  <div className="absolute left-2 w-4 h-4 bg-linear-to-r from-purple-500 to-pink-500 rounded-full border-2 border-gray-900"></div>
                   
                   {/* Content */}
                   <div className="ml-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6 flex-1">
                     <div className="flex items-center gap-4 mb-3">
-                      <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                      <span className="bg-linear-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold">
                         {item.year}
                       </span>
                       <h3 className="text-xl font-semibold text-white">{item.title}</h3>
@@ -264,7 +264,7 @@ export default function AboutPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {team.map((member, index) => (
               <div key={index} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6 text-center hover:bg-white/15 transition-all duration-300">
-                <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <div className="w-24 h-24 bg-linear-to-r from-purple-500 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center">
                   <Users className="w-12 h-12 text-white" />
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-1">{member.name}</h3>
@@ -313,13 +313,13 @@ export default function AboutPage() {
 
         {/* CTA Section */}
         <section className="text-center">
-          <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/20 rounded-xl p-8">
+          <div className="bg-linear-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/20 rounded-xl p-8">
             <h2 className="text-3xl font-bold text-white mb-4">Join Our Mission</h2>
             <p className="text-xl text-gray-300 mb-6">
               Ready to be part of the future of AI-powered content creation?
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/careers" className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300">
+              <Link href="/careers" className="bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300">
                 View Open Positions
               </Link>
               <Link href="/contact" className="border border-white/30 text-white hover:bg-white/10 font-semibold px-8 py-3 rounded-lg transition-all duration-300">
