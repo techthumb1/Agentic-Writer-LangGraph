@@ -41,7 +41,7 @@ steps:
           --region=us-central1 \
           --platform=managed \
           --allow-unauthenticated \
-          --port=8000 \
+          --port=8080 \
           --vpc-connector=writerzroom-connector \
           --vpc-egress=all-traffic \
           --cpu=2 \
