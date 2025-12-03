@@ -77,3 +77,6 @@ ipython
 pytest
 pytest-asyncio
 pytest-mock
+
+cloud-sql-python-connector[pg8000]
+pg8000
