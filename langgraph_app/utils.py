@@ -97,7 +97,6 @@ class ContentAnalytics:
 
 class DatabaseManager:
     """PostgreSQL database management"""
-    
     def __init__(self):
         self.connector = Connector()
         self.engine = None
@@ -107,7 +106,7 @@ class DatabaseManager:
     def _get_connection(self):
         return self.connector.connect(
             os.getenv("INSTANCE_CONNECTION_NAME"),
-            "pg8080",
+            "pg8000",
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASS"),
             db=os.getenv("DB_NAME"),
@@ -132,7 +131,7 @@ class DatabaseManager:
             def getconn():
                 conn = connector.connect(
                     instance_connection_name,
-                    "pg8080",
+                    "pg8000",
                     user=db_user,
                     password=db_pass,
                     db=db_name
@@ -140,7 +139,7 @@ class DatabaseManager:
                 return conn
 
             self.engine = sqlalchemy.create_engine(
-                "postgresql+pg8080://",
+                "postgresql+pg8000://",
                 creator=getconn,
                 pool_size=5,
                 max_overflow=2,
