@@ -14,6 +14,9 @@ openai==2.7.0
 anthropic>=0.8.0
 google-generativeai>=0.5.0
 
+# === Web Search ===
+tavily-python>=0.3.0
+
 # === Database & Persistence ===
 sqlalchemy>=2.0.0
 psycopg2-binary==2.9.9
@@ -70,3 +73,7 @@ sendgrid>=6.10.0
 openpyxl>=3.1.0
 python-docx==0.8.11
 reportlab>=4.0.0
+
+# === Development & Testing ===
+cloud-sql-python-connector[pg8000]
+pg8000
