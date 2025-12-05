@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma.node';
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
@@ -8,25 +7,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/auth/signin?error=invalid_token', req.url));
   }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      verificationToken: token,
-      tokenExpires: { gt: new Date() }
-    }
-  });
+  try {
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
+    const response = await fetch(`${backendUrl}/api/auth/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.FASTAPI_API_KEY}`
+      },
+      body: JSON.stringify({ token })
+    });
 
-  if (!user) {
-    return NextResponse.redirect(new URL('/auth/signin?error=token_expired', req.url));
+    if (!response.ok) {
+      return NextResponse.redirect(new URL('/auth/signin?error=token_expired', req.url));
+    }
+
+    return NextResponse.redirect(new URL('/auth/signin?verified=true', req.url));
+  } catch (error) {
+    console.error('Verification error:', error);
+    return NextResponse.redirect(new URL('/auth/signin?error=verification_failed', req.url));
   }
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      emailVerified: new Date(),
-      verificationToken: null,
-      tokenExpires: null
-    }
-  });
-
-  return NextResponse.redirect(new URL('/auth/signin?verified=true', req.url));
 }

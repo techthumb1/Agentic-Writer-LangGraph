@@ -1,7 +1,5 @@
 // frontend/app/api/readyz/route.ts
-
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma.node';
 
 export async function GET() {
   const checks = {
@@ -11,16 +9,20 @@ export async function GET() {
   };
 
   try {
-    // Check database
-    await prisma.$queryRaw`SELECT 1`;
-    checks.database = true;
-
-    // Check backend connectivity (langgraph_app)
-    const backendUrl = process.env.FASTAPI_BASE_URL || 'http://localhost:8000';
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
     const response = await fetch(`${backendUrl}/health`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.FASTAPI_API_KEY}`
+      },
       signal: AbortSignal.timeout(5000),
     });
+    
     checks.backend = response.ok;
+    
+    if (response.ok) {
+      const health = await response.json();
+      checks.database = health.services?.database?.status === 'healthy';
+    }
 
     checks.overall = checks.backend && checks.database;
 

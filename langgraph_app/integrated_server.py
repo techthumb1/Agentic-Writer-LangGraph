@@ -49,6 +49,20 @@ from .analytics_endpoints import router as analytics_router
 from .middleware.security import setup_security_middleware
 from .monitoring.health import router as health_monitoring_router
 
+from langgraph_app.api.auth.register import router as register_router
+from langgraph_app.api.auth.verify import router as verify_router
+from langgraph_app.api.user.profile import router as profile_router
+from langgraph_app.api.user.avatar import router as avatar_router
+from langgraph_app.api.content.create import router as content_create_router
+from langgraph_app.api.content.get import router as content_get_router
+from langgraph_app.api.content.save import router as content_save_router
+from langgraph_app.api.content.export import router as content_export_router
+from langgraph_app.api.dashboard.stats import router as dashboard_stats_router
+from langgraph_app.api.user.export import router as user_export_router
+from langgraph_app.api.auth.login import router as login_router
+
+
+
 # ====== Configuration ======
 logging.basicConfig(
     level=logging.INFO,
@@ -169,7 +183,17 @@ app.include_router(health_router)
 app.include_router(analytics_router)
 app.include_router(debug_router, tags=["Debug"]) 
 app.include_router(health_monitoring_router)
- 
+app.include_router(register_router, prefix="/api")
+app.include_router(verify_router, prefix="/api")
+app.include_router(profile_router, prefix="/api")
+app.include_router(avatar_router, prefix="/api")
+app.include_router(content_create_router, prefix="/api")
+app.include_router(content_get_router, prefix="/api")
+app.include_router(content_save_router, prefix="/api")
+app.include_router(content_export_router, prefix="/api")
+app.include_router(dashboard_stats_router, prefix="/api")
+app.include_router(user_export_router, prefix="/api")
+app.include_router(login_router, prefix="/api") 
 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats_direct():
@@ -740,6 +764,20 @@ async def run_generation_workflow(request_id: str, initial_state: EnrichedConten
         }
 
 # ====== API Endpoints ======
+from prisma import Prisma
+
+prisma = Prisma()
+
+@app.on_event("startup")
+async def startup():
+    await prisma.connect()
+    logger.info("Prisma connected")
+
+@app.on_event("shutdown")
+async def shutdown():
+    await prisma.disconnect()
+    logger.info("Prisma disconnected")
+
 @app.get("/api/templates/{template_id}")
 async def get_template_details(template_id: str):
     """Get full template details including normalized parameters"""

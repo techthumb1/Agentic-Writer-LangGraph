@@ -1,9 +1,6 @@
 // frontend/app/api/user/profile/avatar/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { prisma } from '@/lib/prisma.node'
-import { writeFile } from 'fs/promises'
-import { join } from 'path'
 
 export const runtime = 'nodejs'
 
@@ -32,31 +29,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File too large (max 5MB)' }, { status: 400 })
     }
 
-    // Convert to buffer
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
+    // Forward to backend API
+    const backendFormData = new FormData()
+    backendFormData.append('avatar', file)
+    backendFormData.append('userId', session.user.id!)
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const extension = file.name.split('.').pop()
-    const filename = `${session.user.id}_${timestamp}.${extension}`
-    
-    // Save to public/avatars directory
-    const publicPath = join(process.cwd(), 'public', 'avatars')
-    const filePath = join(publicPath, filename)
-    
-    await writeFile(filePath, buffer)
-
-    // Update user in database
-    const avatarUrl = `/avatars/${filename}`
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: { image: avatarUrl }
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
+    const response = await fetch(`${backendUrl}/api/user/avatar`, {
+      method: 'POST',
+      body: backendFormData,
+      headers: {
+        'Authorization': `Bearer ${process.env.FASTAPI_API_KEY}`
+      }
     })
 
+    if (!response.ok) {
+      throw new Error('Backend upload failed')
+    }
+
+    const data = await response.json()
+    
     return NextResponse.json({ 
       success: true, 
-      avatarUrl 
+      avatarUrl: data.avatarUrl 
     })
 
   } catch (error) {

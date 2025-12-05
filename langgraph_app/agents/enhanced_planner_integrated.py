@@ -49,7 +49,7 @@ class EnhancedPlannerAgent(BaseAgent):
     def __init__(self):
         super().__init__(AgentType.PLANNER)
         self.available_tools = self._register_tools()
-        self.max_refinement_loops = 2
+        self.max_refinement_loops = 1
         self.openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -64,8 +64,13 @@ class EnhancedPlannerAgent(BaseAgent):
 
             # Select model based on complexity
             complexity = state.template_config.get("metadata", {}).get("complexity", 5)
-            model_name = "gpt-4o" if complexity <= 7 else "claude-sonnet-4-20250514"
-            
+
+            # Faster, more stable, avoids timeouts
+            if complexity <= 4:
+                model_name = "gpt-4o"
+            else:
+                model_name = "gpt-4o-mini"
+
             logger.info(f"Planner using: {model_name}")
 
             # Phase 1: Tool Discovery
