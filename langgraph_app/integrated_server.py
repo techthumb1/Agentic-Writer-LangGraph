@@ -764,7 +764,7 @@ async def run_generation_workflow(request_id: str, initial_state: EnrichedConten
         }
 
 # ====== API Endpoints ======
-from langgraph_app.database import prisma, connect_db, disconnect_db
+from langgraph_app.db_client import prisma, connect_db, disconnect_db
 
 @app.on_event("startup")
 async def startup():
