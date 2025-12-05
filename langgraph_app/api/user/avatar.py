@@ -1,6 +1,6 @@
 # langgraph_app/api/user/avatar.py
 from fastapi import APIRouter, File, UploadFile, Header, HTTPException
-from langgraph_app.integrated_server import prisma
+from langgraph_app.database import prisma
 from pathlib import Path
 import shutil
 from datetime import datetime

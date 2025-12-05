@@ -764,19 +764,15 @@ async def run_generation_workflow(request_id: str, initial_state: EnrichedConten
         }
 
 # ====== API Endpoints ======
-from prisma import Prisma
-
-prisma = Prisma()
+from langgraph_app.database import prisma, connect_db, disconnect_db
 
 @app.on_event("startup")
 async def startup():
-    await prisma.connect()
-    logger.info("Prisma connected")
+    await connect_db()
 
 @app.on_event("shutdown")
 async def shutdown():
-    await prisma.disconnect()
-    logger.info("Prisma disconnected")
+    await disconnect_db()
 
 @app.get("/api/templates/{template_id}")
 async def get_template_details(template_id: str):

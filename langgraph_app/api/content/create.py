@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Header, HTTPException
-from langgraph_app.integrated_server import prisma
+from langgraph_app.database import prisma
 import uuid
 
 router = APIRouter()
