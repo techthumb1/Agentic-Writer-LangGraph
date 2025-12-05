@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
-from prisma import Prisma
+from langgraph_app.integrated_server import prisma
 import json
 from datetime import datetime
 import io
 
 router = APIRouter()
-prisma = Prisma()
 
 @router.post("/user/export")
 async def export_user_data(x_user_id: str = Header(..., alias="X-User-Id")):

@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Header
-from prisma import Prisma
+from langgraph_app.integrated_server import prisma
 
 router = APIRouter()
-prisma = Prisma()
 
 @router.get("/content")
 async def get_content(x_user_id: str = Header(..., alias="X-User-Id")):

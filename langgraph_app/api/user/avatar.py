@@ -1,12 +1,11 @@
 # langgraph_app/api/user/avatar.py
 from fastapi import APIRouter, File, UploadFile, Header, HTTPException
-from prisma import Prisma
+from langgraph_app.integrated_server import prisma
 from pathlib import Path
 import shutil
 from datetime import datetime
 
 router = APIRouter()
-prisma = Prisma()
 
 @router.post("/api/user/avatar")
 async def upload_avatar(

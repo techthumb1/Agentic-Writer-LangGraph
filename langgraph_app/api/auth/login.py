@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from passlib.hash import bcrypt
-from prisma import Prisma
+from langgraph_app.integrated_server import prisma
 
 router = APIRouter()
-prisma = Prisma()
+
 
 @router.post("/auth/login")
 async def login(data: dict):

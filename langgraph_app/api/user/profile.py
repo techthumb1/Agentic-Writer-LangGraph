@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from prisma import Prisma
+from langgraph_app.integrated_server import prisma
 
 router = APIRouter()
-prisma = Prisma()
 
 @router.put("/user/profile")
 async def update_profile(data: dict):

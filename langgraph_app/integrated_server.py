@@ -764,6 +764,20 @@ async def run_generation_workflow(request_id: str, initial_state: EnrichedConten
         }
 
 # ====== API Endpoints ======
+from prisma import Prisma
+
+prisma = Prisma()
+
+@app.on_event("startup")
+async def startup():
+    await prisma.connect()
+    logger.info("Prisma connected")
+
+@app.on_event("shutdown")
+async def shutdown():
+    await prisma.disconnect()
+    logger.info("Prisma disconnected")
+
 @app.get("/api/templates/{template_id}")
 async def get_template_details(template_id: str):
     """Get full template details including normalized parameters"""

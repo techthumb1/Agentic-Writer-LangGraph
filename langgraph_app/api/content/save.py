@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Header
-from prisma import Prisma
+from langgraph_app.integrated_server import prisma
 import uuid
 
 router = APIRouter()
-prisma = Prisma()
-
 @router.post("/content/save")
 async def save_content(
     data: dict,

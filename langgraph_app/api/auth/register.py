@@ -2,11 +2,10 @@
 
 from fastapi import APIRouter, HTTPException
 from passlib.hash import bcrypt
-from prisma import Prisma
+from langgraph_app.integrated_server import prisma
 import uuid
 
 router = APIRouter()
-prisma = Prisma()
 
 @router.post("/api/auth/register")
 async def register_user(data: dict):

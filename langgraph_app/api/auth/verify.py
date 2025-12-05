@@ -1,9 +1,8 @@
 from fastapi import APIRouter, HTTPException
-from prisma import Prisma
+from langgraph_app.integrated_server import prisma
 from datetime import datetime
 
 router = APIRouter()
-prisma = Prisma()
 
 @router.post("/api/auth/verify")
 async def verify_email(data: dict):
