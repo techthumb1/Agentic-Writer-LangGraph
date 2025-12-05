@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from langgraph_app.integrated_server import prisma
+from langgraph_app.database import prisma
 from datetime import datetime
 
 router = APIRouter()
