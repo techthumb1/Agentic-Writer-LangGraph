@@ -1164,6 +1164,3 @@ async def backfill_titles():
     
     return {"fixed": fixed_count, "message": f"Backfilled {fixed_count} files"}
 
-# --- Uvicorn entry for running directly ---
-if __name__ == "__main__":
-    uvicorn.run("langgraph_app.integrated_server:app", host="0.0.0.0", port=8080, reload=True)
