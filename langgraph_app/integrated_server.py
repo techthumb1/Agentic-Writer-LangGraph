@@ -59,6 +59,7 @@ from langgraph_app.api.content.save import router as content_save_router
 from langgraph_app.api.content.export import router as content_export_router
 from langgraph_app.api.dashboard.stats import router as dashboard_stats_router
 from langgraph_app.api.user.export import router as user_export_router
+from langgraph_app.api.auth.login import router as login_router
 
 
 
@@ -192,7 +193,7 @@ app.include_router(content_save_router, prefix="/api")
 app.include_router(content_export_router, prefix="/api")
 app.include_router(dashboard_stats_router, prefix="/api")
 app.include_router(user_export_router, prefix="/api")
- 
+app.include_router(login_router, prefix="/api") 
 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats_direct():
