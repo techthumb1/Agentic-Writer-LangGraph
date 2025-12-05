@@ -49,7 +49,7 @@ from .analytics_endpoints import router as analytics_router
 from .middleware.security import setup_security_middleware
 from .monitoring.health import router as health_monitoring_router
 
-from langgraph_app.api.auth.register import router as register_router
+from langgraph_app.api.auth import register as register_router
 from langgraph_app.api.auth.verify import router as verify_router
 from langgraph_app.api.user.profile import router as profile_router
 from langgraph_app.api.user.avatar import router as avatar_router
