@@ -1,18 +1,8 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import { prisma } from "@/lib/prisma.node";
-import { compare } from "bcryptjs";
 
-type UserWithPassword = {
-  id: string;
-  email: string;
-  name: string | null;
-  image: string | null;
-  password?: string | null;
-  passwordHash?: string | null;
-  hashedPassword?: string | null;
-};
+const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
@@ -26,7 +16,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         httpOnly: true,
         sameSite: "lax",
         secure: false,
-        //secret: process.env.AUTH_SECRET,
         path: "/",
       },
     },
@@ -54,24 +43,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const email = creds.email.trim().toLowerCase();
 
-        const dbUser = (await prisma.user.findUnique({
-          where: { email },
-        })) as UserWithPassword | null;
+        const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.FASTAPI_API_KEY}`
+          },
+          body: JSON.stringify({ email, password: creds.password })
+        });
 
-        if (!dbUser) {
-          console.log('[AUTH] User not found');
+        if (!response.ok) {
+          console.log('[AUTH] Login failed');
           return null;
         }
 
-        const storedHash = dbUser.passwordHash ?? dbUser.hashedPassword ?? dbUser.password ?? null;
-
-        if (!storedHash) return null;
-
-        const isValid = await compare(creds.password, storedHash);
-
-        if (!isValid) return null;
-
-        return { id: dbUser.id, email: dbUser.email, name: dbUser.name, image: dbUser.image };
+        const user = await response.json();
+        return { id: user.id, email: user.email, name: user.name, image: user.image };
       },
     }),
   ],
@@ -81,40 +68,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: "/auth/error",
   },
 
-  // Replace callbacks section (lines 69-98):
   callbacks: {
-  async jwt({ token, user, account }) {
-    if (user) {
-      // For credentials, user object already has DB id from authorize()
-      // For OAuth, we need to look up the existing user
-      if (account?.provider === 'google') {
-        const existing = await prisma.user.findUnique({
-          where: { email: user.email!.toLowerCase().trim() }
-        });
-        
-        if (existing) {
-          token.id = existing.id;
-          token.email = existing.email;
-          token.name = user.name ?? existing.name;
-          token.image = user.image ?? existing.image;
+    async jwt({ token, user, account }) {
+      if (user) {
+        if (account?.provider === 'google') {
+          const response = await fetch(`${BACKEND_URL}/api/auth/user-by-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.FASTAPI_API_KEY}`
+            },
+            body: JSON.stringify({ email: user.email!.toLowerCase().trim() })
+          });
+          
+          if (response.ok) {
+            const existing = await response.json();
+            token.id = existing.id;
+            token.email = existing.email;
+            token.name = user.name ?? existing.name;
+            token.image = user.image ?? existing.image;
+          } else {
+            token.id = user.id;
+            token.email = user.email;
+            token.name = user.name;
+            token.image = user.image ?? null;
+          }
         } else {
           token.id = user.id;
           token.email = user.email;
           token.name = user.name;
           token.image = user.image ?? null;
         }
-      } else {
-        // Credentials - use the ID from authorize()
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
-        token.image = user.image ?? null;
+        
+        if (account) token.provider = account.provider;
       }
-      
-      if (account) token.provider = account.provider;
-    }
-    return token;
-  },
+      return token;
+    },
     
     async session({ session, token }) {
       if (!session.user) {
@@ -134,40 +123,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 
-events: {
-  async signIn({ user }) {
-    try {
-      if (!user?.email) return;
-      const email = user.email.toLowerCase().trim();
-      const existing = await prisma.user.findUnique({
-        where: { email },
-      });
-      if (existing) {
-        // User exists - ensure JWT gets the DB ID
-        user.id = existing.id;
-        await prisma.user.update({
-          where: { email },
-          data: {
-            name: user.name ?? existing.name,
-            image: user.image ?? existing.image,
+  events: {
+    async signIn({ user }) {
+      try {
+        if (!user?.email) return;
+        
+        await fetch(`${BACKEND_URL}/api/auth/sync-user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.FASTAPI_API_KEY}`
           },
+          body: JSON.stringify({
+            id: user.id,
+            email: user.email.toLowerCase().trim(),
+            name: user.name,
+            image: user.image
+          })
         });
-        return;
+      } catch (err) {
+        console.error("[auth] Failed to sync user:", err);
       }
-      // New user - create with the ID from authorize/Google
-      await prisma.user.create({
-        data: {
-          id: user.id, // Use the ID from the provider
-          email,
-          name: user.name ?? null,
-          image: user.image ?? null,
-        },
-      });
-    } catch (err) {
-      console.error("[auth] Failed to sync user:", err);
-    }
+    },
   },
-},
 
   secret: process.env.AUTH_SECRET,
   trustHost: true,
