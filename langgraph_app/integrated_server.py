@@ -1166,4 +1166,4 @@ async def backfill_titles():
 
 # --- Uvicorn entry for running directly ---
 if __name__ == "__main__":
-    uvicorn.run("langgraph_app.integrated_server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("langgraph_app.integrated_server:app", host="0.0.0.0", port=8080, reload=True)
