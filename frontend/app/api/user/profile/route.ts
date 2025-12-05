@@ -1,6 +1,4 @@
 // File: frontend/app/api/user/profile/route.ts
-// Create this file after making the directory with: mkdir -p app/api/user/profile
-
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 
@@ -14,19 +12,31 @@ export async function PUT(request: NextRequest) {
 
     const { name, email } = await request.json();
 
-    // TODO: Update user in your database
-    // For now, we'll just simulate success
-    // In a real app, you'd update your database here:
-    // await prisma.user.update({
-    //   where: { id: session.user.id },
-    //   data: { name, email }
-    // });
+    // Forward to backend API
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
+    const response = await fetch(`${backendUrl}/api/user/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.FASTAPI_API_KEY}`
+      },
+      body: JSON.stringify({
+        userId: session.user.id,
+        name,
+        email
+      })
+    });
 
+    if (!response.ok) {
+      throw new Error('Backend update failed');
+    }
+
+    const data = await response.json();
 
     return NextResponse.json({ 
       success: true, 
       message: 'Profile updated successfully',
-      user: { name, email }
+      user: data.user
     });
   } catch (error) {
     console.error('Profile update error:', error);
@@ -45,7 +55,6 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Return current user profile
     return NextResponse.json({
       success: true,
       user: {

@@ -1,0 +1,31 @@
+from fastapi import APIRouter, Header, HTTPException
+from prisma import Prisma
+import uuid
+
+router = APIRouter()
+prisma = Prisma()
+
+@router.post("/content")
+async def create_content(
+    data: dict,
+    x_user_id: str = Header(..., alias="X-User-Id")
+):
+    """Create new content"""
+    content = await prisma.content.create(
+        data={
+            "id": str(uuid.uuid4()),
+            "userId": x_user_id,
+            "title": data.get("title", "Untitled"),
+            "content": data.get("content", ""),
+            "contentHtml": data.get("contentHtml", ""),
+            "status": data.get("status", "draft"),
+            "type": data.get("type", "article"),
+            "metadata": data.get("metadata", {})
+        }
+    )
+    
+    return {
+        "success": True,
+        "contentId": content.id,
+        "message": "Content created successfully"
+    }

@@ -252,7 +252,7 @@ export default function ProfilePage() {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2">
             Your 
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-600">
               {" "}Profile
             </span>
           </h1>
@@ -282,7 +282,7 @@ export default function ProfilePage() {
                       className="w-24 h-24 rounded-full object-cover mx-auto mb-4 ring-2 ring-purple-500"
                     />
                   ) : (
-                    <div className="w-24 h-24 bg-gradient-to-r from-purple-400 to-pink-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
+                    <div className="w-24 h-24 bg-linear-to-rrom-purple-400 to-pink-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
                       {getInitials(userSettings.name)}
                     </div>
                   )}
@@ -422,7 +422,7 @@ export default function ProfilePage() {
                       className="group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg p-4 transition-all duration-200 text-left"
                     >
                       <div className="flex items-start space-x-4">
-                        <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${action.color} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
+                        <div className={`w-12 h-12 rounded-lg bg-linear-to-r ${action.color} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
                           <Icon className="h-6 w-6 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -446,7 +446,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className={`flex items-center p-3 rounded-lg border ${
                   userStats.contentGenerated >= 25 
-                    ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-purple-400/20' 
+                    ? 'bg-linear-to-r from-purple-600/20 to-pink-600/20 border-purple-400/20' 
                     : 'bg-gray-800/50 border-gray-600/50'
                 }`}>
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-3 ${
@@ -463,7 +463,7 @@ export default function ProfilePage() {
                 </div>
                 <div className={`flex items-center p-3 rounded-lg border ${
                   userStats.totalTimeSaved >= 10 
-                    ? 'bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-blue-400/20' 
+                    ? 'bg-linear-to-r from-blue-600/20 to-purple-600/20 border-blue-400/20' 
                     : 'bg-gray-800/50 border-gray-600/50'
                 }`}>
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-3 ${
