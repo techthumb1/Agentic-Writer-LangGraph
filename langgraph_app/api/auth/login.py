@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from passlib.hash import bcrypt
-from langgraph_app.database import prisma
+from langgraph_app.db_client import prisma
 
 router = APIRouter()
 

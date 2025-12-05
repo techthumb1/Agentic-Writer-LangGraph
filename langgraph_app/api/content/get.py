@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Header
-from langgraph_app.database import prisma
+from langgraph_app.db_client import prisma
 
 router = APIRouter()
 

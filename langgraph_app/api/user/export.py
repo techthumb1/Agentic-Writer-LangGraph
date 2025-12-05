@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
-from langgraph_app.database import prisma
+from langgraph_app.db_client import prisma
 import json
 from datetime import datetime
 import io
