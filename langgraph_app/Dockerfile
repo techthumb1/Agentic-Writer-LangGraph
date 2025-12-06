@@ -12,11 +12,18 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1
 RUN pip install --upgrade pip setuptools wheel \
     && pip install -r /app/requirements.txt
 
-COPY langgraph_app/prisma /app/prisma
-RUN prisma generate --schema=/app/prisma/schema.prisma
-
-# Copy application code
+# Copy application code FIRST
 COPY langgraph_app /app/langgraph_app
+
+# Copy Prisma schema
+COPY langgraph_app/prisma /app/langgraph_app/prisma
+
+# Generate Prisma client AFTER code is in place
+WORKDIR /app/langgraph_app
+RUN prisma generate --schema=/app/langgraph_app/prisma/schema.prisma
+
+# Back to app root
+WORKDIR /app
 
 # Copy data directory containing templates and style profiles
 COPY data /app/data
