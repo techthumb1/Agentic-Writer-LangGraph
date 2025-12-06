@@ -1,0 +1,414 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("VerificationToken")
+}
+
+model User {
+  id                      String             @id @default(cuid())
+  email                   String             @unique
+  name                    String?
+  bio                     String?
+  avatar                  String?
+  language                String             @default("en")
+  timezone                String             @default("UTC")
+  emailNotifications      Boolean            @default(true)
+  pushNotifications       Boolean            @default(false)
+  marketingCommunications Boolean            @default(false)
+  defaultMaxTokens        Int                @default(2000)
+  defaultTemperature      Float              @default(0.7)
+  defaultModel            String             @default("gpt-4-turbo")
+  defaultContentQuality   String             @default("balanced")
+  autoSave                Boolean            @default(true)
+  backupFrequency         String             @default("daily")
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  accounts                Account[]
+  sessions                Session[]
+  emailVerified           DateTime?
+  image                   String?
+  password                String?
+  tokenExpires            DateTime?
+  verificationToken       String?            @unique
+  api_usage               ApiUsage[]
+  content_exports         ContentExport[]
+  content_feedback        ContentFeedback[]
+  content_templates       ContentTemplate[]
+  generated_content       GeneratedContent[]
+  generation_queue        GenerationQueue[]
+  style_profiles          StyleProfile[]
+  subscriptions           Subscription?
+  usage_stats             UsageStats[]
+  content                 Content[]
+
+  @@map("User")
+}
+
+model ContentTemplate {
+  id                String             @id @default(cuid())
+  title             String
+  description       String?
+  templateData      Json
+  category          String
+  difficulty        String?
+  estimatedLength   String?
+  targetAudience    String?
+  icon              String?
+  tags              String[]
+  isBuiltIn         Boolean            @default(false)
+  isPublic          Boolean            @default(false)
+  createdById       String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  users             User?              @relation(fields: [createdById], references: [id])
+  generated_content GeneratedContent[]
+
+  @@map("ContentTemplate")
+}
+
+model StyleProfile {
+  id                String             @id @default(cuid())
+  name              String
+  description       String
+  profileData       Json
+  category          String
+  icon              String?
+  tags              String[]
+  isBuiltIn         Boolean            @default(false)
+  isPublic          Boolean            @default(false)
+  createdById       String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  generated_content GeneratedContent[]
+  users             User?              @relation(fields: [createdById], references: [id])
+
+  @@map("StyleProfile")
+}
+
+model GeneratedContent {
+  id             String    @id @default(cuid())
+  title          String?
+  content        String
+  wordCount      Int
+  sectionCount   Int       @default(1)
+  status         String
+  errors         String[]
+  parameters     Json
+  preferences    Json
+  modelUsed      String
+  tokensConsumed Int?
+  generationTime Float?
+  agentSteps     Json?
+  templateId     String
+  styleProfileId String
+  userId         String
+  version        Int       @default(1)
+  parentId       String?
+  isPublished    Boolean   @default(false)
+  publishedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
+
+  content_feedback  ContentFeedback[]
+  content_sections  ContentSection[]
+  style_profiles    StyleProfile      @relation(fields: [styleProfileId], references: [id])
+  content_templates ContentTemplate   @relation(fields: [templateId], references: [id])
+  users             User              @relation(fields: [userId], references: [id])
+
+  @@map("GeneratedContent")
+}
+
+model ContentSection {
+  id                 String           @id @default(cuid())
+  title              String
+  content            String
+  wordCount          Int
+  order              Int
+  sectionType        String?
+  icon               String?
+  generatedContentId String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  generated_content  GeneratedContent @relation(fields: [generatedContentId], references: [id], onDelete: Cascade)
+
+  @@map("ContentSection")
+}
+
+model ContentFeedback {
+  id                 String           @id @default(cuid())
+  rating             Int
+  comment            String?
+  tags               String[]
+  feedbackType       String
+  generatedContentId String
+  userId             String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  generated_content  GeneratedContent @relation(fields: [generatedContentId], references: [id], onDelete: Cascade)
+  users              User             @relation(fields: [userId], references: [id])
+
+  @@map("ContentFeedback")
+}
+
+model UsageStats {
+  id                String   @id @default(cuid())
+  userId            String
+  date              DateTime @db.Date
+  contentGenerated  Int      @default(0)
+  tokensConsumed    Int      @default(0)
+  generationTime    Float    @default(0)
+  modelsUsed        String[]
+  templatesUsed     String[]
+  styleProfilesUsed String[]
+  averageWordCount  Float?
+  successRate       Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now()) @updatedAt
+  users             User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@map("UsageStats")
+}
+
+model TemplateUsage {
+  id             String   @id @default(cuid())
+  templateId     String
+  templateTitle  String
+  usageCount     Int      @default(1)
+  successRate    Float?
+  averageRating  Float?
+  date           DateTime @db.Date
+  totalWordCount Int      @default(0)
+  totalTokens    Int      @default(0)
+  averageGenTime Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  @@unique([templateId, date])
+  @@map("TemplateUsage")
+}
+
+model StyleProfileUsage {
+  id             String   @id @default(cuid())
+  profileId      String
+  profileName    String
+  usageCount     Int      @default(1)
+  successRate    Float?
+  averageRating  Float?
+  date           DateTime @db.Date
+  totalWordCount Int      @default(0)
+  totalTokens    Int      @default(0)
+  averageGenTime Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  @@unique([profileId, date])
+  @@map("StyleProfileUsage")
+}
+
+model GenerationQueue {
+  id           String    @id @default(cuid())
+  status       String
+  priority     Int       @default(0)
+  retryCount   Int       @default(0)
+  maxRetries   Int       @default(3)
+  requestData  Json
+  resultData   Json?
+  errorMessage String?
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  userId       String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+  users        User      @relation(fields: [userId], references: [id])
+
+  @@map("GenerationQueue")
+}
+
+model ApiUsage {
+  id           String   @id @default(cuid())
+  endpoint     String
+  method       String
+  statusCode   Int
+  responseTime Float
+  userId       String?
+  userAgent    String?
+  ipAddress    String?
+  requestSize  Int?
+  responseSize Int?
+  createdAt    DateTime @default(now())
+  users        User?    @relation(fields: [userId], references: [id])
+
+  @@map("ApiUsage")
+}
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  category    String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@map("SystemConfig")
+}
+
+model ContentTag {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String?
+  category    String?
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@map("ContentTag")
+}
+
+model ContentExport {
+  id           String    @id @default(cuid())
+  exportType   String
+  status       String
+  fileUrl      String?
+  fileName     String?
+  fileSize     Int?
+  itemCount    Int?
+  exportFormat String    @default("json")
+  userId       String
+  requestedAt  DateTime  @default(now())
+  completedAt  DateTime?
+  expiresAt    DateTime?
+  users        User      @relation(fields: [userId], references: [id])
+
+  @@map("ContentExport")
+}
+
+model Subscription {
+  id                  String    @id @default(cuid())
+  plan                String
+  status              String
+  billingCycle        String?
+  amount              Float?
+  currency            String?   @default("USD")
+  monthlyTokenLimit   Int?
+  monthlyContentLimit Int?
+  startDate           DateTime
+  endDate             DateTime?
+  trialEndDate        DateTime?
+  userId              String    @unique
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  users               User      @relation(fields: [userId], references: [id])
+
+  @@map("Subscription")
+}
+
+model ContentMetrics {
+  id          String    @id @default(cuid())
+  contentId   String    @unique
+  views       Int       @default(0)
+  uniqueViews Int       @default(0)
+  shares      Int       @default(0)
+  downloads   Int       @default(0)
+  avgReadTime Float     @default(0)
+  lastViewed  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  @@index([contentId])
+  @@map("ContentMetrics")
+}
+
+model ContentView {
+  id        String   @id @default(cuid())
+  contentId String
+  sessionId String
+  viewedAt  DateTime @default(now())
+  readTime  Int?
+  completed Boolean  @default(false)
+
+  @@index([contentId])
+  @@index([sessionId])
+  @@map("ContentView")
+}
+
+model DashboardMetrics {
+  id              String   @id @default(cuid())
+  date            DateTime @unique @db.Date
+  totalContent    Int      @default(0)
+  totalViews      Int      @default(0)
+  uniqueVisitors  Int      @default(0)
+  avgEngagement   Float    @default(0)
+  topTemplate     String?
+  topStyleProfile String?
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  @@map("DashboardMetrics")
+}
+
+model Account {
+  id                String @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token String? @db.Text
+  access_token  String? @db.Text
+  expires_at    Int?
+  token_type    String?
+  scope         String?
+  id_token      String? @db.Text
+  session_state String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("Account")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("Session")
+}
+
+model Content {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String
+  content     String   @db.Text
+  contentHtml String?  @db.Text
+  status      String   @default("draft")
+  type        String
+
+  views       Int      @default(0)
+  metadata    Json?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, status])
+  @@map("Content")
+}

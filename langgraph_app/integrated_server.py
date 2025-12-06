@@ -51,12 +51,15 @@ from .monitoring.health import router as health_monitoring_router
 
 from langgraph_app.api.auth import register as register_router
 from langgraph_app.api.auth.verify import router as verify_router
+from langgraph_app.api.auth.oauth import router as oauth_router
 from langgraph_app.api.user.profile import router as profile_router
 from langgraph_app.api.user.avatar import router as avatar_router
+from langgraph_app.api.user.count import router as user_count_router
 from langgraph_app.api.content.create import router as content_create_router
 from langgraph_app.api.content.get import router as content_get_router
 from langgraph_app.api.content.save import router as content_save_router
 from langgraph_app.api.content.export import router as content_export_router
+from langgraph_app.api.content.crud import router as content_crud_router
 from langgraph_app.api.dashboard.stats import router as dashboard_stats_router
 from langgraph_app.api.user.export import router as user_export_router
 from langgraph_app.api.auth.login import router as login_router
@@ -185,12 +188,15 @@ app.include_router(debug_router, tags=["Debug"])
 app.include_router(health_monitoring_router)
 app.include_router(register_router, prefix="/api")
 app.include_router(verify_router, prefix="/api")
+app.include_router(oauth_router, prefix="/api")
 app.include_router(profile_router, prefix="/api")
 app.include_router(avatar_router, prefix="/api")
+app.include_router(user_count_router, prefix="/api")
 app.include_router(content_create_router, prefix="/api")
 app.include_router(content_get_router, prefix="/api")
 app.include_router(content_save_router, prefix="/api")
 app.include_router(content_export_router, prefix="/api")
+app.include_router(content_crud_router, prefix="/api")
 app.include_router(dashboard_stats_router, prefix="/api")
 app.include_router(user_export_router, prefix="/api")
 app.include_router(login_router, prefix="/api") 
@@ -1159,4 +1165,3 @@ async def backfill_titles():
             logger.error(f"Error fixing {json_file}: {e}")
     
     return {"fixed": fixed_count, "message": f"Backfilled {fixed_count} files"}
-
