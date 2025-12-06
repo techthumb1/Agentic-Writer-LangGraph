@@ -6,13 +6,14 @@ options:
   diskSizeGb: 100
 
 steps:
-  # === Build backend (CORRECT CONTEXT) ===
+  # === Build backend (NO CACHE) ===
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         docker build \
+          --no-cache \
           -t us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:$BUILD_ID \
           -t us-central1-docker.pkg.dev/agentic-writer/writerzroom/backend:latest \
           -f langgraph_app/Dockerfile \
@@ -54,13 +55,14 @@ steps:
           --set-env-vars=APP_ENV=production,LOG_LEVEL=INFO \
           --set-secrets=OPENAI_API_KEY=openai-key:latest,ANTHROPIC_API_KEY=anthropic-key:latest,DATABASE_URL=database-url:latest,TAVILY_API_KEY=tavily-key:latest,FASTAPI_API_KEY=fastapi-key:latest,SECRET_KEY=backend-secret-key:latest
 
-  # === Build frontend ===
+  # === Build frontend (NO CACHE) ===
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         docker build \
+          --no-cache \
           -t us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:$BUILD_ID \
           -t us-central1-docker.pkg.dev/agentic-writer/writerzroom/frontend:latest \
           -f frontend/Dockerfile \
@@ -92,4 +94,3 @@ steps:
           --cpu=1 \
           --memory=1Gi \
           --set-env-vars=NODE_ENV=production
-
