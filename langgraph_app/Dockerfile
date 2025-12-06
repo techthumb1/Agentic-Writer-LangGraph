@@ -12,8 +12,8 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1
 RUN pip install --upgrade pip setuptools wheel \
     && pip install -r /app/requirements.txt
 
-COPY frontend/prisma/schema.prisma /app/schema.prisma
-RUN prisma generate
+COPY langgraph_app/prisma /app/prisma
+RUN prisma generate --schema=/app/prisma/schema.prisma
 
 # Copy application code
 COPY langgraph_app /app/langgraph_app
